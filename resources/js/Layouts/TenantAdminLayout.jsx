@@ -8,19 +8,56 @@ import {
     Bars3Icon,
     XMarkIcon,
     BuildingOffice2Icon,
+    ChartBarIcon,
+    DocumentTextIcon,
+    ChartPieIcon,
+    UserIcon
 } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
+import { usePermissions } from '@/Hooks/usePermissions';
 
 export default function TenantAdminLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const { tenantId, stats } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const { hasPermission } = usePermissions();
 
-    const navigation = [
-        { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
-        { name: 'Users', href: route('tenant-admin.users.index'), icon: UsersIcon },
-        { name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon },
-    ];
+    // Build navigation based on user permissions
+    const buildNavigation = () => {
+        const nav = [
+            { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon, permission: 'view_dashboard' }
+        ];
+
+        // Tenant admin specific items
+        if (hasPermission('manage_tenant_users')) {
+            nav.push({ name: 'Manage Users', href: route('tenant-admin.users.index'), icon: UsersIcon, permission: 'manage_tenant_users' });
+        }
+
+        if (hasPermission('manage_tenant_settings')) {
+            nav.push({ name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon, permission: 'manage_tenant_settings' });
+        }
+
+        // Regular tenant user items
+        if (hasPermission('view_reports')) {
+            nav.push({ name: 'Reports', href: route('tenant.reports'), icon: ChartBarIcon, permission: 'view_reports' });
+        }
+
+        if (hasPermission('view_tenant_data')) {
+            nav.push({ name: 'Content', href: route('tenant.content'), icon: DocumentTextIcon, permission: 'view_tenant_data' });
+        }
+
+        if (hasPermission('view_tenant_analytics')) {
+            nav.push({ name: 'Analytics', href: route('tenant.analytics'), icon: ChartPieIcon, permission: 'view_tenant_analytics' });
+        }
+
+        if (hasPermission('manage_own_profile')) {
+            nav.push({ name: 'My Profile', href: route('profile.edit'), icon: UserIcon, permission: 'manage_own_profile' });
+        }
+
+        return nav.filter(item => !item.permission || hasPermission(item.permission));
+    };
+
+    const navigation = buildNavigation();
 
     const isCurrentRoute = (routeName) => {
         return route().current(routeName);

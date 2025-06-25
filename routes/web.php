@@ -37,12 +37,16 @@ Route::get('/dashboard', function () {
         $tenantId = $stats['tenant_id'] ?? $user->tenant_id;
         $layoutType = 'tenant_admin';
     } elseif ($user->tenant_id) {
-        // Tenant User - use authenticated layout
+        // Tenant User - use tenant layout with appropriate navigation
         $tenantId = $user->tenant_id;
-        $layoutType = 'authenticated';
+        $tenant = $user->tenant;
+        $layoutType = 'tenant_user';
         $stats = [
             'tenant_id' => $tenantId,
-            'user_count' => 1,
+            'tenant_name' => $tenant?->name ?? 'Your Organization',
+            'user_activities' => 0, // Placeholder for future implementation
+            'user_messages' => 0,   // Placeholder for future implementation
+            'user_reports' => 0,    // Placeholder for future implementation
         ];
     }
     
@@ -128,6 +132,27 @@ Route::prefix('tenant-admin')->name('tenant-admin.')->middleware(['auth', 'tenan
     Route::delete('/users/{user}', [TenantAdminController::class, 'destroyUser'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('users.destroy');
+});
+
+// Tenant User Routes - for regular tenant users
+Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function () {
+    Route::get('/reports', function () {
+        return Inertia::render('Tenant/Reports', [
+            'pageTitle' => 'Reports'
+        ]);
+    })->middleware('permission:' . Permission::VIEW_REPORTS)->name('reports');
+    
+    Route::get('/content', function () {
+        return Inertia::render('Tenant/Content', [
+            'pageTitle' => 'Content'
+        ]);
+    })->middleware('permission:' . Permission::VIEW_TENANT_DATA)->name('content');
+    
+    Route::get('/analytics', function () {
+        return Inertia::render('Tenant/Analytics', [
+            'pageTitle' => 'Analytics'
+        ]);
+    })->middleware('permission:' . Permission::VIEW_TENANT_ANALYTICS)->name('analytics');
 });
 
 // Regular authenticated user routes

@@ -139,9 +139,9 @@ trait HasPermissions
             case 'tenant_admin':
                 return 'tenant_admin';
             case 'tenant_user':
-                return 'authenticated'; // This was the issue - tenant users should get authenticated layout
+                return 'tenant_user'; // All tenant users should get tenant layout with appropriate navigation
             default:
-                return 'guest';
+                return 'authenticated';
         }
     }
 
@@ -193,22 +193,49 @@ trait HasPermissions
             ]);
         }
 
-        // Tenant admin items
-        if ($this->canAccessTenantAdmin()) {
-            $items = array_merge($items, [
+        // Tenant-specific items (for any tenant user)
+        if ($this->tenant_id) {
+            // Tenant admin items
+            if ($this->canAccessTenantAdmin()) {
+                $items = array_merge($items, [
+                    [
+                        'name' => 'Manage Users',
+                        'route' => 'tenant-admin.users.index',
+                        'permission' => Permission::MANAGE_TENANT_USERS,
+                        'icon' => 'UsersIcon'
+                    ],
+                    [
+                        'name' => 'Tenant Settings',
+                        'route' => 'tenant-admin.settings',
+                        'permission' => Permission::MANAGE_TENANT_SETTINGS,
+                        'icon' => 'CogIcon'
+                    ],
+                ]);
+            }
+
+            // Items for all tenant users (based on permissions)
+            $tenantItems = [
                 [
-                    'name' => 'Tenant Users',
-                    'route' => 'tenant-admin.users.index',
-                    'permission' => Permission::MANAGE_TENANT_USERS,
-                    'icon' => 'UsersIcon'
+                    'name' => 'Reports',
+                    'route' => 'tenant.reports',
+                    'permission' => Permission::VIEW_REPORTS,
+                    'icon' => 'ChartBarIcon'
                 ],
                 [
-                    'name' => 'Tenant Settings',
-                    'route' => 'tenant-admin.settings',
-                    'permission' => Permission::MANAGE_TENANT_SETTINGS,
-                    'icon' => 'CogIcon'
+                    'name' => 'Content',
+                    'route' => 'tenant.content',
+                    'permission' => Permission::VIEW_TENANT_DATA,
+                    'icon' => 'DocumentTextIcon'
                 ],
-            ]);
+                [
+                    'name' => 'Analytics',
+                    'route' => 'tenant.analytics',
+                    'permission' => Permission::VIEW_TENANT_ANALYTICS,
+                    'icon' => 'ChartPieIcon'
+                ],
+            ];
+
+            $items = array_merge($items, $tenantItems);
         }
 
                  // Filter items based on actual permissions

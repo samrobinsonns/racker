@@ -18,7 +18,8 @@ import {
     ShieldCheckIcon,
     EnvelopeIcon,
     BuildingOffice2Icon,
-    Cog6ToothIcon
+    Cog6ToothIcon,
+    UserIcon
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
@@ -29,6 +30,7 @@ export default function Dashboard() {
     // Determine user type
     const isCentralAdmin = user.is_central_admin;
     const isTenantAdmin = user.roles?.some(role => role.name === 'tenant_admin') || false;
+    const isTenantUser = user.tenant_id && !isCentralAdmin && !isTenantAdmin;
     const adminLevel = getAdminLevel();
 
     // Determine which layout to use
@@ -40,6 +42,8 @@ export default function Dashboard() {
                 return CentralAdminLayout;
             case 'tenant_admin':
                 return TenantAdminLayout;
+            case 'tenant_user':
+                return TenantAdminLayout; // Use the same tenant layout but with different navigation
             default:
                 return AuthenticatedLayout;
         }
@@ -97,6 +101,17 @@ export default function Dashboard() {
                             Add User
                         </Link>
                     </PermissionGate>
+                </div>
+            );
+        } else if (isTenantUser) {
+            return (
+                <div>
+                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
+                        My Workspace
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                        {stats?.tenant_name || 'Your Organization'}
+                    </p>
                 </div>
             );
         } else {
@@ -598,6 +613,111 @@ export default function Dashboard() {
         );
     };
 
+    // Render Tenant User Dashboard Content
+    const renderTenantUserDashboard = () => {
+        const statCards = [
+            {
+                name: 'My Activities',
+                stat: stats?.user_activities || 0,
+                icon: CheckCircleIcon,
+                color: 'emerald',
+            },
+            {
+                name: 'Messages',
+                stat: stats?.user_messages || 0,
+                icon: EnvelopeIcon,
+                color: 'blue',
+            },
+            {
+                name: 'Reports',
+                stat: stats?.user_reports || 0,
+                icon: ChartBarIcon,
+                color: 'purple',
+            },
+        ];
+
+        return (
+            <>
+                {/* Welcome Section */}
+                <div className="mb-8 bg-gradient-to-r from-emerald-500 to-emerald-700 rounded-lg overflow-hidden">
+                    <div className="px-6 py-8 text-white">
+                        <h2 className="text-2xl font-bold">Welcome back, {user.name}!</h2>
+                        <p className="mt-2 text-emerald-100">
+                            You're part of {stats?.tenant_name || 'your organization'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Stats Overview */}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+                    {statCards.map((card) => (
+                        <div
+                            key={card.name}
+                            className="relative overflow-hidden rounded-lg bg-white px-4 py-5 shadow hover:shadow-lg transition-shadow duration-200"
+                        >
+                            <dt>
+                                <div className={`absolute rounded-md p-3 ${getStatColor(card.color)}`}>
+                                    <card.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                                </div>
+                                <p className="ml-16 truncate text-sm font-medium text-gray-500">{card.name}</p>
+                            </dt>
+                            <dd className="ml-16 flex items-baseline pb-6 sm:pb-7">
+                                <p className="text-2xl font-semibold text-gray-900">{card.stat}</p>
+                            </dd>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Main Content */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    {/* Recent Activity */}
+                    <div className="lg:col-span-2">
+                        <div className="bg-white overflow-hidden shadow rounded-lg">
+                            <div className="p-6">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
+                                    <ClockIcon className="h-5 w-5 mr-2 text-emerald-600" />
+                                    Your Recent Activity
+                                </h3>
+                                <div className="text-center py-8">
+                                    <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-gray-500">No recent activity</p>
+                                    <p className="text-sm text-gray-400 mt-1">Your activity will appear here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Access */}
+                    <div>
+                        <div className="bg-white overflow-hidden shadow rounded-lg">
+                            <div className="p-6">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Access</h3>
+                                <div className="space-y-3">
+                                    <PermissionGate permission="manage_own_profile">
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="w-full inline-flex items-center justify-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
+                                        >
+                                            <UserIcon className="h-4 w-4 mr-2" />
+                                            My Profile
+                                        </Link>
+                                    </PermissionGate>
+                                    
+                                    <PermissionGate permission="view_reports">
+                                        <button className="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition ease-in-out duration-150">
+                                            <ChartBarIcon className="h-4 w-4 mr-2" />
+                                            View Reports
+                                        </button>
+                                    </PermissionGate>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    };
+
     // Render Regular User Dashboard Content
     const renderRegularDashboard = () => (
         <div className="py-12">
@@ -613,11 +733,17 @@ export default function Dashboard() {
 
     return (
         <LayoutComponent header={getHeader()}>
-            <Head title={isCentralAdmin ? "Central Admin Dashboard" : isTenantAdmin ? "Tenant Admin Dashboard" : "Dashboard"} />
+            <Head title={
+                isCentralAdmin ? "Central Admin Dashboard" : 
+                isTenantAdmin ? "Tenant Admin Dashboard" : 
+                isTenantUser ? "My Workspace" : 
+                "Dashboard"
+            } />
             
             {isCentralAdmin && renderCentralAdminDashboard()}
             {isTenantAdmin && !isCentralAdmin && renderTenantAdminDashboard()}
-            {!isCentralAdmin && !isTenantAdmin && renderRegularDashboard()}
+            {isTenantUser && renderTenantUserDashboard()}
+            {!isCentralAdmin && !isTenantAdmin && !isTenantUser && renderRegularDashboard()}
         </LayoutComponent>
     );
 }
