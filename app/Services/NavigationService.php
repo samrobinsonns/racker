@@ -185,17 +185,40 @@ class NavigationService
                 throw new \InvalidArgumentException('Invalid navigation configuration structure');
             }
             
-            // Create new configuration
-            $config = NavigationConfiguration::create([
-                'tenant_id' => $tenantId,
-                'user_id' => $userId,
-                'role_id' => $roleId,
-                'name' => $name,
-                'configuration' => $configuration,
-                'created_by' => $createdBy->id,
-                'updated_by' => $createdBy->id,
-                'is_active' => false, // Will be activated separately
-            ]);
+            // Check for existing configuration with same name and scope
+            $existingConfig = NavigationConfiguration::where('tenant_id', $tenantId)
+                ->where('name', $name)
+                ->where(function ($query) use ($userId, $roleId) {
+                    if ($userId) {
+                        $query->where('user_id', $userId);
+                    } elseif ($roleId) {
+                        $query->where('role_id', $roleId);
+                    } else {
+                        $query->whereNull('user_id')->whereNull('role_id');
+                    }
+                })
+                ->first();
+            
+            if ($existingConfig) {
+                // Update existing configuration
+                $existingConfig->update([
+                    'configuration' => $configuration,
+                    'updated_by' => $createdBy->id,
+                ]);
+                $config = $existingConfig;
+            } else {
+                // Create new configuration
+                $config = NavigationConfiguration::create([
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'role_id' => $roleId,
+                    'name' => $name,
+                    'configuration' => $configuration,
+                    'created_by' => $createdBy->id,
+                    'updated_by' => $createdBy->id,
+                    'is_active' => false, // Will be activated separately
+                ]);
+            }
             
             DB::commit();
             
