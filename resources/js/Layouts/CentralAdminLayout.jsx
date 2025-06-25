@@ -16,7 +16,7 @@ export default function CentralAdminLayout({ header, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const navigation = [
-        { name: 'Dashboard', href: route('central-admin.dashboard'), icon: HomeIcon },
+        { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
         { name: 'Tenants', href: route('central-admin.tenants.index'), icon: BuildingOfficeIcon },
         { name: 'All Users', href: route('central-admin.users.index'), icon: UsersIcon },
         { name: 'Settings', href: route('central-admin.settings'), icon: Cog6ToothIcon },

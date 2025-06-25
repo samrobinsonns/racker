@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Role;
+use App\Enums\Permission;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -21,15 +22,30 @@ class RolesAndPermissionsSeeder extends Seeder
                 'description' => 'Full system access - can manage all tenants and users',
                 'tenant_id' => null,
                 'permissions' => [
-                    'manage_tenants',
-                    'manage_central_users',
-                    'manage_tenant_users',
-                    'view_system_analytics',
-                    'manage_system_settings',
-                    'create_tenants',
-                    'delete_tenants',
-                    'impersonate_users',
-                    'view_all_data',
+                    Permission::MANAGE_TENANTS,
+                    Permission::MANAGE_SYSTEM_SETTINGS,
+                    Permission::VIEW_SYSTEM_ANALYTICS,
+                    Permission::IMPERSONATE_USERS,
+                    Permission::VIEW_ALL_DATA,
+                    Permission::EXPORT_SYSTEM_DATA,
+                    Permission::MANAGE_SYSTEM_BACKUPS,
+                    Permission::MANAGE_CENTRAL_USERS,
+                    Permission::MANAGE_TENANT_USERS,
+                    Permission::INVITE_USERS,
+                    Permission::VIEW_USER_PROFILES,
+                    Permission::RESET_USER_PASSWORDS,
+                    Permission::DEACTIVATE_USERS,
+                    Permission::MANAGE_USER_ROLES,
+                    Permission::CREATE_TENANTS,
+                    Permission::DELETE_TENANTS,
+                    Permission::MANAGE_TENANT_SETTINGS,
+                    Permission::MANAGE_TENANT_ROLES,
+                    Permission::VIEW_TENANT_ANALYTICS,
+                    Permission::VIEW_TENANT_DATA,
+                    Permission::EXPORT_TENANT_DATA,
+                    Permission::MANAGE_TENANT_BILLING,
+                    Permission::VIEW_DASHBOARD,
+                    Permission::MANAGE_OWN_PROFILE,
                 ]
             ]
         );
@@ -42,13 +58,19 @@ class RolesAndPermissionsSeeder extends Seeder
                 'description' => 'Admin access within tenant - can manage tenant users and settings',
                 'tenant_id' => null, // This will be set when creating tenant-specific roles
                 'permissions' => [
-                    'manage_tenant_users',
-                    'invite_users',
-                    'manage_tenant_settings',
-                    'view_tenant_analytics',
-                    'manage_tenant_roles',
-                    'view_tenant_data',
-                    'export_tenant_data',
+                    Permission::MANAGE_TENANT_USERS,
+                    Permission::INVITE_USERS,
+                    Permission::VIEW_USER_PROFILES,
+                    Permission::RESET_USER_PASSWORDS,
+                    Permission::DEACTIVATE_USERS,
+                    Permission::MANAGE_USER_ROLES,
+                    Permission::MANAGE_TENANT_SETTINGS,
+                    Permission::MANAGE_TENANT_ROLES,
+                    Permission::VIEW_TENANT_ANALYTICS,
+                    Permission::VIEW_TENANT_DATA,
+                    Permission::EXPORT_TENANT_DATA,
+                    Permission::VIEW_DASHBOARD,
+                    Permission::MANAGE_OWN_PROFILE,
                 ]
             ]
         );
@@ -61,31 +83,50 @@ class RolesAndPermissionsSeeder extends Seeder
                 'description' => 'Standard user access within tenant',
                 'tenant_id' => null, // This will be set when creating tenant-specific roles
                 'permissions' => [
-                    'view_dashboard',
-                    'manage_own_profile',
-                    'view_tenant_data',
-                    'create_content',
-                    'edit_own_content',
+                    Permission::VIEW_DASHBOARD,
+                    Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_TENANT_DATA,
+                    Permission::CREATE_CONTENT,
+                    Permission::EDIT_OWN_CONTENT,
+                    Permission::VIEW_REPORTS,
                 ]
             ]
         );
 
-        // Tenant Manager Role Template (optional middle tier)
+        // Content Manager Role Template
         Role::firstOrCreate(
-            ['name' => 'tenant_manager', 'type' => 'tenant'],
+            ['name' => 'content_manager', 'type' => 'tenant'],
             [
-                'display_name' => 'Tenant Manager',
-                'description' => 'Management access within tenant - can manage content and some users',
+                'display_name' => 'Content Manager',
+                'description' => 'Can manage all content within tenant',
                 'tenant_id' => null,
                 'permissions' => [
-                    'view_dashboard',
-                    'manage_own_profile',
-                    'view_tenant_data',
-                    'create_content',
-                    'edit_content',
-                    'delete_content',
-                    'manage_some_users',
-                    'view_reports',
+                    Permission::VIEW_DASHBOARD,
+                    Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_TENANT_DATA,
+                    Permission::CREATE_CONTENT,
+                    Permission::EDIT_CONTENT,
+                    Permission::DELETE_CONTENT,
+                    Permission::PUBLISH_CONTENT,
+                    Permission::MODERATE_CONTENT,
+                    Permission::VIEW_REPORTS,
+                    Permission::MANAGE_CATEGORIES,
+                ]
+            ]
+        );
+
+        // Viewer Role Template
+        Role::firstOrCreate(
+            ['name' => 'viewer', 'type' => 'tenant'],
+            [
+                'display_name' => 'Viewer',
+                'description' => 'Read-only access to tenant data',
+                'tenant_id' => null,
+                'permissions' => [
+                    Permission::VIEW_DASHBOARD,
+                    Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_TENANT_DATA,
+                    Permission::VIEW_REPORTS,
                 ]
             ]
         );

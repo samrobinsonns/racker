@@ -1,5 +1,5 @@
 import { Head, useForm, Link, usePage } from '@inertiajs/react';
-import TenantAdminLayout from '@/Layouts/TenantAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -33,7 +33,7 @@ export default function Edit({ user, availableRoles, tenantId }) {
     const canDelete = user.id !== currentUser.id; // Cannot delete yourself
 
     return (
-        <TenantAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex items-center space-x-4">
                     <Link
@@ -200,6 +200,6 @@ export default function Edit({ user, availableRoles, tenantId }) {
                     </div>
                 )}
             </div>
-        </TenantAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

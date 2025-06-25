@@ -197,7 +197,121 @@ The system automatically redirects users to appropriate dashboards:
   - Error handling and validation display
 
 ### ✅ Recently Completed
-- **Enhanced Central Admin User Management**
+- **Unified AuthenticatedLayout System**
+  - **Context-Aware Layout**: Single layout that adapts based on user type
+  - **Dynamic Admin Sidebars**: Conditional admin features appear for admin users
+  - **Consistent Navigation**: Persistent admin sidebars across Dashboard → Profile → Users → Settings
+  - **Progressive Enhancement**: Regular users get clean interface, admins get rich features
+  - **Role-Based Theming**: Indigo theme for central admin, emerald for tenant admin
+  - **Mobile Responsive**: All user types supported across screen sizes
+  - **Smart Route Detection**: Automatic highlighting of current pages
+  - **Unified Dashboard**: Single `/dashboard` endpoint serving all user types with appropriate data
+
+- **Complete Roles & Permissions Management System**
+  - **Visual Permission Management**: Organized permissions by category with descriptions
+  - **Comprehensive Role CRUD**: Create, edit, delete roles with full validation
+  - **Permission Categories**: System Management, User Management, Tenant Operations, Content Management
+  - **Role Type System**: Distinguish between Central (system-wide) and Tenant (tenant-specific) roles
+  - **Permission Preview**: See assigned permissions at a glance with counters
+  - **User Count Display**: Shows how many users have each role
+  - **Safety Protections**: Core roles protected, user assignments checked before deletion
+  - **Modern Modal UI**: Compact, user-friendly modals with proper sizing and responsive design
+  - **Real-time Validation**: Form validation with immediate feedback
+  - **Loading States**: Animated loading indicators for better UX
+  - **Error Handling**: Comprehensive validation and user feedback
+  - **Security Features**: Protected routes, permission checking, role assignment validation
+
+- **Enhanced Modal System**
+  - **Optimal Sizing**: Roles modal (2xl), delete confirmation (sm) for better UX
+  - **Improved Layout**: Sectioned forms with clear visual hierarchy
+  - **Close Controls**: Multiple ways to close (X button, cancel, overlay click)
+  - **Loading Animations**: Spinning indicators during form submission
+  - **Responsive Design**: Works perfectly on all screen sizes
+  - **Keyboard Navigation**: Proper focus management and accessibility
+
+### 🔄 Current System Architecture
+
+#### **Unified Layout System**
+The application now uses a single `AuthenticatedLayout` that dynamically adapts:
+
+```jsx
+// User Type Detection
+const isCentralAdmin = user?.is_central_admin;
+const isTenantAdmin = user?.roles?.some(role => role.name === 'tenant_admin');
+
+// Theme Configuration
+const themeConfig = {
+  central_admin: { 
+    sidebarBg: 'bg-indigo-900', 
+    accent: 'indigo',
+    textColor: 'text-indigo-100' 
+  },
+  tenant_admin: { 
+    sidebarBg: 'bg-emerald-900', 
+    accent: 'emerald',
+    textColor: 'text-emerald-100' 
+  }
+};
+```
+
+#### **Permission System Architecture**
+Granular permissions organized by functional areas:
+
+- **System Management**: `manage_tenants`, `manage_system_settings`, `view_system_analytics`, `impersonate_users`, `view_all_data`
+- **User Management**: `manage_central_users`, `manage_tenant_users`, `invite_users`, `manage_some_users`
+- **Tenant Operations**: `create_tenants`, `delete_tenants`, `manage_tenant_settings`, `manage_tenant_roles`, `view_tenant_analytics`, `view_tenant_data`, `export_tenant_data`
+- **Content Management**: `view_dashboard`, `manage_own_profile`, `create_content`, `edit_content`, `edit_own_content`, `delete_content`, `view_reports`
+
+#### **Role Management Backend**
+New controller methods in `CentralAdminController`:
+- `storeRole()`: Create roles with comprehensive validation
+- `updateRole()`: Edit existing roles with permission updates
+- `destroyRole()`: Safe deletion with user assignment checks
+
+Routes added:
+```php
+Route::post('/roles', [CentralAdminController::class, 'storeRole'])->name('roles.store');
+Route::patch('/roles/{role}', [CentralAdminController::class, 'updateRole'])->name('roles.update');
+Route::delete('/roles/{role}', [CentralAdminController::class, 'destroyRole'])->name('roles.destroy');
+```
+
+### 🔄 Current Issues
+**System is now stable** - Major architectural improvements completed:
+- ✅ **Tenant Name Display**: Fixed using direct property access (`tenant.name`)
+- ✅ **Layout Unification**: Single layout supporting all user types
+- ✅ **Admin Experience**: Consistent navigation across all admin pages
+- ✅ **Roles & Permissions**: Complete management system implemented
+
+### 🎯 Next Development Priorities
+1. **User Experience Enhancements**
+   - User invitation system with email notifications
+   - Bulk user operations (import/export)
+   - Advanced search and filtering across all modules
+   - User activity logging and audit trails
+
+2. **Advanced Tenant Features**
+   - Tenant details view with comprehensive statistics
+   - Tenant-specific settings and customization
+   - Tenant analytics and reporting dashboard
+   - Bulk tenant operations and management tools
+
+3. **System Administration**
+   - Email configuration and testing interface
+   - System backup and maintenance tools
+   - Advanced analytics and reporting
+   - Performance monitoring and optimization
+
+4. **Security & Compliance**
+   - Two-factor authentication implementation
+   - Session management and security
+   - API rate limiting and protection
+   - Security audit logs and compliance reporting
+
+5. **Developer Experience**
+   - API documentation and testing tools
+   - Database backup and migration tools
+   - Development environment improvements
+   - Automated testing and deployment pipelines
 
 ## Troubleshooting Common Issues
 
@@ -269,33 +383,4 @@ The system automatically redirects users to appropriate dashboards:
 - **Enhanced Modal System**
   - Reusable Modal component with proper animations
   - Form handling within modals
-  - Error handling and validation display
-
-### 🔄 Current Issues
-- **Tenant Name Display**: Existing tenants show as "Unnamed Tenant" due to data retrieval issue
-  - Data is correctly stored in database as JSON
-  - Eloquent model casting not working properly for existing records
-  - Requires investigation of stancl/tenancy package compatibility
-
-### 🎯 Next Development Priorities
-1. **Resolve tenant name display issue**
-   - Debug Eloquent JSON casting problem
-   - Ensure consistent tenant name display across all components
-2. **Enhanced tenant management features**
-   - Tenant details view with statistics
-   - Tenant settings configuration
-   - Bulk tenant operations
-3. **Advanced user features**
-   - User invitation system with email notifications
-   - Bulk user operations (import/export)
-   - User activity logging
-4. **System enhancements**
-   - Audit logging for admin actions
-   - Advanced analytics and reporting
-   - Email configuration and testing
-   - Backup and maintenance tools
-5. **Security improvements**
-   - Two-factor authentication
-   - Session management
-   - API rate limiting
-   - Security audit logs 
+  - Error handling and validation display 

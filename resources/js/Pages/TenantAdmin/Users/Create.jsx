@@ -1,5 +1,5 @@
 import { Head, useForm, Link } from '@inertiajs/react';
-import TenantAdminLayout from '@/Layouts/TenantAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -22,7 +22,7 @@ export default function Create({ availableRoles, tenantId }) {
     };
 
     return (
-        <TenantAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex items-center space-x-4">
                     <Link
@@ -192,6 +192,6 @@ export default function Create({ availableRoles, tenantId }) {
                     </form>
                 </div>
             </div>
-        </TenantAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

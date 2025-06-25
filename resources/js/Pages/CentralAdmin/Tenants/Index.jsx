@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { 
     PlusIcon, 
@@ -104,7 +104,7 @@ export default function Index({ tenants }) {
     };
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold leading-tight text-gray-900">
@@ -238,7 +238,7 @@ export default function Index({ tenants }) {
                                 </div>
                                 
                                 <Link
-                                    href={route('tenant-admin.dashboard', { tenant_id: tenant.id })}
+                                    href={route('dashboard', { tenant_id: tenant.id })}
                                     className="text-xs text-gray-600 hover:text-gray-900 underline"
                                 >
                                     Manage →
@@ -468,6 +468,6 @@ export default function Index({ tenants }) {
                     </div>
                 </Modal>
             )}
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

@@ -6,14 +6,26 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Role;
+use App\Enums\Permission;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CentralAdminController extends Controller
 {
     public function dashboard()
     {
-        $stats = [
+        $stats = $this->getDashboardStats();
+
+        return Inertia::render('CentralAdmin/Dashboard', [
+            'stats' => $stats,
+        ]);
+    }
+
+    public function getDashboardStats()
+    {
+        return [
             'total_tenants' => Tenant::count(),
             'total_users' => User::count(),
             'central_admins' => User::centralAdmins()->count(),
@@ -21,10 +33,6 @@ class CentralAdminController extends Controller
             'recent_tenants' => Tenant::latest()->limit(5)->with('users')->get(),
             'recent_users' => User::latest()->limit(5)->with('tenant')->get(),
         ];
-
-        return Inertia::render('CentralAdmin/Dashboard', [
-            'stats' => $stats,
-        ]);
     }
 
     public function tenants()
@@ -84,10 +92,14 @@ class CentralAdminController extends Controller
             'tenants' => Tenant::all(),
         ];
 
+        // Get organized roles for better UX
+        $allRoles = Role::with('tenant')->get();
+        
         return Inertia::render('CentralAdmin/Users/Index', [
             'users' => $users,
             'stats' => $stats,
             'filters' => $request->only(['search', 'user_type', 'tenant_id', 'status']),
+            'roles' => $allRoles,
         ]);
     }
 
@@ -110,10 +122,26 @@ class CentralAdminController extends Controller
             'total_users' => User::count(),
         ];
 
+        // Transform permissions to match frontend expectations
+        $groupedPermissions = Permission::getGroupedPermissions();
+        $formattedPermissions = [];
+        
+        foreach ($groupedPermissions as $category => $permissions) {
+            $formattedPermissions[$category] = [];
+            foreach ($permissions as $key => $data) {
+                $formattedPermissions[$category][] = [
+                    'key' => $key,
+                    'label' => $data['label'],
+                    'description' => $data['description']
+                ];
+            }
+        }
+
         return Inertia::render('CentralAdmin/Settings', [
             'settings' => $settings,
-            'roles' => Role::withCount('users')->get(),
+            'roles' => Role::with('tenant')->withCount('users')->get(),
             'stats' => $stats,
+            'permissions' => $formattedPermissions,
         ]);
     }
 
@@ -169,8 +197,7 @@ class CentralAdminController extends Controller
         ]);
 
         if ($request->role_id) {
-            $role = Role::find($request->role_id);
-            $user->assignRole($role, $request->tenant_id);
+            $user->assignRole($request->role_id, $request->tenant_id);
         }
 
         return redirect()->route('central-admin.users.index')
@@ -200,6 +227,26 @@ class CentralAdminController extends Controller
             'role_id' => 'nullable|exists:roles,id',
         ]);
 
+        // Additional validation for role assignment
+        if ($request->role_id) {
+            $role = Role::find($request->role_id);
+            
+            // Validate role assignment logic
+            if ($role) {
+                if ($role->type === 'central' && $request->tenant_id) {
+                    return redirect()->back()
+                        ->withErrors(['role_id' => 'Central admin roles cannot be assigned to tenant users.'])
+                        ->withInput();
+                }
+                
+                if ($role->type === 'tenant' && $role->tenant_id && $role->tenant_id !== $request->tenant_id) {
+                    return redirect()->back()
+                        ->withErrors(['role_id' => 'This role belongs to a different tenant.'])
+                        ->withInput();
+                }
+            }
+        }
+
         $updateData = [
             'name' => $request->name,
             'email' => $request->email,
@@ -213,12 +260,43 @@ class CentralAdminController extends Controller
 
         $user->update($updateData);
 
-        // Update role if provided
+        // Clear existing roles
+        $user->roles()->detach();
+        
+        // Assign new role if provided
         if ($request->role_id) {
-            $user->roles()->detach(); // Remove existing roles
             $role = Role::find($request->role_id);
-            $user->assignRole($role, $request->tenant_id);
+            
+            if ($role) {
+                if ($role->type === 'central') {
+                    // Central roles are assigned with null tenant_id
+                    $user->assignRole($request->role_id, null);
+                } elseif ($role->type === 'tenant') {
+                    if (!$role->tenant_id) {
+                        // This is a template role, create tenant-specific instance if needed
+                        if ($request->tenant_id) {
+                            $tenantRole = Role::firstOrCreate([
+                                'name' => $role->name,
+                                'tenant_id' => $request->tenant_id,
+                                'type' => 'tenant'
+                            ], [
+                                'display_name' => $role->display_name,
+                                'description' => $role->description,
+                                'permissions' => $role->permissions,
+                            ]);
+                            $user->assignRole($tenantRole->id, $request->tenant_id);
+                        }
+                    } else {
+                        // This is already a tenant-specific role
+                        $user->assignRole($request->role_id, $role->tenant_id);
+                    }
+                }
+            }
         }
+
+        // Clear permission cache for this user
+        $permissionService = app(PermissionService::class);
+        $permissionService->clearUserPermissionCache($user, $user->tenant_id);
 
         return redirect()->route('central-admin.users.index')
             ->with('success', 'User updated successfully.');
@@ -235,5 +313,95 @@ class CentralAdminController extends Controller
 
         return redirect()->route('central-admin.users.index')
             ->with('success', 'User deleted successfully.');
+    }
+
+    // Role Management Methods
+    public function storeRole(Request $request)
+    {
+        $tenantId = $request->type === 'tenant' ? null : null; // Template for tenant roles
+        
+        $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('roles')->where(function ($query) use ($tenantId) {
+                    return $query->where('tenant_id', $tenantId);
+                })
+            ],
+            'display_name' => 'required|string|max:255',
+            'description' => 'required|string|max:500',
+            'type' => 'required|in:central,tenant',
+            'permissions' => 'array',
+            'permissions.*' => 'string',
+        ]);
+
+        $role = Role::create([
+            'name' => $request->name,
+            'display_name' => $request->display_name,
+            'description' => $request->description,
+            'type' => $request->type,
+            'tenant_id' => $request->type === 'tenant' ? null : null, // Template for tenant roles
+            'permissions' => $request->permissions ?? [],
+        ]);
+
+        return redirect()->route('central-admin.settings')
+            ->with('success', 'Role created successfully.');
+    }
+
+    public function updateRole(Request $request, Role $role)
+    {
+        $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('roles')->ignore($role->id)->where(function ($query) use ($role) {
+                    return $query->where('tenant_id', $role->tenant_id);
+                })
+            ],
+            'display_name' => 'required|string|max:255',
+            'description' => 'required|string|max:500',
+            'type' => 'required|in:central,tenant',
+            'permissions' => 'array',
+            'permissions.*' => 'string',
+        ]);
+
+        $role->update([
+            'name' => $request->name,
+            'display_name' => $request->display_name,
+            'description' => $request->description,
+            'type' => $request->type,
+            'permissions' => $request->permissions ?? [],
+        ]);
+
+        // Clear permission cache for all users with this role
+        $permissionService = app(PermissionService::class);
+        foreach ($role->users as $user) {
+            $permissionService->clearUserPermissionCache($user, $user->tenant_id);
+        }
+
+        return redirect()->route('central-admin.settings')
+            ->with('success', 'Role updated successfully.');
+    }
+
+    public function destroyRole(Role $role)
+    {
+        // Prevent deletion of core system roles
+        if (in_array($role->name, ['central_admin', 'tenant_admin'])) {
+            return redirect()->back()
+                ->with('error', 'Cannot delete core system roles.');
+        }
+
+        // Check if role is assigned to any users
+        if ($role->users()->count() > 0) {
+            return redirect()->back()
+                ->with('error', 'Cannot delete role that is assigned to users. Please reassign users first.');
+        }
+
+        $role->delete();
+
+        return redirect()->route('central-admin.settings')
+            ->with('success', 'Role deleted successfully.');
     }
 }

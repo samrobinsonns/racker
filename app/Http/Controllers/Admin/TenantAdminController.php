@@ -13,6 +13,16 @@ class TenantAdminController extends Controller
 {
     public function dashboard()
     {
+        $stats = $this->getDashboardStats();
+
+        return Inertia::render('TenantAdmin/Dashboard', [
+            'stats' => $stats,
+            'tenantId' => $stats['tenant_id'] ?? null,
+        ]);
+    }
+
+    public function getDashboardStats()
+    {
         $user = auth()->user();
         $tenantId = $user->is_central_admin ? request('tenant_id') : $user->tenant_id;
 
@@ -20,7 +30,7 @@ class TenantAdminController extends Controller
             abort(400, 'No tenant context available.');
         }
 
-        $stats = [
+        return [
             'total_users' => User::tenantUsers($tenantId)->count(),
             'active_users' => User::tenantUsers($tenantId)->whereNotNull('email_verified_at')->count(),
             'recent_users' => User::tenantUsers($tenantId)->latest()->limit(5)->with('roles')->get(),
@@ -28,12 +38,8 @@ class TenantAdminController extends Controller
             'recent_activity' => $this->getRecentActivity($tenantId),
             'user_growth' => $this->getUserGrowthStats($tenantId),
             'role_distribution' => $this->getRoleDistribution($tenantId),
+            'tenant_id' => $tenantId,
         ];
-
-        return Inertia::render('TenantAdmin/Dashboard', [
-            'stats' => $stats,
-            'tenantId' => $tenantId,
-        ]);
     }
 
     /**
@@ -169,6 +175,10 @@ class TenantAdminController extends Controller
             'users' => $users,
             'availableRoles' => $availableRoles,
             'tenantId' => $tenantId,
+            'stats' => [
+                'tenant_name' => optional($user->tenant)->name ?? 'Unknown Tenant',
+                'tenant_id' => $tenantId,
+            ],
         ]);
     }
 
@@ -186,6 +196,10 @@ class TenantAdminController extends Controller
         return Inertia::render('TenantAdmin/Users/Create', [
             'availableRoles' => $availableRoles,
             'tenantId' => $tenantId,
+            'stats' => [
+                'tenant_name' => optional($user->tenant)->name ?? 'Unknown Tenant',
+                'tenant_id' => $tenantId,
+            ],
         ]);
     }
 
@@ -247,6 +261,10 @@ class TenantAdminController extends Controller
             'user' => $user,
             'availableRoles' => $availableRoles,
             'tenantId' => $tenantId,
+            'stats' => [
+                'tenant_name' => optional($currentUser->tenant)->name ?? 'Unknown Tenant',
+                'tenant_id' => $tenantId,
+            ],
         ]);
     }
 
@@ -325,6 +343,10 @@ class TenantAdminController extends Controller
             'tenant' => $tenant,
             'roles' => $roles,
             'tenantId' => $tenantId,
+            'stats' => [
+                'tenant_name' => optional($tenant)->name ?? 'Unknown Tenant',
+                'tenant_id' => $tenantId,
+            ],
         ]);
     }
 }

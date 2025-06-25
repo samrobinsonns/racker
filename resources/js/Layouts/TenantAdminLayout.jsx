@@ -17,7 +17,7 @@ export default function TenantAdminLayout({ header, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const navigation = [
-        { name: 'Dashboard', href: route('tenant-admin.dashboard'), icon: HomeIcon },
+        { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
         { name: 'Users', href: route('tenant-admin.users.index'), icon: UsersIcon },
         { name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon },
     ];

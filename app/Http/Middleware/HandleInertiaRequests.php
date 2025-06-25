@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Services\PermissionService;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -29,10 +30,22 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $userWithPermissions = null;
+        
+        if ($user) {
+            $userWithPermissions = $user->load('roles');
+            // Add user permissions to the frontend
+            $permissionService = app(PermissionService::class);
+            $userWithPermissions->permissions = $permissionService->getUserPermissions($user);
+            $userWithPermissions->layout_type = $user->getLayoutType();
+            $userWithPermissions->admin_level = $user->getAdminLevel();
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $userWithPermissions,
             ],
         ];
     }

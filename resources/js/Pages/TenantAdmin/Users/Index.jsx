@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import TenantAdminLayout from '@/Layouts/TenantAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { 
     PlusIcon, 
     PencilIcon, 
@@ -30,7 +30,7 @@ export default function Index({ users, availableRoles, tenantId }) {
     };
 
     return (
-        <TenantAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold leading-tight text-gray-900">
@@ -312,6 +312,6 @@ export default function Index({ users, availableRoles, tenantId }) {
                     </div>
                 </div>
             </div>
-        </TenantAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

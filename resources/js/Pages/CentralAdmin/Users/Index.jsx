@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -20,7 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 
-export default function Index({ users, stats, filters }) {
+export default function Index({ users, stats, filters, roles }) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [selectedUserType, setSelectedUserType] = useState(filters?.user_type || '');
     const [selectedTenant, setSelectedTenant] = useState(filters?.tenant_id || '');
@@ -36,6 +36,7 @@ export default function Index({ users, stats, filters }) {
         email: '',
         tenant_id: '',
         is_central_admin: false,
+        role_id: '',
         password: '',
         password_confirmation: '',
     });
@@ -81,6 +82,7 @@ export default function Index({ users, stats, filters }) {
             email: user.email,
             tenant_id: user.tenant_id || '',
             is_central_admin: user.is_central_admin,
+            role_id: user.roles && user.roles.length > 0 ? user.roles[0].id : '',
             password: '',
             password_confirmation: '',
         });
@@ -138,7 +140,7 @@ export default function Index({ users, stats, filters }) {
     };
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold leading-tight text-gray-900">
@@ -155,6 +157,21 @@ export default function Index({ users, stats, filters }) {
             }
         >
             <Head title="User Management" />
+
+            {/* Role System Info */}
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                    <ShieldCheckIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                        <h3 className="text-sm font-medium text-blue-900">Role Assignment Guide</h3>
+                        <div className="mt-1 text-sm text-blue-700">
+                            <p><strong>Central Admin Roles:</strong> System-wide access (purple badges)</p>
+                            <p><strong>Tenant Role Templates:</strong> Create tenant-specific roles from templates</p>
+                            <p><strong>Tenant-Specific Roles:</strong> Specific to individual tenants (blue badges)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Stats Overview */}
             <div className="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-4">
@@ -297,6 +314,9 @@ export default function Index({ users, stats, filters }) {
                                     Type
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Roles
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Tenant
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -341,6 +361,33 @@ export default function Index({ users, stats, filters }) {
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getUserTypeBadge(user)}`}>
                                             {getUserTypeLabel(user)}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {user.roles && user.roles.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {user.roles.map((role, index) => (
+                                                    <div key={index} className="flex flex-col">
+                                                        <span
+                                                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                role.type === 'central' 
+                                                                    ? 'bg-purple-100 text-purple-800' 
+                                                                    : 'bg-blue-100 text-blue-800'
+                                                            }`}
+                                                            title={`${role.display_name} - ${role.description || 'No description'}`}
+                                                        >
+                                                            {role.display_name}
+                                                        </span>
+                                                        {role.tenant_id && (
+                                                            <span className="text-xs text-gray-500 mt-1">
+                                                                Tenant: {user.tenant?.name || 'Unknown'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-500 text-xs">No roles assigned</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {user.tenant ? (
@@ -516,6 +563,54 @@ export default function Index({ users, stats, filters }) {
                         </div>
 
                         <div>
+                            <InputLabel htmlFor="edit_role" value="Role" />
+                            <select
+                                id="edit_role"
+                                value={editData.role_id}
+                                onChange={(e) => setEditData('role_id', e.target.value)}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            >
+                                <option value="">No Role Assigned</option>
+                                
+                                {/* Central Admin Roles */}
+                                <optgroup label="Central Admin Roles">
+                                    {roles.filter(role => role.type === 'central').map((role) => (
+                                        <option key={role.id} value={role.id}>
+                                            {role.display_name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+
+                                {/* Template Roles (for tenant role assignment) */}
+                                <optgroup label="Tenant Role Templates">
+                                    {roles.filter(role => role.type === 'tenant' && !role.tenant_id).map((role) => (
+                                        <option key={role.id} value={role.id}>
+                                            {role.display_name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+
+                                {/* Tenant-specific Roles */}
+                                {editingUser && editingUser.tenant_id && (
+                                    <optgroup label={`${editingUser.tenant?.name || 'Tenant'} Specific Roles`}>
+                                        {roles.filter(role => role.tenant_id === editingUser.tenant_id).map((role) => (
+                                            <option key={role.id} value={role.id}>
+                                                {role.display_name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                )}
+                            </select>
+                            <InputError message={editErrors.role_id} className="mt-2" />
+                            <p className="mt-1 text-xs text-gray-500">
+                                {editingUser?.tenant_id 
+                                    ? 'Select a role appropriate for this tenant user' 
+                                    : 'Select a central admin role or tenant template role'
+                                }
+                            </p>
+                        </div>
+
+                        <div>
                             <InputLabel htmlFor="edit_password" value="New Password (optional)" />
                             <TextInput
                                 id="edit_password"
@@ -570,6 +665,6 @@ export default function Index({ users, stats, filters }) {
                     </div>
                 </div>
             </Modal>
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 
