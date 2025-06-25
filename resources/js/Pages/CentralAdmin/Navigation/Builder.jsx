@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
 import DraggableNavigationItem from '@/Components/NavigationBuilder/DraggableNavigationItem';
 import ConfigurationsModal from '@/Components/NavigationBuilder/ConfigurationsModal';
+import CustomPagesModal from '@/Components/NavigationBuilder/CustomPagesModal';
 import { 
     DndContext, 
     closestCenter,
@@ -52,6 +53,7 @@ export default function Builder({
     const [saving, setSaving] = useState(false);
     const [notification, setNotification] = useState(null);
     const [showConfigurationsModal, setShowConfigurationsModal] = useState(false);
+    const [showCustomPagesModal, setShowCustomPagesModal] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -75,6 +77,16 @@ export default function Builder({
         } else {
             setSelectedRoleId(null);
         }
+    };
+
+    // Handle successful custom page creation
+    const handleCustomPageSuccess = () => {
+        setNotification({
+            type: 'success',
+            message: 'Custom navigation item and page created successfully!'
+        });
+        // Optionally reload available items or refresh the page
+        window.location.reload();
     };
 
     // Load current navigation for a role
@@ -469,15 +481,8 @@ export default function Builder({
     return (
         <CentralAdminLayout
             header={
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <button
-                            onClick={() => router.visit(route('central-admin.navigation.index'))}
-                            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
-                        >
-                            <ArrowLeftIcon className="h-4 w-4 mr-1" />
-                            Back to Navigation
-                        </button>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-2xl font-bold leading-tight text-gray-900">
                                 Role Navigation Builder
@@ -487,7 +492,6 @@ export default function Builder({
                                 {tenant.name}
                             </div>
                         </div>
-                    </div>
                     
                     <div className="flex items-center space-x-3">
                         <button
@@ -517,6 +521,7 @@ export default function Builder({
                         </button>
                     </div>
                 </div>
+            </div>
             }
         >
             <Head title={`Role Navigation Builder - ${tenant.name}`} />
@@ -542,6 +547,17 @@ export default function Builder({
                     <div className="grid grid-cols-12 gap-6">
                         {/* Left Sidebar - Configuration Settings */}
                         <div className="col-span-3">
+                            {/* Back to Navigation Button */}
+                            <div className="mb-6">
+                                <button
+                                    onClick={() => router.visit(route('central-admin.navigation.index'))}
+                                    className="w-full inline-flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                                >
+                                    <ArrowLeftIcon className="h-4 w-4 mr-2" />
+                                    Back to Navigation
+                                </button>
+                            </div>
+                            
                             <div className="bg-white shadow rounded-lg p-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                                     Role Settings
@@ -643,6 +659,14 @@ export default function Builder({
                                         >
                                             <HeroIcons.MinusIcon className="h-5 w-5 mr-2" />
                                             Add Divider
+                                        </button>
+                                        
+                                        <button
+                                            onClick={() => setShowCustomPagesModal(true)}
+                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-emerald-300 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
+                                        >
+                                            <HeroIcons.PlusCircleIcon className="h-5 w-5 mr-2" />
+                                            Custom Pages
                                         </button>
                                     </div>
                                 </div>
@@ -857,6 +881,13 @@ export default function Builder({
                 onLoadConfiguration={loadConfiguration}
                 onDeleteConfiguration={deleteConfiguration}
                 roles={roles}
+            />
+
+            {/* Custom Pages Modal */}
+            <CustomPagesModal
+                show={showCustomPagesModal}
+                onClose={() => setShowCustomPagesModal(false)}
+                onSuccess={handleCustomPageSuccess}
             />
         </CentralAdminLayout>
     );
