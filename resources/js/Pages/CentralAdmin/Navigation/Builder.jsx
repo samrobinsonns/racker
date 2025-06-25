@@ -212,7 +212,44 @@ export default function Builder({
             id: `dropdown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             type: 'dropdown',
             label: 'New Dropdown',
-            icon: '📁',
+            icon: 'FolderIcon',
+            order: currentConfig.items.length,
+            visible: true,
+            children: []
+        };
+
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: [...prev.items, newItem]
+        }));
+    };
+
+    // Add external link
+    const addExternalLink = () => {
+        const newItem = {
+            id: `external-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'external',
+            label: 'External Link',
+            icon: 'ArrowTopRightOnSquareIcon',
+            url: 'https://example.com',
+            order: currentConfig.items.length,
+            visible: true,
+            children: []
+        };
+
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: [...prev.items, newItem]
+        }));
+    };
+
+    // Add divider
+    const addDivider = () => {
+        const newItem = {
+            id: `divider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'divider',
+            label: 'Divider',
+            icon: 'MinusIcon',
             order: currentConfig.items.length,
             visible: true,
             children: []
@@ -416,10 +453,17 @@ export default function Builder({
         return <IconComponent className={className} />;
     };
 
-    const getDefaultIcon = (isDropdown, className = "h-5 w-5") => {
-        return isDropdown ? 
-            <HeroIcons.FolderIcon className={className} /> : 
-            <HeroIcons.LinkIcon className={className} />;
+    const getDefaultIcon = (itemType, className = "h-5 w-5") => {
+        switch (itemType) {
+            case 'dropdown':
+                return <HeroIcons.FolderIcon className={className} />;
+            case 'external':
+                return <HeroIcons.ArrowTopRightOnSquareIcon className={className} />;
+            case 'divider':
+                return <HeroIcons.MinusIcon className={className} />;
+            default:
+                return <HeroIcons.LinkIcon className={className} />;
+        }
     };
 
     return (
@@ -581,8 +625,24 @@ export default function Builder({
                                             onClick={addDropdownMenu}
                                             className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all duration-200"
                                         >
-                                                                                                        <FolderOpenIcon className="h-5 w-5 mr-2" />
-                                                            Add Dropdown Menu
+                                            <FolderOpenIcon className="h-5 w-5 mr-2" />
+                                            Add Dropdown Menu
+                                        </button>
+                                        
+                                        <button
+                                            onClick={addExternalLink}
+                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all duration-200"
+                                        >
+                                            <HeroIcons.ArrowTopRightOnSquareIcon className="h-5 w-5 mr-2" />
+                                            Add External Link
+                                        </button>
+                                        
+                                        <button
+                                            onClick={addDivider}
+                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200"
+                                        >
+                                            <HeroIcons.MinusIcon className="h-5 w-5 mr-2" />
+                                            Add Divider
                                         </button>
                                     </div>
                                 </div>
@@ -716,18 +776,34 @@ export default function Builder({
                                             {currentConfig.items
                                                 .filter(item => item.visible !== false)
                                                 .map((item) => (
-                                                    <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                                        <div className="flex items-center py-3 px-4 hover:bg-blue-50 rounded-lg transition-colors">
-                                                            <div className="mr-3 text-gray-600">
-                                                                {item.icon ? renderIcon(item.icon) || getDefaultIcon(item.type === 'dropdown') : getDefaultIcon(item.type === 'dropdown')}
+                                                    <div key={item.id} className={`bg-white rounded-lg shadow-sm border border-gray-200 ${item.type === 'divider' ? 'py-1' : ''}`}>
+                                                        {item.type === 'divider' ? (
+                                                            <div className="flex items-center py-2 px-4">
+                                                                <div className="flex-1 h-px bg-gray-300"></div>
                                                             </div>
-                                                            <span className="text-sm font-medium text-gray-900 flex-1">
-                                                                {item.label}
-                                                            </span>
-                                                            {item.type === 'dropdown' && item.children && item.children.length > 0 && (
-                                                                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                                                            )}
-                                                        </div>
+                                                        ) : (
+                                                            <div className="flex items-center py-3 px-4 hover:bg-blue-50 rounded-lg transition-colors">
+                                                                <div className="mr-3 text-gray-600">
+                                                                    {item.icon ? renderIcon(item.icon) || getDefaultIcon(item.type) : getDefaultIcon(item.type)}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <span className="text-sm font-medium text-gray-900">
+                                                                        {item.label}
+                                                                    </span>
+                                                                    {item.type === 'external' && item.url && (
+                                                                        <div className="text-xs text-gray-500">
+                                                                            {item.url}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {item.type === 'dropdown' && item.children && item.children.length > 0 && (
+                                                                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                                                                )}
+                                                                {item.type === 'external' && (
+                                                                    <HeroIcons.ArrowTopRightOnSquareIcon className="h-4 w-4 text-gray-400 ml-2" />
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         
                                                         {/* Show dropdown children in preview */}
                                                         {item.type === 'dropdown' && item.children && item.children.length > 0 && (
@@ -738,7 +814,7 @@ export default function Builder({
                                                                         .map((child) => (
                                                                             <div key={child.id} className="flex items-center py-1 px-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                                                                                 <div className="mr-2">
-                                                                                    {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon(false, "h-4 w-4") : getDefaultIcon(false, "h-4 w-4")}
+                                                                                    {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon('link', "h-4 w-4") : getDefaultIcon('link', "h-4 w-4")}
                                                                                 </div>
                                                                                 {child.label}
                                                                             </div>

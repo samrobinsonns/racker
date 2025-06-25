@@ -306,6 +306,11 @@ trait HasPermissions
                 'type' => $item['type'] ?? 'link',
             ];
 
+            // Add URL field for external links
+            if (isset($item['url'])) {
+                $navItem['url'] = $item['url'];
+            }
+
             if (isset($item['permission'])) {
                 $navItem['permission'] = $item['permission'];
             }

@@ -53,6 +53,7 @@ export default function DraggableNavigationItem({
     const [isEditingChild, setIsEditingChild] = useState(null);
     const [isExpanded, setIsExpanded] = useState(true);
     const [editValue, setEditValue] = useState(item.label);
+    const [editUrl, setEditUrl] = useState(item.url || '');
     const [childEditValue, setChildEditValue] = useState('');
     const [showIconPicker, setShowIconPicker] = useState(false);
     const [showChildIconPicker, setShowChildIconPicker] = useState(null);
@@ -82,12 +83,17 @@ export default function DraggableNavigationItem({
     };
 
     const handleSaveEdit = () => {
-        onUpdate(item.id, { label: editValue });
+        const updates = { label: editValue };
+        if (item.type === 'external') {
+            updates.url = editUrl;
+        }
+        onUpdate(item.id, updates);
         setIsEditing(false);
     };
 
     const handleCancelEdit = () => {
         setEditValue(item.label);
+        setEditUrl(item.url || '');
         setIsEditing(false);
     };
 
@@ -134,10 +140,17 @@ export default function DraggableNavigationItem({
         return <IconComponent className={className} />;
     };
 
-    const getDefaultIcon = (isDropdown, className = "h-6 w-6") => {
-        return isDropdown ? 
-            <HeroIcons.FolderIcon className={className} /> : 
-            <HeroIcons.LinkIcon className={className} />;
+    const getDefaultIcon = (itemType, className = "h-6 w-6") => {
+        switch (itemType) {
+            case 'dropdown':
+                return <HeroIcons.FolderIcon className={className} />;
+            case 'external':
+                return <HeroIcons.ArrowTopRightOnSquareIcon className={className} />;
+            case 'divider':
+                return <HeroIcons.MinusIcon className={className} />;
+            default:
+                return <HeroIcons.LinkIcon className={className} />;
+        }
     };
 
     return (
@@ -170,13 +183,18 @@ export default function DraggableNavigationItem({
 
                     {/* Item Icon */}
                     <button
-                        onClick={() => setShowIconPicker(true)}
-                        className="mr-3 flex-shrink-0 p-2 rounded-lg hover:bg-gray-100 transition-colors group/icon"
-                        title="Change icon"
+                        onClick={() => item.type !== 'divider' && setShowIconPicker(true)}
+                        className={`mr-3 flex-shrink-0 p-2 rounded-lg transition-colors group/icon ${
+                            item.type !== 'divider' ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-default'
+                        }`}
+                        title={item.type !== 'divider' ? 'Change icon' : 'Divider icon cannot be changed'}
+                        disabled={item.type === 'divider'}
                     >
                         <div className="relative">
-                            {item.icon ? renderIcon(item.icon) || getDefaultIcon(item.type === 'dropdown') : getDefaultIcon(item.type === 'dropdown')}
-                            <SwatchIcon className="absolute -bottom-1 -right-1 h-3 w-3 text-gray-400 opacity-0 group-hover/icon:opacity-100 transition-opacity bg-white rounded-full p-0.5" />
+                            {item.icon ? renderIcon(item.icon) || getDefaultIcon(item.type) : getDefaultIcon(item.type)}
+                            {item.type !== 'divider' && (
+                                <SwatchIcon className="absolute -bottom-1 -right-1 h-3 w-3 text-gray-400 opacity-0 group-hover/icon:opacity-100 transition-opacity bg-white rounded-full p-0.5" />
+                            )}
                         </div>
                     </button>
 
@@ -197,45 +215,80 @@ export default function DraggableNavigationItem({
                     {/* Item Label */}
                     <div className="flex-1">
                         {isEditing ? (
-                            <div className="flex items-center space-x-2">
-                                <input
-                                    type="text"
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value)}
-                                    className="flex-1 px-2 py-1 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleSaveEdit();
-                                        if (e.key === 'Escape') handleCancelEdit();
-                                    }}
-                                    autoFocus
-                                />
-                                <button
-                                    onClick={handleSaveEdit}
-                                    className="p-1 text-green-600 hover:bg-green-50 rounded"
-                                >
-                                    <CheckIcon className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={handleCancelEdit}
-                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                >
-                                    <XMarkIcon className="h-4 w-4" />
-                                </button>
+                            <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="text"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="flex-1 px-2 py-1 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && item.type !== 'external') handleSaveEdit();
+                                            if (e.key === 'Escape') handleCancelEdit();
+                                        }}
+                                        placeholder={item.type === 'divider' ? 'Divider' : 'Item label'}
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={handleSaveEdit}
+                                        className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                    >
+                                        <CheckIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={handleCancelEdit}
+                                        className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                    >
+                                        <XMarkIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                {/* URL input for external links */}
+                                {item.type === 'external' && (
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="url"
+                                            value={editUrl}
+                                            onChange={(e) => setEditUrl(e.target.value)}
+                                            className="flex-1 px-2 py-1 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveEdit();
+                                                if (e.key === 'Escape') handleCancelEdit();
+                                            }}
+                                            placeholder="https://example.com"
+                                        />
+                                        <span className="text-xs text-gray-500 px-2">URL</span>
+                                    </div>
+                                )}
                             </div>
                         ) : (
-                            <div className="flex items-center">
-                                <span className="text-sm font-medium text-gray-900 mr-2">
-                                    {item.label}
-                                </span>
-                                {item.permission && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                        {item.permission}
+                            <div className="flex flex-col">
+                                <div className="flex items-center">
+                                    <span className="text-sm font-medium text-gray-900 mr-2">
+                                        {item.type === 'divider' ? '' : item.label}
                                     </span>
-                                )}
-                                {item.type === 'dropdown' && (
-                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {item.children?.length || 0} items
-                                    </span>
+                                    {item.permission && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                            {item.permission}
+                                        </span>
+                                    )}
+                                    {item.type === 'dropdown' && (
+                                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {item.children?.length || 0} items
+                                        </span>
+                                    )}
+                                    {item.type === 'external' && (
+                                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            external
+                                        </span>
+                                    )}
+                                    {item.type === 'divider' && (
+                                        <span className="flex-1 h-px bg-gray-300"></span>
+                                    )}
+                                </div>
+                                {item.type === 'external' && item.url && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        {item.url}
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -300,7 +353,7 @@ export default function DraggableNavigationItem({
                                             title="Change icon"
                                         >
                                             <div className="relative">
-                                                {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon(false, "h-4 w-4") : getDefaultIcon(false, "h-4 w-4")}
+                                                {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon('link', "h-4 w-4") : getDefaultIcon('link', "h-4 w-4")}
                                                 <SwatchIcon className="absolute -bottom-0.5 -right-0.5 h-2 w-2 text-gray-400 opacity-0 group-hover/child-icon:opacity-100 transition-opacity bg-white rounded-full p-0.5" />
                                             </div>
                                         </button>

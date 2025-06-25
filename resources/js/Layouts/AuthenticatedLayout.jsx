@@ -37,6 +37,15 @@ function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }
         }
     };
     
+    // If it's a divider, render horizontal line
+    if (item.type === 'divider') {
+        return (
+            <div className="px-2 py-1">
+                <hr className="border-gray-300" />
+            </div>
+        );
+    }
+    
     // If it's a dropdown, render dropdown with children
     if (item.type === 'dropdown' && item.children && item.children.length > 0) {
         return (
@@ -58,6 +67,24 @@ function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }
                     <div className="mt-1 ml-8 space-y-1">
                         {item.children.map((child) => {
                             const ChildIcon = child.icon ? HeroIcons[child.icon] || HomeIcon : null;
+                            // Handle external links for child items
+                            if (child.type === 'external') {
+                                return (
+                                    <a
+                                        key={child.name}
+                                        href={child.url || child.href || '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`group flex items-center px-2 py-1 text-sm transition-colors duration-150 rounded-md ${
+                                            themeConfig ? `text-gray-600 hover:text-${themeConfig.primary}-600 hover:bg-gray-50` : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {ChildIcon && <ChildIcon className="mr-2 h-4 w-4 flex-shrink-0" />}
+                                        {child.name}
+                                        <HeroIcons.ArrowTopRightOnSquareIcon className="ml-auto h-3 w-3 flex-shrink-0" />
+                                    </a>
+                                );
+                            }
                             return (
                                 <Link
                                     key={child.name}
@@ -74,6 +101,22 @@ function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }
                     </div>
                 )}
             </div>
+        );
+    }
+    
+    // External link item
+    if (item.type === 'external') {
+        return (
+            <a
+                href={item.url || item.href || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`text-gray-700 hover:bg-gray-50 group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-150`}
+            >
+                <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                {item.name}
+                <HeroIcons.ArrowTopRightOnSquareIcon className="ml-auto h-4 w-4 flex-shrink-0" />
+            </a>
         );
     }
     
@@ -155,7 +198,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 // Process children if they exist
                 const processedChildren = item.children ? item.children.map(child => ({
                     name: child.name || child.label,
-                    href: getHref(child.route),
+                    href: child.type === 'external' ? child.url : getHref(child.route),
+                    url: child.url,
                     icon: child.icon,
                     permission: child.permission,
                     type: child.type || 'link'
@@ -163,7 +207,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 
                 return {
                     name: item.name,
-                    href: getHref(item.route),
+                    href: item.type === 'external' ? item.url : getHref(item.route),
+                    url: item.url,
                     icon: getIconComponent(item.icon),
                     permission: item.permission,
                     type: item.type || 'link',
