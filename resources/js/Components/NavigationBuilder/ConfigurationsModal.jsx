@@ -13,7 +13,6 @@ export default function ConfigurationsModal({
     configurations, 
     onLoadConfiguration, 
     onDeleteConfiguration,
-    users,
     roles 
 }) {
     const [deletingConfig, setDeletingConfig] = useState(null);
@@ -32,10 +31,7 @@ export default function ConfigurationsModal({
     };
 
     const getTargetLabel = (config) => {
-        if (config.user_id) {
-            const user = users.find(u => u.id === config.user_id);
-            return user ? user.name : 'Unknown User';
-        } else if (config.role_id) {
+        if (config.role_id) {
             const role = roles.find(r => r.id === config.role_id);
             return role ? role.name : 'Unknown Role';
         }
@@ -43,7 +39,6 @@ export default function ConfigurationsModal({
     };
 
     const getTypeIcon = (config) => {
-        if (config.user_id) return '👤';
         if (config.role_id) return '👥';
         return '🌐';
     };

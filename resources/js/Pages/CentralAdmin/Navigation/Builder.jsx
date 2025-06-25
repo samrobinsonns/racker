@@ -23,7 +23,6 @@ import {
     DocumentArrowUpIcon,
     BuildingOffice2Icon,
     UserGroupIcon,
-    UserIcon,
     ArrowLeftIcon,
     CheckCircleIcon,
     ExclamationTriangleIcon,
@@ -44,8 +43,7 @@ export default function Builder({
         theme: 'emerald'
     });
     
-    const [selectedConfigType, setSelectedConfigType] = useState('default'); // default, role, user
-    const [selectedTargetId, setSelectedTargetId] = useState(null);
+    const [selectedRoleId, setSelectedRoleId] = useState(null);
     const [showPreview, setShowPreview] = useState(false);
     const [showItemLibrary, setShowItemLibrary] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -70,20 +68,15 @@ export default function Builder({
             version: config.configuration.version || '1.0'
         });
         
-        if (config.user_id) {
-            setSelectedConfigType('user');
-            setSelectedTargetId(config.user_id);
-        } else if (config.role_id) {
-            setSelectedConfigType('role');
-            setSelectedTargetId(config.role_id);
+        if (config.role_id) {
+            setSelectedRoleId(config.role_id);
         } else {
-            setSelectedConfigType('default');
-            setSelectedTargetId(null);
+            setSelectedRoleId(null);
         }
     };
 
-    // Load current navigation for a target
-    const loadCurrentNavigation = async (type, targetId) => {
+    // Load current navigation for a role
+    const loadCurrentNavigation = async (roleId) => {
         try {
             // Get CSRF token with fallback
             const csrfTokenEl = document.querySelector('meta[name="csrf-token"]');
@@ -99,8 +92,8 @@ export default function Builder({
                 },
                 body: JSON.stringify({
                     tenant_id: tenant.id,
-                    type: type,
-                    target_id: targetId
+                    type: 'role',
+                    target_id: roleId
                 })
             });
 
@@ -207,10 +200,8 @@ export default function Builder({
                 activate
             };
 
-            if (selectedConfigType === 'user' && selectedTargetId) {
-                payload.user_id = selectedTargetId;
-            } else if (selectedConfigType === 'role' && selectedTargetId) {
-                payload.role_id = selectedTargetId;
+            if (selectedRoleId) {
+                payload.role_id = selectedRoleId;
             }
 
             // Get CSRF token with fallback
@@ -321,7 +312,7 @@ export default function Builder({
                         </button>
                         <div>
                             <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                                Navigation Builder
+                                Role Navigation Builder
                             </h2>
                             <div className="flex items-center mt-1 text-sm text-gray-500">
                                 <BuildingOffice2Icon className="h-4 w-4 mr-1" />
@@ -341,7 +332,7 @@ export default function Builder({
                         
                         <button
                             onClick={() => saveConfiguration(false)}
-                            disabled={saving || !currentConfig.name.trim()}
+                            disabled={saving || !currentConfig.name.trim() || !selectedRoleId}
                             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
                         >
                             <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
@@ -350,7 +341,7 @@ export default function Builder({
                         
                         <button
                             onClick={() => saveConfiguration(true)}
-                            disabled={saving || !currentConfig.name.trim()}
+                            disabled={saving || !currentConfig.name.trim() || !selectedRoleId}
                             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
                         >
                             <CheckCircleIcon className="h-4 w-4 mr-2" />
@@ -360,7 +351,7 @@ export default function Builder({
                 </div>
             }
         >
-            <Head title={`Navigation Builder - ${tenant.name}`} />
+            <Head title={`Role Navigation Builder - ${tenant.name}`} />
 
             {/* Notification */}
             {notification && (
@@ -385,7 +376,7 @@ export default function Builder({
                         <div className="col-span-3">
                             <div className="bg-white shadow rounded-lg p-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                    Configuration Settings
+                                    Role Settings
                                 </h3>
 
                                 {/* Configuration Name */}
@@ -405,102 +396,52 @@ export default function Builder({
                                     />
                                 </div>
 
-                                {/* Target Type */}
+                                {/* Role Selection */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Configuration Type
+                                        Select Role
                                     </label>
                                     <select
-                                        value={selectedConfigType}
+                                        value={selectedRoleId || ''}
                                         onChange={(e) => {
-                                            const newType = e.target.value;
-                                            setSelectedConfigType(newType);
-                                            setSelectedTargetId(null);
+                                            const roleId = e.target.value ? parseInt(e.target.value) : null;
+                                            setSelectedRoleId(roleId);
                                             
-                                            // Load current navigation for default type
-                                            if (newType === 'default') {
-                                                loadCurrentNavigation(newType, null);
+                                            // Update configuration name for role-specific
+                                            if (roleId) {
+                                                const role = roles.find(r => r.id === roleId);
+                                                setCurrentConfig(prev => ({
+                                                    ...prev,
+                                                    name: `${role?.name} Navigation`
+                                                }));
+                                                loadCurrentNavigation(roleId);
                                             }
                                         }}
                                         className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
                                     >
-                                        <option value="default">Default (All Users)</option>
-                                        <option value="role">Role-Specific</option>
-                                        <option value="user">User-Specific</option>
+                                        <option value="">Choose a role...</option>
+                                        {roles.map(role => (
+                                            <option key={role.id} value={role.id}>
+                                                {role.name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
-                                {/* Target Selection */}
-                                {selectedConfigType === 'role' && (
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Select Role
-                                        </label>
-                                        <select
-                                            value={selectedTargetId || ''}
-                                            onChange={(e) => {
-                                                const roleId = e.target.value ? parseInt(e.target.value) : null;
-                                                setSelectedTargetId(roleId);
-                                                
-                                                // Load current navigation for this role
-                                                if (roleId) {
-                                                    loadCurrentNavigation('role', roleId);
-                                                }
-                                            }}
-                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        >
-                                            <option value="">Choose a role...</option>
-                                            {roles.map(role => (
-                                                <option key={role.id} value={role.id}>
-                                                    {role.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
 
-                                {selectedConfigType === 'user' && (
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Select User
-                                        </label>
-                                        <select
-                                            value={selectedTargetId || ''}
-                                            onChange={(e) => {
-                                                const userId = e.target.value ? parseInt(e.target.value) : null;
-                                                setSelectedTargetId(userId);
-                                                
-                                                // Load current navigation for this user
-                                                if (userId) {
-                                                    loadCurrentNavigation('user', userId);
-                                                }
-                                            }}
-                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        >
-                                            <option value="">Choose a user...</option>
-                                            {users.map(user => (
-                                                <option key={user.id} value={user.id}>
-                                                    {user.name} ({user.email})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
 
                                 {/* Load Current Navigation Button */}
-                                {(selectedConfigType === 'default' || 
-                                  (selectedConfigType === 'role' && selectedTargetId) || 
-                                  (selectedConfigType === 'user' && selectedTargetId)) && (
+                                {selectedRoleId && (
                                     <div className="mb-4">
                                         <button
-                                            onClick={() => loadCurrentNavigation(selectedConfigType, selectedTargetId)}
+                                            onClick={() => loadCurrentNavigation(selectedRoleId)}
                                             className="w-full inline-flex items-center justify-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                         >
                                             <EyeIcon className="h-4 w-4 mr-2" />
                                             Load Current Navigation
                                         </button>
                                         <p className="mt-1 text-xs text-gray-500">
-                                            Load the current navigation that this {selectedConfigType === 'default' ? 'tenant' : selectedConfigType} currently sees
+                                            Load the current navigation that this role currently sees
                                         </p>
                                     </div>
                                 )}
@@ -534,49 +475,7 @@ export default function Builder({
                                     </div>
                                 </div>
 
-                                {/* Load Existing Configuration */}
-                                {Object.keys(configurations).length > 0 && (
-                                    <div className="mt-6">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h4 className="text-sm font-medium text-gray-900">
-                                                Load Existing
-                                            </h4>
-                                            <button
-                                                onClick={() => setShowConfigurationsModal(true)}
-                                                className="text-xs text-purple-600 hover:text-purple-800"
-                                            >
-                                                View All
-                                            </button>
-                                        </div>
-                                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                                            {Object.entries(configurations).map(([type, configs]) => (
-                                                <div key={type}>
-                                                    <h5 className="text-xs font-semibold text-gray-500 uppercase">
-                                                        {type} Configurations
-                                                    </h5>
-                                                    {configs.slice(0, 3).map(config => (
-                                                        <div key={config.id} className="flex items-center justify-between px-2 py-1 hover:bg-gray-50 rounded">
-                                                            <button
-                                                                onClick={() => loadConfiguration(config)}
-                                                                className="flex-1 text-left text-xs text-gray-700"
-                                                            >
-                                                                {config.name}
-                                                                {config.is_active && (
-                                                                    <span className="ml-2 text-green-600">●</span>
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    {configs.length > 3 && (
-                                                        <div className="text-xs text-gray-400 px-2">
-                                                            +{configs.length - 3} more...
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+
                             </div>
                         </div>
 
@@ -665,12 +564,10 @@ export default function Builder({
                                 
                                 {/* Configuration Info */}
                                 <div className="mt-4 text-xs text-gray-500">
-                                    <div><strong>Type:</strong> {selectedConfigType === 'default' ? 'Default (All Users)' : selectedConfigType === 'role' ? 'Role-Specific' : 'User-Specific'}</div>
-                                    {selectedConfigType === 'role' && selectedTargetId && (
-                                        <div><strong>Role:</strong> {roles.find(r => r.id === selectedTargetId)?.name}</div>
-                                    )}
-                                    {selectedConfigType === 'user' && selectedTargetId && (
-                                        <div><strong>User:</strong> {users.find(u => u.id === selectedTargetId)?.name}</div>
+                                    {selectedRoleId ? (
+                                        <div><strong>Role:</strong> {roles.find(r => r.id === selectedRoleId)?.name}</div>
+                                    ) : (
+                                        <div className="text-gray-400">No role selected</div>
                                     )}
                                 </div>
                             </div>
@@ -686,7 +583,6 @@ export default function Builder({
                 configurations={configurations}
                 onLoadConfiguration={loadConfiguration}
                 onDeleteConfiguration={deleteConfiguration}
-                users={users}
                 roles={roles}
             />
         </CentralAdminLayout>
