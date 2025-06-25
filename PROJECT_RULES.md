@@ -365,13 +365,80 @@ Route::post('/navigation/current', 'getCurrent');      // Get current navigation
 - **TenantAdminLayout**: Renders custom navigation with proper icon mapping
 - **HandleInertiaRequests**: Passes navigation data to frontend automatically
 
-### 🔄 Current Issues
+### 🔄 Recent Updates (Latest)
+
+#### **✅ Navigation Builder Enhancements (Latest Session)**
+
+**🆕 Custom Item Types Implemented:**
+- **ExternalLink Items**: 
+  - Dual editing interface (label + URL input fields)
+  - Opens in new tab with `target="_blank"` and `rel="noopener noreferrer"`
+  - Shows external link icon indicator (`ArrowTopRightOnSquareIcon`)
+  - Displays URL preview in builder and edit mode
+  - Works as both main navigation items and dropdown children
+  - Proper URL field processing through backend to frontend
+
+- **Divider Items**:
+  - Renders as horizontal rules (`<hr>`) in navigation
+  - Non-interactive (no icon editing, simplified interface)
+  - Clean visual break between navigation sections
+  - Proper handling in both AuthenticatedLayout and TenantAdminLayout
+
+**🔧 Builder Interface Improvements:**
+- **Easy Creation Buttons**: Added "Add External Link" (blue theme) and "Add Divider" (gray theme) buttons
+- **Type-Aware Editing**: Different editing interfaces based on item type
+- **Enhanced Preview**: Live preview shows actual appearance of external links and dividers
+- **Icon System**: Updated `getDefaultIcon()` function to handle new item types
+- **Drag-and-Drop Support**: Full drag-and-drop support for all item types
+
+**🔧 Backend Data Processing:**
+- **URL Field Support**: Updated `transformNavigationItems()` in `HasPermissions` trait to process URL fields
+- **Configuration Management**: Enhanced save/update logic to handle external link URLs
+- **Duplicate Prevention**: Fixed duplicate configuration creation - now updates existing configurations with same name/role instead of creating new ones
+
+**🔧 Layout Integration:**
+- **AuthenticatedLayout**: Updated NavigationItem component with external link and divider support
+- **TenantAdminLayout**: Same enhancements for consistency across all layouts
+- **Proper URL Handling**: Fixed URL field processing from database through backend to frontend rendering
+- **Icon Consistency**: Both layouts use same external link indicators and divider styling
+
+**Key Technical Details:**
+```php
+// Backend: URL field processing in HasPermissions trait
+$navItem = [
+    'name' => $item['label'] ?? $item['name'] ?? 'Unknown',
+    'route' => $item['route'] ?? '#',
+    'url' => $item['url'], // ✅ Added URL field support
+    'icon' => $item['icon'] ?? 'QuestionMarkCircleIcon',
+    'type' => $item['type'] ?? 'link',
+];
+```
+
+```jsx
+// Frontend: External link rendering
+{item.type === 'external' && (
+    <a href={item.url || item.href || '#'} target="_blank" rel="noopener noreferrer">
+        {/* Link content with external icon */}
+    </a>
+)}
+```
+
+**🔧 Configuration Deduplication Fix:**
+- **Problem**: Builder created new configuration every time "Save & Activate" was clicked
+- **Solution**: Added check for existing configurations with same name/role combination
+- **Behavior**: Now updates existing configuration instead of creating duplicates
+- **Scope**: Configurations scoped by tenant + name + target (role/user)
+
+### 🔄 Current System Status
 **System is now stable** - Major architectural improvements completed:
 - ✅ **Tenant Name Display**: Fixed using direct property access (`tenant.name`)
-- ✅ **Layout Unification**: Single layout supporting all user types
+- ✅ **Layout Unification**: Single layout supporting all user types  
 - ✅ **Admin Experience**: Consistent navigation across all admin pages
 - ✅ **Roles & Permissions**: Complete management system implemented
 - ✅ **Custom Navigation**: Complete navigation builder system with real-time integration
+- ✅ **External Links & Dividers**: Custom navigation item types implemented
+- ✅ **Configuration Deduplication**: Prevents duplicate configurations on save
+- ✅ **Content Page Layouts**: Analytics, Reports, and Content pages wrapped in proper layouts
 
 ### 🎯 Next Development Priorities
 1. **User Experience Enhancements**
