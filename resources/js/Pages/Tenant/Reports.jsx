@@ -1,9 +1,16 @@
 import { Head } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ChartBarIcon, DocumentChartBarIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 
 export default function Reports({ pageTitle }) {
     return (
-        <>
+        <AuthenticatedLayout
+            header={
+                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                    Reports
+                </h2>
+            }
+        >
             <Head title={pageTitle || 'Reports'} />
             
             <div className="py-6">
@@ -110,6 +117,6 @@ export default function Reports({ pageTitle }) {
                     </div>
                 </div>
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 } 

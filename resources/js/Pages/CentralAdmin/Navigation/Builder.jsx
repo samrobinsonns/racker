@@ -26,8 +26,10 @@ import {
     ArrowLeftIcon,
     CheckCircleIcon,
     ExclamationTriangleIcon,
-    FolderOpenIcon
+    FolderOpenIcon,
+    ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import * as HeroIcons from '@heroicons/react/24/outline';
 
 export default function Builder({ 
     tenant, 
@@ -132,16 +134,56 @@ export default function Builder({
     const handleDragEnd = (event) => {
         const { active, over } = event;
 
-        if (active.id !== over?.id) {
+        if (!over) return;
+
+        const activeId = active.id;
+        const overId = over.id;
+
+        // Check if dropping into a dropdown
+        if (overId.toString().startsWith('dropdown-')) {
+            const dropdownId = overId.replace('dropdown-', '');
+            moveItemToDropdown(activeId, dropdownId);
+            return;
+        }
+
+        // Regular reordering
+        if (activeId !== overId) {
             setCurrentConfig(prev => ({
                 ...prev,
                 items: arrayMove(
                     prev.items,
-                    prev.items.findIndex(item => item.id === active.id),
-                    prev.items.findIndex(item => item.id === over.id)
+                    prev.items.findIndex(item => item.id === activeId),
+                    prev.items.findIndex(item => item.id === overId)
                 )
             }));
         }
+    };
+
+    // Move item to dropdown
+    const moveItemToDropdown = (itemId, dropdownId) => {
+        setCurrentConfig(prev => {
+            const items = [...prev.items];
+            const itemIndex = items.findIndex(item => item.id === itemId);
+            const dropdownIndex = items.findIndex(item => item.id === dropdownId);
+            
+            if (itemIndex === -1 || dropdownIndex === -1) return prev;
+            
+            const [movedItem] = items.splice(itemIndex, 1);
+            
+            // Convert to child item
+            const childItem = {
+                ...movedItem,
+                id: `child-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: 'link'
+            };
+            
+            items[dropdownIndex > itemIndex ? dropdownIndex - 1 : dropdownIndex] = {
+                ...items[dropdownIndex > itemIndex ? dropdownIndex - 1 : dropdownIndex],
+                children: [...(items[dropdownIndex > itemIndex ? dropdownIndex - 1 : dropdownIndex].children || []), childItem]
+            };
+            
+            return { ...prev, items };
+        });
     };
 
     // Add item from library
@@ -155,6 +197,7 @@ export default function Builder({
             permission: libraryItem.permission_required,
             order: currentConfig.items.length,
             visible: true,
+            children: []
         };
 
         setCurrentConfig(prev => ({
@@ -163,11 +206,75 @@ export default function Builder({
         }));
     };
 
-    // Delete item
-    const deleteItem = (item) => {
+    // Add dropdown menu
+    const addDropdownMenu = () => {
+        const newItem = {
+            id: `dropdown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'dropdown',
+            label: 'New Dropdown',
+            icon: '📁',
+            order: currentConfig.items.length,
+            visible: true,
+            children: []
+        };
+
         setCurrentConfig(prev => ({
             ...prev,
-            items: prev.items.filter(i => i.id !== item.id)
+            items: [...prev.items, newItem]
+        }));
+    };
+
+    // Add child item to dropdown
+    const addChildItem = (parentId, childItem = null) => {
+        const newChild = childItem || {
+            id: `child-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'link',
+            label: 'New Item',
+            icon: '🔗',
+            route: '',
+            permission: '',
+            visible: true
+        };
+
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: prev.items.map(item => 
+                item.id === parentId 
+                    ? { ...item, children: [...(item.children || []), newChild] }
+                    : item
+            )
+        }));
+    };
+
+    // Delete item
+    const deleteItem = (itemId, parentId = null) => {
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: parentId 
+                ? prev.items.map(item => 
+                    item.id === parentId 
+                        ? { ...item, children: item.children.filter(child => child.id !== itemId) }
+                        : item
+                  )
+                : prev.items.filter(i => i.id !== itemId)
+        }));
+    };
+
+    // Update item
+    const updateItem = (itemId, updates, parentId = null) => {
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: parentId
+                ? prev.items.map(item => 
+                    item.id === parentId 
+                        ? { ...item, children: item.children.map(child => 
+                            child.id === itemId ? { ...child, ...updates } : child
+                          )}
+                        : item
+                  )
+                : prev.items.map(item => 
+                    item.id === itemId ? { ...item, ...updates } : item
+                  )
         }));
     };
 
@@ -297,6 +404,23 @@ export default function Builder({
             return () => clearTimeout(timer);
         }
     }, [notification]);
+
+    // Render Heroicon
+    const renderIcon = (iconName, className = "h-5 w-5") => {
+        if (!iconName) return null;
+        const IconComponent = HeroIcons[iconName];
+        if (!IconComponent) {
+            console.warn(`Icon "${iconName}" not found in Heroicons`);
+            return null;
+        }
+        return <IconComponent className={className} />;
+    };
+
+    const getDefaultIcon = (isDropdown, className = "h-5 w-5") => {
+        return isDropdown ? 
+            <HeroIcons.FolderIcon className={className} /> : 
+            <HeroIcons.LinkIcon className={className} />;
+    };
 
     return (
         <CentralAdminLayout
@@ -446,6 +570,23 @@ export default function Builder({
                                     </div>
                                 )}
 
+                                {/* Quick Add Buttons */}
+                                <div className="mt-6">
+                                    <h4 className="text-sm font-medium text-gray-900 mb-3">
+                                        Quick Add
+                                    </h4>
+                                    
+                                    <div className="space-y-2 mb-4">
+                                        <button
+                                            onClick={addDropdownMenu}
+                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all duration-200"
+                                        >
+                                                                                                        <FolderOpenIcon className="h-5 w-5 mr-2" />
+                                                            Add Dropdown Menu
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {/* Available Items */}
                                 <div className="mt-6">
                                     <h4 className="text-sm font-medium text-gray-900 mb-3">
@@ -463,10 +604,13 @@ export default function Builder({
                                                         <button
                                                             key={item.id}
                                                             onClick={() => addItemFromLibrary(item)}
-                                                            className="w-full text-left px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 rounded flex items-center"
+                                                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-md flex items-center transition-colors duration-150 group"
                                                         >
-                                                            <PlusIcon className="h-3 w-3 mr-2 text-gray-400" />
-                                                            {item.label}
+                                                                                                                                        <div className="mr-2">
+                                                                                {item.icon ? renderIcon(item.icon) || getDefaultIcon(false) : getDefaultIcon(false)}
+                                                                            </div>
+                                                            <span className="flex-1">{item.label}</span>
+                                                            <PlusIcon className="h-3 w-3 text-gray-400 group-hover:text-blue-500" />
                                                         </button>
                                                     ))}
                                                 </div>
@@ -482,53 +626,68 @@ export default function Builder({
                         {/* Main Builder Area */}
                         <div className="col-span-6">
                             <div className="bg-white shadow rounded-lg p-6">
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-lg font-medium text-gray-900">
-                                        Navigation Builder
+                                        🎨 Navigation Builder
                                     </h3>
-                                    <span className="text-sm text-gray-500">
-                                        {currentConfig.items.length} items
-                                    </span>
+                                    <div className="flex items-center space-x-4">
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {currentConfig.items.length} items
+                                        </span>
+                                    </div>
                                 </div>
 
-                                {currentConfig.items.length === 0 ? (
-                                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                                        <div className="text-gray-400">
-                                            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                            </svg>
-                                        </div>
-                                        <h3 className="mt-2 text-sm font-medium text-gray-900">No navigation items</h3>
-                                        <p className="mt-1 text-sm text-gray-500">
-                                            Click on items from the Available Items list to add them to your navigation.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {currentConfig.items.map((item, index) => (
-                                            <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <span className="text-sm font-medium text-gray-900">
-                                                            {item.label}
-                                                        </span>
-                                                        {item.permission && (
-                                                            <span className="ml-2 text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-                                                                {item.permission}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <button
-                                                        onClick={() => deleteItem(item)}
-                                                        className="text-red-600 hover:text-red-800 text-sm"
-                                                    >
-                                                        Remove
-                                                    </button>
+                                <DndContext 
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    {currentConfig.items.length === 0 ? (
+                                        <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-xl bg-gradient-to-br from-gray-50 to-blue-50">
+                                            <div className="text-gray-400">
+                                                <div className="text-6xl mb-4">🎯</div>
+                                            </div>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-2">Let's build something amazing!</h3>
+                                            <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                                                Add items from the sidebar, create dropdown menus, and drag items around to organize your navigation.
+                                            </p>
+                                            <div className="mt-4 text-xs text-gray-400 space-y-1">
+                                                <div className="flex items-center justify-center">
+                                                    <span className="mr-1">🎯</span>
+                                                    <strong>Drag items here to add to navigation</strong>
+                                                </div>
+                                                <div className="flex items-center justify-center">
+                                                    <span className="mr-1">📁</span>
+                                                    <span>Drag items onto dropdown menus to organize them</span>
+                                                </div>
+                                                <div className="flex items-center justify-center">
+                                                    <HeroIcons.SwatchIcon className="h-3 w-3 mr-1" />
+                                                    <span>Click any icon to change it</span>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                        </div>
+                                    ) : (
+                                        <SortableContext 
+                                            items={currentConfig.items.map(item => item.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            <div className="space-y-3">
+                                                {currentConfig.items.map((item) => (
+                                                    <DraggableNavigationItem
+                                                        key={item.id}
+                                                        item={item}
+                                                        onDelete={(itemId) => deleteItem(itemId)}
+                                                        onUpdate={(itemId, updates) => updateItem(itemId, updates)}
+                                                        onAddChild={(parentId) => addChildItem(parentId)}
+                                                        onDeleteChild={(childId, parentId) => deleteItem(childId, parentId)}
+                                                        onUpdateChild={(childId, updates, parentId) => updateItem(childId, updates, parentId)}
+                                                        onMoveToDropdown={moveItemToDropdown}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </SortableContext>
+                                    )}
+                                </DndContext>
                             </div>
                         </div>
 
@@ -536,26 +695,57 @@ export default function Builder({
                         <div className="col-span-3">
                             <div className="bg-white shadow rounded-lg p-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                    Live Preview
+                                    ✨ Live Preview
                                 </h3>
                                 
-                                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                    <div className="text-xs text-gray-500 mb-3">Navigation Preview</div>
+                                <div className="border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-blue-50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="text-xs font-medium text-gray-600">Navigation Preview</div>
+                                        <div className="text-xs text-gray-500">
+                                            {currentConfig.items.filter(item => item.visible !== false).length} visible
+                                        </div>
+                                    </div>
                                     
                                     {currentConfig.items.length === 0 ? (
                                         <div className="text-center py-8 text-gray-400 text-sm">
-                                            No items to preview
+                                            <div className="text-2xl mb-2">📱</div>
+                                            <div>No items to preview</div>
                                         </div>
                                     ) : (
-                                        <div className="space-y-1">
+                                        <div className="space-y-2">
                                             {currentConfig.items
                                                 .filter(item => item.visible !== false)
                                                 .map((item) => (
-                                                    <div key={item.id} className="flex items-center py-2 px-3 rounded-md hover:bg-gray-100">
-                                                        <div className="h-4 w-4 mr-3 bg-gray-300 rounded"></div>
-                                                        <span className="text-sm font-medium text-gray-900">
-                                                            {item.label}
-                                                        </span>
+                                                    <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                                                        <div className="flex items-center py-3 px-4 hover:bg-blue-50 rounded-lg transition-colors">
+                                                            <div className="mr-3 text-gray-600">
+                                                                {item.icon ? renderIcon(item.icon) || getDefaultIcon(item.type === 'dropdown') : getDefaultIcon(item.type === 'dropdown')}
+                                                            </div>
+                                                            <span className="text-sm font-medium text-gray-900 flex-1">
+                                                                {item.label}
+                                                            </span>
+                                                            {item.type === 'dropdown' && item.children && item.children.length > 0 && (
+                                                                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {/* Show dropdown children in preview */}
+                                                        {item.type === 'dropdown' && item.children && item.children.length > 0 && (
+                                                            <div className="bg-gray-50 border-t border-gray-100 rounded-b-lg">
+                                                                <div className="py-2 px-4 pl-8">
+                                                                    {item.children
+                                                                        .filter(child => child.visible !== false)
+                                                                        .map((child) => (
+                                                                            <div key={child.id} className="flex items-center py-1 px-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                                                                                <div className="mr-2">
+                                                                                    {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon(false, "h-4 w-4") : getDefaultIcon(false, "h-4 w-4")}
+                                                                                </div>
+                                                                                {child.label}
+                                                                            </div>
+                                                                        ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ))}
                                         </div>
@@ -563,11 +753,18 @@ export default function Builder({
                                 </div>
                                 
                                 {/* Configuration Info */}
-                                <div className="mt-4 text-xs text-gray-500">
+                                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                    <div className="text-xs font-medium text-gray-600 mb-1">Configuration</div>
                                     {selectedRoleId ? (
-                                        <div><strong>Role:</strong> {roles.find(r => r.id === selectedRoleId)?.name}</div>
+                                        <div className="flex items-center text-sm">
+                                            <span className="text-base mr-2">👥</span>
+                                            <span className="font-medium">{roles.find(r => r.id === selectedRoleId)?.name}</span>
+                                        </div>
                                     ) : (
-                                        <div className="text-gray-400">No role selected</div>
+                                        <div className="text-sm text-gray-400 flex items-center">
+                                            <span className="text-base mr-2">⚠️</span>
+                                            No role selected
+                                        </div>
                                     )}
                                 </div>
                             </div>

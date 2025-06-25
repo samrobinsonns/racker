@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ChartPieIcon, ArrowUpIcon, ArrowDownIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 export default function Analytics({ pageTitle }) {
@@ -30,7 +31,13 @@ export default function Analytics({ pageTitle }) {
     ];
 
     return (
-        <>
+        <AuthenticatedLayout
+            header={
+                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                    Analytics
+                </h2>
+            }
+        >
             <Head title={pageTitle || 'Analytics'} />
             
             <div className="py-6">
@@ -124,6 +131,6 @@ export default function Analytics({ pageTitle }) {
                     </div>
                 </div>
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 } 

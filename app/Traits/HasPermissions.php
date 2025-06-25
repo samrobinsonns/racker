@@ -303,10 +303,18 @@ trait HasPermissions
                 'name' => $item['label'] ?? $item['name'] ?? 'Unknown',
                 'route' => $item['route'] ?? '#',
                 'icon' => $item['icon'] ?? 'QuestionMarkCircleIcon',
+                'type' => $item['type'] ?? 'link',
             ];
 
             if (isset($item['permission'])) {
                 $navItem['permission'] = $item['permission'];
+            }
+
+            // Process children for dropdown items
+            if (isset($item['children']) && is_array($item['children']) && !empty($item['children'])) {
+                $navItem['children'] = $this->transformNavigationItems($item['children']);
+            } else {
+                $navItem['children'] = [];
             }
 
             $transformed[] = $navItem;

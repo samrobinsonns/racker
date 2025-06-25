@@ -14,6 +14,84 @@ import {
     Bars3Icon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
+import * as HeroIcons from '@heroicons/react/24/outline';
+
+// Navigation Item Component that handles both links and dropdowns
+function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }) {
+    // Use localStorage to persist dropdown state
+    const storageKey = `dropdown-${item.name.replace(/\s+/g, '-').toLowerCase()}`;
+    const [isOpen, setIsOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(storageKey);
+            return saved ? JSON.parse(saved) : true; // Default to open
+        }
+        return true;
+    });
+
+    // Save state to localStorage when it changes
+    const toggleOpen = () => {
+        const newState = !isOpen;
+        setIsOpen(newState);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(storageKey, JSON.stringify(newState));
+        }
+    };
+    
+    // If it's a dropdown, render dropdown with children
+    if (item.type === 'dropdown' && item.children && item.children.length > 0) {
+        return (
+            <div>
+                <button
+                    onClick={toggleOpen}
+                    className={`${
+                        isDesktop
+                            ? 'text-gray-700 hover:bg-gray-50'
+                            : 'text-gray-700 hover:bg-gray-50'
+                    } group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors duration-150`}
+                >
+                    <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                    {item.name}
+                    <ChevronDownIcon className={`ml-auto h-4 w-4 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isOpen && (
+                    <div className="mt-1 ml-8 space-y-1">
+                        {item.children.map((child) => {
+                            const ChildIcon = child.icon ? HeroIcons[child.icon] || HomeIcon : null;
+                            return (
+                                <Link
+                                    key={child.name}
+                                    href={child.href || '#'}
+                                    className={`group flex items-center px-2 py-1 text-sm transition-colors duration-150 rounded-md ${
+                                        themeConfig ? `text-gray-600 hover:text-${themeConfig.primary}-600 hover:bg-gray-50` : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {ChildIcon && <ChildIcon className="mr-2 h-4 w-4 flex-shrink-0" />}
+                                    {child.name}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    
+    // Regular link item
+    return (
+        <Link
+            href={item.href}
+            className={`${
+                isCurrentRoute(item.href)
+                    ? themeConfig.activeColor
+                    : 'text-gray-700 hover:bg-gray-50'
+            } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-150`}
+        >
+            <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+            {item.name}
+        </Link>
+    );
+}
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
@@ -26,28 +104,72 @@ export default function AuthenticatedLayout({ header, children }) {
     const isTenantAdmin = user.roles?.some(role => role.name === 'tenant_admin') || false;
     const isAdmin = isCentralAdmin || isTenantAdmin;
 
-    // Helper to get icon component from string name
+    // Helper to get icon component from string name - now supports all HeroIcons
     const getIconComponent = (iconName) => {
-        const iconMap = {
-            'HomeIcon': HomeIcon,
-            'UsersIcon': UsersIcon,
-            'Cog6ToothIcon': Cog6ToothIcon,
-            'BuildingOfficeIcon': BuildingOfficeIcon,
-            'BuildingOffice2Icon': BuildingOffice2Icon,
-        };
-        return iconMap[iconName] || HomeIcon;
+        if (!iconName) return HomeIcon;
+        
+        // Try to get the icon from HeroIcons
+        const IconComponent = HeroIcons[iconName];
+        
+        // Log warning if icon not found (helps with debugging)
+        if (!IconComponent) {
+            console.warn(`Icon "${iconName}" not found in Heroicons, falling back to HomeIcon`);
+        }
+        
+        // Return the icon if found, otherwise fallback to HomeIcon
+        return IconComponent || HomeIcon;
     };
 
     // Get navigation items for admin users
     const getAdminNavigation = () => {
+        // Helper function to safely get href
+        const getHref = (routeName) => {
+            if (!routeName || routeName === '#' || routeName === '') {
+                return '#';
+            } 
+            
+            // Check if route function exists and if the route is available
+            if (typeof route === 'function') {
+                try {
+                    // Check if the route exists before trying to generate it
+                    if (route().has && route().has(routeName)) {
+                        return route(routeName);
+                    } else {
+                        // Route doesn't exist, provide fallback
+                        console.warn(`Route "${routeName}" not registered in Ziggy routes`);
+                        return '#';
+                    }
+                } catch (error) {
+                    console.warn(`Route "${routeName}" not found:`, error.message);
+                    return '#';
+                }
+            } else {
+                console.warn('Route helper not available');
+                return '#';
+            }
+        };
+
         // Use navigation items passed from backend (via HasPermissions trait)
         if (user.navigation_items && user.navigation_items.length > 0) {
-            return user.navigation_items.map(item => ({
-                name: item.name,
-                href: route(item.route),
-                icon: getIconComponent(item.icon),
-                permission: item.permission
-            }));
+            return user.navigation_items.map(item => {
+                // Process children if they exist
+                const processedChildren = item.children ? item.children.map(child => ({
+                    name: child.name || child.label,
+                    href: getHref(child.route),
+                    icon: child.icon,
+                    permission: child.permission,
+                    type: child.type || 'link'
+                })) : [];
+                
+                return {
+                    name: item.name,
+                    href: getHref(item.route),
+                    icon: getIconComponent(item.icon),
+                    permission: item.permission,
+                    type: item.type || 'link',
+                    children: processedChildren
+                };
+            });
         }
 
         // Fallback to default navigation based on user type
@@ -99,23 +221,33 @@ export default function AuthenticatedLayout({ header, children }) {
     const themeConfig = getThemeConfig();
 
     const isCurrentRoute = (href) => {
-        if (href === route('dashboard')) {
-            return route().current('dashboard');
+        // Handle fallback routes
+        if (!href || href === '#') {
+            return false;
         }
-        
-        // Handle tenant admin routes
-        if (href.includes('tenant-admin')) {
-            const routeName = href.split('/').pop();
-            return route().current(`tenant-admin.${routeName}`);
+
+        try {
+            if (href === route('dashboard')) {
+                return route().current('dashboard');
+            }
+            
+            // Handle tenant admin routes
+            if (href.includes('tenant-admin')) {
+                const routeName = href.split('/').pop();
+                return route().current(`tenant-admin.${routeName}`);
+            }
+            
+            // Handle central admin routes  
+            if (href.includes('central-admin')) {
+                const routeName = href.split('/').pop();
+                return route().current(`central-admin.${routeName}`);
+            }
+            
+            return route().current(href.split('/').pop());
+        } catch (error) {
+            // If route checking fails, return false
+            return false;
         }
-        
-        // Handle central admin routes  
-        if (href.includes('central-admin')) {
-            const routeName = href.split('/').pop();
-            return route().current(`central-admin.${routeName}`);
-        }
-        
-        return route().current(href.split('/').pop());
     };
 
     const getUserTypeLabel = () => {
@@ -154,18 +286,13 @@ export default function AuthenticatedLayout({ header, children }) {
                             )}
                             <nav className="flex-1 space-y-1 px-2 py-4">
                                 {themeConfig.navigation.map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className={`${
-                                            isCurrentRoute(item.href)
-                                                ? themeConfig.activeColor
-                                                : 'text-gray-700 hover:bg-gray-50'
-                                        } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                                    >
-                                        <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                                        {item.name}
-                                    </Link>
+                                    <NavigationItem 
+                                        key={item.name} 
+                                        item={item} 
+                                        isCurrentRoute={isCurrentRoute} 
+                                        themeConfig={themeConfig} 
+                                        isDesktop={false} 
+                                    />
                                 ))}
                             </nav>
                         </div>
@@ -187,18 +314,13 @@ export default function AuthenticatedLayout({ header, children }) {
                             <div className="flex flex-1 flex-col overflow-y-auto">
                                 <nav className="flex-1 space-y-1 px-2 py-4">
                                     {themeConfig.navigation.map((item) => (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className={`${
-                                                isCurrentRoute(item.href)
-                                                    ? themeConfig.activeColor
-                                                    : 'text-gray-700 hover:bg-gray-50'
-                                            } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-150`}
-                                        >
-                                            <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                                            {item.name}
-                                        </Link>
+                                        <NavigationItem 
+                                            key={item.name} 
+                                            item={item} 
+                                            isCurrentRoute={isCurrentRoute} 
+                                            themeConfig={themeConfig} 
+                                            isDesktop={true} 
+                                        />
                                     ))}
                                 </nav>
                             </div>
