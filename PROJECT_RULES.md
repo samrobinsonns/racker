@@ -229,6 +229,17 @@ The system automatically redirects users to appropriate dashboards:
   - **Responsive Design**: Works perfectly on all screen sizes
   - **Keyboard Navigation**: Proper focus management and accessibility
 
+- **🆕 Custom Navigation Builder System**
+  - **Complete Drag-and-Drop Builder**: Visual interface for creating custom navigation layouts
+  - **Multi-Level Priority System**: User-specific > Role-specific > Tenant default navigation
+  - **Permission-Based Filtering**: Navigation items automatically filtered by user permissions
+  - **Real-Time Integration**: Custom navigation immediately reflected in user layouts
+  - **Navigation Item Library**: Pre-built navigation components organized by categories
+  - **Live Preview**: Real-time preview of navigation as it's being built
+  - **Current Navigation Loading**: Automatically loads existing navigation when selecting targets
+  - **Configuration Management**: Save as draft or activate immediately with version control
+  - **Comprehensive API**: Full RESTful API for navigation configuration management
+
 ### 🔄 Current System Architecture
 
 #### **Unified Layout System**
@@ -275,12 +286,92 @@ Route::patch('/roles/{role}', [CentralAdminController::class, 'updateRole'])->na
 Route::delete('/roles/{role}', [CentralAdminController::class, 'destroyRole'])->name('roles.destroy');
 ```
 
+#### **Navigation Builder Architecture**
+Complete custom navigation system with database-driven configurations:
+
+**Database Schema:**
+- **navigation_items_library**: Available navigation components with categories and permissions
+- **navigation_configurations**: Custom navigation layouts with priority system and versioning
+
+**Backend Components:**
+- **NavigationService**: Core business logic for configuration management and permission filtering
+- **NavigationController**: RESTful API with 9 endpoints for complete CRUD operations
+- **NavigationItem & NavigationConfiguration Models**: Eloquent models with proper relationships
+
+**Frontend Components:**
+- **Navigation Builder Interface**: Three-panel layout (settings, builder, preview)
+- **DraggableNavigationItem**: Built with @dnd-kit library for drag-and-drop functionality
+- **Dynamic Layout Integration**: AuthenticatedLayout and TenantAdminLayout use custom navigation
+
+**Navigation Priority System:**
+```php
+// Priority order (highest to lowest):
+1. User-specific configuration (navigation_configurations.user_id)
+2. Role-specific configuration (navigation_configurations.role_id) 
+3. Tenant default configuration (navigation_configurations.tenant_id only)
+4. System fallback navigation (hardcoded defaults)
+```
+
+**API Endpoints:**
+```php
+// Navigation Builder Routes
+Route::get('/navigation', 'index');                    // List configurations by tenant
+Route::get('/navigation/builder', 'builder');          // Builder interface with data
+Route::post('/navigation', 'store');                   // Create new configuration
+Route::get('/navigation/{config}', 'show');            // View configuration details
+Route::put('/navigation/{config}', 'update');          // Update configuration
+Route::delete('/navigation/{config}', 'destroy');      // Delete configuration
+Route::post('/navigation/{config}/activate', 'activate'); // Activate configuration
+Route::post('/navigation/{config}/duplicate', 'duplicate'); // Duplicate configuration
+Route::post('/navigation/preview', 'preview');         // Preview configuration
+Route::post('/navigation/current', 'getCurrent');      // Get current navigation for target
+```
+
+**Real-Time Integration:**
+- Navigation items passed to frontend via `HandleInertiaRequests` middleware
+- Automatic permission filtering using existing permission system
+- Caching with 1-hour TTL for performance optimization
+- Icon component mapping from string names to React components
+
+### ✅ Navigation Builder Workflow
+
+**Central Admin Usage:**
+1. **Access Builder**: Navigate to "Navigation Builder" from central admin sidebar
+2. **Select Tenant**: Choose tenant from searchable list with overview cards
+3. **Choose Configuration Type**: Default (all users), Role-specific, or User-specific
+4. **Select Target**: Choose specific role or user (auto-loads current navigation)
+5. **Build Navigation**: Add items from organized library, drag to reorder
+6. **Live Preview**: See real-time preview with configuration details
+7. **Save Options**: Save as draft or save and activate immediately
+8. **Instant Effect**: Changes immediately reflected in targeted users' layouts
+
+**Navigation Item Library Categories:**
+- **Core**: Dashboard, Profile (essential navigation items)
+- **Admin**: User Management, Settings, System Configuration
+- **Content**: Reports, Analytics, Content Management
+- **Custom**: Placeholder items for future custom features
+
+**Builder Features:**
+- **Auto-load Current Navigation**: When selecting role/user, automatically loads their existing navigation
+- **Manual Load Button**: "Load Current Navigation" button for manual reload
+- **Drag-and-Drop Reordering**: Visual reordering of navigation items
+- **Permission Filtering**: Only shows items user has permission to access
+- **Configuration Persistence**: Saves configuration name, type, target, and layout settings
+- **Version Control**: Tracks creation and update timestamps with user attribution
+
+**Integration Points:**
+- **HasPermissions Trait**: Enhanced `getNavigationItems()` method using NavigationService
+- **AuthenticatedLayout**: Uses `user.navigation_items` for dynamic navigation
+- **TenantAdminLayout**: Renders custom navigation with proper icon mapping
+- **HandleInertiaRequests**: Passes navigation data to frontend automatically
+
 ### 🔄 Current Issues
 **System is now stable** - Major architectural improvements completed:
 - ✅ **Tenant Name Display**: Fixed using direct property access (`tenant.name`)
 - ✅ **Layout Unification**: Single layout supporting all user types
 - ✅ **Admin Experience**: Consistent navigation across all admin pages
 - ✅ **Roles & Permissions**: Complete management system implemented
+- ✅ **Custom Navigation**: Complete navigation builder system with real-time integration
 
 ### 🎯 Next Development Priorities
 1. **User Experience Enhancements**
@@ -368,6 +459,75 @@ Route::delete('/roles/{role}', [CentralAdminController::class, 'destroyRole'])->
 - `resources/js/Layouts/TenantAdminLayout.jsx`
 
 **Prevention**: Always use direct property access (`tenant.name`) instead of nested data access (`tenant.data.name`) when working with the Stancl\Tenancy package.
+
+### Navigation Builder System Issues
+
+**Problem**: Custom navigation not appearing or falling back to defaults.
+
+**Common Causes & Solutions**:
+
+1. **NavigationService Cache Issues**:
+   ```php
+   // Clear navigation cache for specific user
+   Cache::forget("navigation.user.{$userId}.tenant.{$tenantId}");
+   
+   // Or clear all navigation caches
+   Cache::flush(); // Use sparingly in production
+   ```
+
+2. **Permission Filtering Too Restrictive**:
+   ```php
+   // Check user permissions
+   $user = User::find($userId);
+   $permissions = $user->getAllPermissions($tenantId);
+   dd($permissions); // Debug available permissions
+   ```
+
+3. **Navigation Configuration Not Active**:
+   ```php
+   // Ensure configuration is activated
+   $config = NavigationConfiguration::find($configId);
+   $config->activate(); // Sets is_active = true and deactivates others
+   ```
+
+4. **Frontend Icon Mapping Missing**:
+   ```jsx
+   // Add missing icons to icon map in layouts
+   const iconMap = {
+       'HomeIcon': HomeIcon,
+       'UsersIcon': UsersIcon,
+       'NewIconName': NewIconComponent, // Add missing icons here
+   };
+   ```
+
+5. **Database Migration Issues**:
+   ```bash
+   # Ensure navigation tables exist
+   ./vendor/bin/sail artisan migrate
+   
+   # Seed navigation items library
+   ./vendor/bin/sail artisan db:seed --class=NavigationItemsSeeder
+   ```
+
+**Debugging Navigation Issues**:
+```php
+// Test navigation service directly
+$user = User::find($userId);
+$navigationService = app(App\Services\NavigationService::class);
+$navigation = $navigationService->getNavigationForUser($user);
+dd($navigation); // Check returned navigation structure
+
+// Test user navigation items
+$items = $user->getNavigationItems();
+dd($items); // Check transformed navigation items
+```
+
+**Files to Check**:
+- `app/Services/NavigationService.php` - Core navigation logic
+- `app/Traits/HasPermissions.php` - User navigation method
+- `app/Http/Middleware/HandleInertiaRequests.php` - Frontend data passing
+- `resources/js/Layouts/AuthenticatedLayout.jsx` - Layout integration
+- `resources/js/Layouts/TenantAdminLayout.jsx` - Tenant admin layout
   - Advanced search functionality (by name/email)
   - Multi-level filtering (user type, tenant, status)
   - Modal-based user editing with form validation

@@ -146,9 +146,77 @@ trait HasPermissions
     }
 
     /**
-     * Get navigation items based on permissions
+     * Get navigation items based on permissions and navigation configurations
      */
     public function getNavigationItems(): array
+    {
+        // For central admin, use hardcoded navigation (they don't need custom navigation)
+        if ($this->is_central_admin) {
+            return $this->getCentralAdminNavigation();
+        }
+
+        // For tenant users, try to get custom navigation configuration
+        if ($this->tenant_id) {
+            try {
+                $navigationService = app(\App\Services\NavigationService::class);
+                $customNavigation = $navigationService->getNavigationForUser($this);
+                
+                if (!empty($customNavigation['items'])) {
+                    return $this->transformNavigationItems($customNavigation['items']);
+                }
+            } catch (\Exception $e) {
+                // Log error but fall back to default navigation
+                \Log::warning('Failed to get custom navigation for user ' . $this->id . ': ' . $e->getMessage());
+            }
+        }
+
+        // Fallback to default navigation
+        return $this->getDefaultNavigation();
+    }
+
+    /**
+     * Get central admin navigation (hardcoded)
+     */
+    protected function getCentralAdminNavigation(): array
+    {
+        return [
+            [
+                'name' => 'Dashboard',
+                'route' => 'dashboard',
+                'permission' => Permission::VIEW_DASHBOARD,
+                'icon' => 'HomeIcon'
+            ],
+            [
+                'name' => 'Tenants',
+                'route' => 'central-admin.tenants.index',
+                'permission' => Permission::MANAGE_TENANTS,
+                'icon' => 'BuildingOfficeIcon'
+            ],
+            [
+                'name' => 'Users',
+                'route' => 'central-admin.users.index',
+                'permission' => Permission::MANAGE_CENTRAL_USERS,
+                'icon' => 'UsersIcon'
+            ],
+            [
+                'name' => 'Navigation Builder',
+                'route' => 'central-admin.navigation.index',
+                'permission' => Permission::MANAGE_SYSTEM_SETTINGS,
+                'icon' => 'RectangleStackIcon'
+            ],
+            [
+                'name' => 'Settings',
+                'route' => 'central-admin.settings',
+                'permission' => Permission::MANAGE_SYSTEM_SETTINGS,
+                'icon' => 'CogIcon'
+            ],
+        ];
+    }
+
+    /**
+     * Get default navigation for tenant users (fallback)
+     */
+    protected function getDefaultNavigation(): array
     {
         $items = [
             [
@@ -159,88 +227,91 @@ trait HasPermissions
             ],
         ];
 
-        // Add profile management
-        if ($this->can(Permission::MANAGE_OWN_PROFILE)) {
-            $items[] = [
-                'name' => 'Profile',
-                'route' => 'profile.edit',
-                'permission' => Permission::MANAGE_OWN_PROFILE,
-                'icon' => 'UserIcon'
-            ];
-        }
-
-        // Central admin items
-        if ($this->is_central_admin) {
+        // Tenant admin items
+        if ($this->canAccessTenantAdmin()) {
             $items = array_merge($items, [
                 [
-                    'name' => 'Tenants',
-                    'route' => 'central-admin.tenants.index',
-                    'permission' => Permission::MANAGE_TENANTS,
-                    'icon' => 'BuildingOfficeIcon'
-                ],
-                [
-                    'name' => 'Users',
-                    'route' => 'central-admin.users.index',
-                    'permission' => Permission::MANAGE_CENTRAL_USERS,
+                    'name' => 'Manage Users',
+                    'route' => 'tenant-admin.users.index',
+                    'permission' => Permission::MANAGE_TENANT_USERS,
                     'icon' => 'UsersIcon'
                 ],
                 [
-                    'name' => 'Settings',
-                    'route' => 'central-admin.settings',
-                    'permission' => Permission::MANAGE_SYSTEM_SETTINGS,
+                    'name' => 'Tenant Settings',
+                    'route' => 'tenant-admin.settings',
+                    'permission' => Permission::MANAGE_TENANT_SETTINGS,
                     'icon' => 'CogIcon'
                 ],
             ]);
         }
 
-        // Tenant-specific items (for any tenant user)
-        if ($this->tenant_id) {
-            // Tenant admin items
-            if ($this->canAccessTenantAdmin()) {
-                $items = array_merge($items, [
-                    [
-                        'name' => 'Manage Users',
-                        'route' => 'tenant-admin.users.index',
-                        'permission' => Permission::MANAGE_TENANT_USERS,
-                        'icon' => 'UsersIcon'
-                    ],
-                    [
-                        'name' => 'Tenant Settings',
-                        'route' => 'tenant-admin.settings',
-                        'permission' => Permission::MANAGE_TENANT_SETTINGS,
-                        'icon' => 'CogIcon'
-                    ],
-                ]);
-            }
+        // Items for all tenant users (based on permissions)
+        $tenantItems = [
+            [
+                'name' => 'Reports',
+                'route' => 'tenant.reports',
+                'permission' => Permission::VIEW_REPORTS,
+                'icon' => 'ChartBarIcon'
+            ],
+            [
+                'name' => 'Content',
+                'route' => 'tenant.content',
+                'permission' => Permission::VIEW_TENANT_DATA,
+                'icon' => 'DocumentTextIcon'
+            ],
+            [
+                'name' => 'Analytics',
+                'route' => 'tenant.analytics',
+                'permission' => Permission::VIEW_TENANT_ANALYTICS,
+                'icon' => 'ChartPieIcon'
+            ],
+            [
+                'name' => 'Profile',
+                'route' => 'profile.edit',
+                'permission' => Permission::MANAGE_OWN_PROFILE,
+                'icon' => 'UserIcon'
+            ],
+        ];
 
-            // Items for all tenant users (based on permissions)
-            $tenantItems = [
-                [
-                    'name' => 'Reports',
-                    'route' => 'tenant.reports',
-                    'permission' => Permission::VIEW_REPORTS,
-                    'icon' => 'ChartBarIcon'
-                ],
-                [
-                    'name' => 'Content',
-                    'route' => 'tenant.content',
-                    'permission' => Permission::VIEW_TENANT_DATA,
-                    'icon' => 'DocumentTextIcon'
-                ],
-                [
-                    'name' => 'Analytics',
-                    'route' => 'tenant.analytics',
-                    'permission' => Permission::VIEW_TENANT_ANALYTICS,
-                    'icon' => 'ChartPieIcon'
-                ],
-            ];
+        $items = array_merge($items, $tenantItems);
 
-            $items = array_merge($items, $tenantItems);
-        }
-
-                 // Filter items based on actual permissions
+        // Filter items based on actual permissions
         return array_filter($items, function ($item) {
             return !isset($item['permission']) || $this->hasPermission($item['permission']);
         });
+    }
+
+    /**
+     * Transform navigation service items to layout format
+     */
+    protected function transformNavigationItems(array $items): array
+    {
+        $transformed = [];
+
+        foreach ($items as $item) {
+            // Skip hidden items
+            if (isset($item['visible']) && $item['visible'] === false) {
+                continue;
+            }
+
+            // Skip if user doesn't have permission
+            if (isset($item['permission']) && !$this->hasPermission($item['permission'])) {
+                continue;
+            }
+
+            $navItem = [
+                'name' => $item['label'] ?? $item['name'] ?? 'Unknown',
+                'route' => $item['route'] ?? '#',
+                'icon' => $item['icon'] ?? 'QuestionMarkCircleIcon',
+            ];
+
+            if (isset($item['permission'])) {
+                $navItem['permission'] = $item['permission'];
+            }
+
+            $transformed[] = $navItem;
+        }
+
+        return $transformed;
     }
 } 

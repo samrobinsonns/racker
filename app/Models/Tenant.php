@@ -23,4 +23,10 @@ class Tenant extends BaseTenant
     {
         return $this->hasMany(User::class);
     }
+
+    // Relationship to roles in this tenant
+    public function roles()
+    {
+        return $this->hasMany(Role::class);
+    }
 }

@@ -68,7 +68,9 @@ class User extends Authenticatable
     public function rolesForTenant($tenantId = null)
     {
         $tenantId = $tenantId ?? $this->tenant_id;
-        return $this->roles()->wherePivot('tenant_id', $tenantId);
+        return $this->roles()
+                    ->select('roles.*')
+                    ->wherePivot('user_roles.tenant_id', $tenantId);
     }
 
     // Check if user has specific role
@@ -112,7 +114,7 @@ class User extends Authenticatable
     public function removeRole($roleId, $tenantId = null)
     {
         $tenantId = $tenantId ?? $this->tenant_id;
-        return $this->roles()->wherePivot('tenant_id', $tenantId)->detach($roleId);
+        return $this->roles()->wherePivot('user_roles.tenant_id', $tenantId)->detach($roleId);
     }
 
     // Scope for central admins

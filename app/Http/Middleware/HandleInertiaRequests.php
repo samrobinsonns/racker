@@ -40,6 +40,8 @@ class HandleInertiaRequests extends Middleware
             $userWithPermissions->permissions = $permissionService->getUserPermissions($user);
             $userWithPermissions->layout_type = $user->getLayoutType();
             $userWithPermissions->admin_level = $user->getAdminLevel();
+            // Add navigation items to the frontend
+            $userWithPermissions->navigation_items = $user->getNavigationItems();
         }
 
         return [

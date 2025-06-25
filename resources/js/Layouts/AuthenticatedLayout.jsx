@@ -26,6 +26,48 @@ export default function AuthenticatedLayout({ header, children }) {
     const isTenantAdmin = user.roles?.some(role => role.name === 'tenant_admin') || false;
     const isAdmin = isCentralAdmin || isTenantAdmin;
 
+    // Helper to get icon component from string name
+    const getIconComponent = (iconName) => {
+        const iconMap = {
+            'HomeIcon': HomeIcon,
+            'UsersIcon': UsersIcon,
+            'Cog6ToothIcon': Cog6ToothIcon,
+            'BuildingOfficeIcon': BuildingOfficeIcon,
+            'BuildingOffice2Icon': BuildingOffice2Icon,
+        };
+        return iconMap[iconName] || HomeIcon;
+    };
+
+    // Get navigation items for admin users
+    const getAdminNavigation = () => {
+        // Use navigation items passed from backend (via HasPermissions trait)
+        if (user.navigation_items && user.navigation_items.length > 0) {
+            return user.navigation_items.map(item => ({
+                name: item.name,
+                href: route(item.route),
+                icon: getIconComponent(item.icon),
+                permission: item.permission
+            }));
+        }
+
+        // Fallback to default navigation based on user type
+        if (isCentralAdmin) {
+            return [
+                { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
+                { name: 'Tenants', href: route('central-admin.tenants.index'), icon: BuildingOfficeIcon },
+                { name: 'All Users', href: route('central-admin.users.index'), icon: UsersIcon },
+                { name: 'Settings', href: route('central-admin.settings'), icon: Cog6ToothIcon },
+            ];
+        } else if (isTenantAdmin) {
+            return [
+                { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
+                { name: 'Users', href: route('tenant-admin.users.index'), icon: UsersIcon },
+                { name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon },
+            ];
+        }
+        return [];
+    };
+
     // Theme configuration based on user type
     const getThemeConfig = () => {
         if (isCentralAdmin) {
@@ -37,12 +79,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 activeColor: 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-500',
                 title: 'Central Admin',
                 icon: BuildingOfficeIcon,
-                navigation: [
-                    { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
-                    { name: 'Tenants', href: route('central-admin.tenants.index'), icon: BuildingOfficeIcon },
-                    { name: 'All Users', href: route('central-admin.users.index'), icon: UsersIcon },
-                    { name: 'Settings', href: route('central-admin.settings'), icon: Cog6ToothIcon },
-                ]
+                navigation: getAdminNavigation()
             };
         } else if (isTenantAdmin) {
             return {
@@ -53,11 +90,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 activeColor: 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-500',
                 title: 'Tenant Admin',
                 icon: BuildingOffice2Icon,
-                navigation: [
-                    { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
-                    { name: 'Users', href: route('tenant-admin.users.index'), icon: UsersIcon },
-                    { name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon },
-                ]
+                navigation: getAdminNavigation()
             };
         }
         return null;

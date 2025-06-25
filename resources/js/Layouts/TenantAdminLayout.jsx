@@ -22,42 +22,44 @@ export default function TenantAdminLayout({ header, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { hasPermission } = usePermissions();
 
-    // Build navigation based on user permissions
-    const buildNavigation = () => {
-        const nav = [
-            { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon, permission: 'view_dashboard' }
+    // Get navigation items from user (now driven by NavigationService)
+    const getNavigation = () => {
+        // Use navigation items passed from backend (via HasPermissions trait)
+        if (user.navigation_items && user.navigation_items.length > 0) {
+            return user.navigation_items.map(item => ({
+                name: item.name,
+                href: route(item.route),
+                icon: getIconComponent(item.icon),
+                permission: item.permission
+            }));
+        }
+
+        // Fallback to default navigation if no custom navigation is configured
+        return [
+            { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
+            { name: 'Reports', href: route('tenant.reports'), icon: ChartBarIcon },
+            { name: 'Content', href: route('tenant.content'), icon: DocumentTextIcon },
+            { name: 'Analytics', href: route('tenant.analytics'), icon: ChartPieIcon },
+            { name: 'My Profile', href: route('profile.edit'), icon: UserIcon },
         ];
-
-        // Tenant admin specific items
-        if (hasPermission('manage_tenant_users')) {
-            nav.push({ name: 'Manage Users', href: route('tenant-admin.users.index'), icon: UsersIcon, permission: 'manage_tenant_users' });
-        }
-
-        if (hasPermission('manage_tenant_settings')) {
-            nav.push({ name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon, permission: 'manage_tenant_settings' });
-        }
-
-        // Regular tenant user items
-        if (hasPermission('view_reports')) {
-            nav.push({ name: 'Reports', href: route('tenant.reports'), icon: ChartBarIcon, permission: 'view_reports' });
-        }
-
-        if (hasPermission('view_tenant_data')) {
-            nav.push({ name: 'Content', href: route('tenant.content'), icon: DocumentTextIcon, permission: 'view_tenant_data' });
-        }
-
-        if (hasPermission('view_tenant_analytics')) {
-            nav.push({ name: 'Analytics', href: route('tenant.analytics'), icon: ChartPieIcon, permission: 'view_tenant_analytics' });
-        }
-
-        if (hasPermission('manage_own_profile')) {
-            nav.push({ name: 'My Profile', href: route('profile.edit'), icon: UserIcon, permission: 'manage_own_profile' });
-        }
-
-        return nav.filter(item => !item.permission || hasPermission(item.permission));
     };
 
-    const navigation = buildNavigation();
+    // Helper to get icon component from string name
+    const getIconComponent = (iconName) => {
+        const iconMap = {
+            'HomeIcon': HomeIcon,
+            'UsersIcon': UsersIcon,
+            'Cog6ToothIcon': Cog6ToothIcon,
+            'ChartBarIcon': ChartBarIcon,
+            'DocumentTextIcon': DocumentTextIcon,
+            'ChartPieIcon': ChartPieIcon,
+            'UserIcon': UserIcon,
+            'BuildingOfficeIcon': BuildingOffice2Icon,
+        };
+        return iconMap[iconName] || HomeIcon;
+    };
+
+    const navigation = getNavigation();
 
     const isCurrentRoute = (routeName) => {
         return route().current(routeName);

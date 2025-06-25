@@ -105,6 +105,20 @@ Route::prefix('central-admin')->name('central-admin.')->middleware(['auth', 'cen
     Route::get('/tenants/{tenant}', [TenantController::class, 'show'])
         ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
         ->name('tenants.show');
+    
+    // Navigation Builder
+    Route::prefix('navigation')->name('navigation.')->middleware('permission:' . Permission::MANAGE_SYSTEM_SETTINGS)->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\NavigationController::class, 'index'])->name('index');
+        Route::get('/builder', [\App\Http\Controllers\Admin\NavigationController::class, 'builder'])->name('builder');
+        Route::post('/configurations', [\App\Http\Controllers\Admin\NavigationController::class, 'store'])->name('store');
+        Route::get('/configurations/{configuration}', [\App\Http\Controllers\Admin\NavigationController::class, 'show'])->name('show');
+        Route::put('/configurations/{configuration}', [\App\Http\Controllers\Admin\NavigationController::class, 'update'])->name('update');
+        Route::delete('/configurations/{configuration}', [\App\Http\Controllers\Admin\NavigationController::class, 'destroy'])->name('destroy');
+        Route::post('/configurations/{configuration}/activate', [\App\Http\Controllers\Admin\NavigationController::class, 'activate'])->name('activate');
+        Route::post('/configurations/{configuration}/duplicate', [\App\Http\Controllers\Admin\NavigationController::class, 'duplicate'])->name('duplicate');
+        Route::post('/preview', [\App\Http\Controllers\Admin\NavigationController::class, 'preview'])->name('preview');
+        Route::post('/current', [\App\Http\Controllers\Admin\NavigationController::class, 'getCurrent'])->name('current');
+    });
 });
 
 // Tenant Admin Routes - now with granular permissions
