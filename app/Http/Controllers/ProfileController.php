@@ -18,9 +18,35 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+        $stats = [];
+        $tenantId = null;
+        
+        // Determine layout and stats based on user type (same logic as dashboard)
+        if ($user->is_central_admin) {
+            // Central Admin stats
+            $controller = app(\App\Http\Controllers\Admin\CentralAdminController::class);
+            $stats = $controller->getDashboardStats();
+        } elseif ($user->hasRole('tenant_admin')) {
+            // Tenant Admin stats
+            $controller = app(\App\Http\Controllers\Admin\TenantAdminController::class);
+            $stats = $controller->getDashboardStats();
+            $tenantId = $stats['tenant_id'] ?? $user->tenant_id;
+        } elseif ($user->tenant_id) {
+            // Tenant User
+            $tenantId = $user->tenant_id;
+            $tenant = $user->tenant;
+            $stats = [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ];
+        }
+        
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'stats' => $stats,
+            'tenantId' => $tenantId,
         ]);
     }
 
