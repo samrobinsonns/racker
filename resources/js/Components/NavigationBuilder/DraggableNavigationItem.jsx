@@ -13,7 +13,8 @@ import {
     XMarkIcon,
     EyeIcon,
     EyeSlashIcon,
-    SwatchIcon
+    SwatchIcon,
+    ArrowDownIcon
 } from '@heroicons/react/24/outline';
 import * as HeroIcons from '@heroicons/react/24/outline';
 import IconPicker from './IconPicker';
@@ -27,14 +28,22 @@ function DropdownContentArea({ dropdownId, isOver, children }) {
         id: `dropdown-${dropdownId}`,
     });
 
+    const isAnyOver = isOver || isDroppableOver;
+
     return (
         <div 
             ref={setNodeRef}
             className={`
-                min-h-[60px] transition-all duration-200 rounded-lg
-                ${isDroppableOver ? 'bg-green-50 ring-2 ring-green-300 ring-inset' : ''}
+                min-h-[60px] transition-all duration-300 ease-in-out rounded-lg relative
+                ${isAnyOver 
+                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 ring-2 ring-green-400 ring-inset shadow-lg transform scale-[1.02]' 
+                    : 'bg-gray-50 hover:bg-gray-100'
+                }
             `}
         >
+            {isAnyOver && (
+                <div className="absolute inset-0 bg-green-100 opacity-20 rounded-lg animate-pulse"></div>
+            )}
             {children}
         </div>
     );
@@ -161,16 +170,24 @@ export default function DraggableNavigationItem({
         >
             {/* Main Item */}
             <div 
+                ref={item.type === 'dropdown' ? setDroppableRef : null}
                 className={`
-                    bg-white border-2 rounded-xl shadow-sm transition-all duration-200
+                    bg-white border-2 rounded-xl shadow-sm transition-all duration-300 ease-in-out relative overflow-hidden
                     ${isDragging 
-                        ? 'border-blue-400 shadow-lg scale-105' 
+                        ? 'border-blue-400 shadow-lg scale-105 z-50' 
                         : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
                     }
                     ${!item.visible ? 'opacity-60' : ''}
-                    ${item.type === 'dropdown' && isOver ? 'border-green-400 bg-green-50 ring-2 ring-green-200' : ''}
+                    ${item.type === 'dropdown' && isOver 
+                        ? 'border-green-400 bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-lg transform scale-[1.01]' 
+                        : ''
+                    }
                 `}
             >
+                {/* Drop zone indicator overlay */}
+                {item.type === 'dropdown' && isOver && (
+                    <div className="absolute inset-0 bg-green-200 opacity-10 animate-pulse pointer-events-none"></div>
+                )}
                 <div className="flex items-center p-4">
                     {/* Drag Handle */}
                     <div
@@ -332,9 +349,9 @@ export default function DraggableNavigationItem({
                         <DropdownContentArea dropdownId={item.id} isOver={isOver}>
                             <div className="p-6">
                                 {isOver && (
-                                    <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg flex items-center justify-center text-green-700 text-sm font-medium">
-                                        <HeroIcons.ArrowDownIcon className="h-4 w-4 mr-2" />
-                                        Drop here to add new item to this dropdown
+                                    <div className="mb-4 p-4 bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-400 rounded-lg flex items-center justify-center text-green-700 text-sm font-semibold shadow-md animate-bounce">
+                                        <ArrowDownIcon className="h-5 w-5 mr-2 animate-pulse" />
+                                        Drop here to add to this dropdown
                                     </div>
                                 )}
                                 <div className="space-y-3">
@@ -443,13 +460,16 @@ export default function DraggableNavigationItem({
                             <div className="p-6">
                                 <div 
                                     className={`
-                                        w-full flex flex-col items-center justify-center px-6 py-12 border-2 border-dashed rounded-xl text-sm font-medium transition-all duration-200
+                                        w-full flex flex-col items-center justify-center px-6 py-12 border-2 border-dashed rounded-xl text-sm font-medium transition-all duration-300 ease-in-out relative
                                         ${isOver 
-                                            ? 'border-green-400 bg-green-100 text-green-700' 
+                                            ? 'border-green-400 bg-gradient-to-br from-green-100 to-emerald-100 text-green-700 shadow-lg transform scale-[1.02] animate-pulse' 
                                             : 'border-gray-300 text-gray-500 hover:border-blue-300 hover:bg-blue-50'
                                         }
                                     `}
                                 >
+                                    {isOver && (
+                                        <div className="absolute inset-0 bg-green-200 opacity-20 rounded-xl animate-pulse"></div>
+                                    )}
                                     {isOver ? (
                                         <>
                                             <HeroIcons.ArrowDownIcon className="h-8 w-8 mb-3 text-green-600" />
