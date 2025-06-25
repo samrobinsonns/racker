@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
 import DraggableNavigationItem from '@/Components/NavigationBuilder/DraggableNavigationItem';
+import ConfigurationsModal from '@/Components/NavigationBuilder/ConfigurationsModal';
 import { 
     DndContext, 
     closestCenter,
@@ -25,7 +26,8 @@ import {
     UserIcon,
     ArrowLeftIcon,
     CheckCircleIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    FolderOpenIcon
 } from '@heroicons/react/24/outline';
 
 export default function Builder({ 
@@ -49,6 +51,7 @@ export default function Builder({
     const [editingItem, setEditingItem] = useState(null);
     const [saving, setSaving] = useState(false);
     const [notification, setNotification] = useState(null);
+    const [showConfigurationsModal, setShowConfigurationsModal] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -251,6 +254,51 @@ export default function Builder({
         }
     };
 
+    // Delete configuration
+    const deleteConfiguration = async (config) => {
+        try {
+            // Get CSRF token with fallback
+            const csrfTokenEl = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfTokenEl) {
+                throw new Error('CSRF token not found in page. Please refresh the page.');
+            }
+
+            const response = await fetch(route('central-admin.navigation.destroy', config.id), {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfTokenEl.content
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                setNotification({
+                    type: 'success',
+                    message: result.message
+                });
+                
+                // Reload configurations
+                router.reload({ only: ['configurations'] });
+            } else {
+                throw new Error(result.message || 'Failed to delete configuration');
+            }
+        } catch (error) {
+            console.error('Failed to delete configuration:', error);
+            setNotification({
+                type: 'error',
+                message: error.message || 'Failed to delete configuration'
+            });
+            throw error; // Re-throw to handle in the modal
+        }
+    };
+
     // Auto-hide notification
     useEffect(() => {
         if (notification) {
@@ -283,6 +331,14 @@ export default function Builder({
                     </div>
                     
                     <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => setShowConfigurationsModal(true)}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                        >
+                            <FolderOpenIcon className="h-4 w-4 mr-2" />
+                            Configurations
+                        </button>
+                        
                         <button
                             onClick={() => saveConfiguration(false)}
                             disabled={saving || !currentConfig.name.trim()}
@@ -481,27 +537,41 @@ export default function Builder({
                                 {/* Load Existing Configuration */}
                                 {Object.keys(configurations).length > 0 && (
                                     <div className="mt-6">
-                                        <h4 className="text-sm font-medium text-gray-900 mb-3">
-                                            Load Existing
-                                        </h4>
-                                        <div className="space-y-2">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h4 className="text-sm font-medium text-gray-900">
+                                                Load Existing
+                                            </h4>
+                                            <button
+                                                onClick={() => setShowConfigurationsModal(true)}
+                                                className="text-xs text-purple-600 hover:text-purple-800"
+                                            >
+                                                View All
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
                                             {Object.entries(configurations).map(([type, configs]) => (
                                                 <div key={type}>
                                                     <h5 className="text-xs font-semibold text-gray-500 uppercase">
                                                         {type} Configurations
                                                     </h5>
-                                                    {configs.map(config => (
-                                                        <button
-                                                            key={config.id}
-                                                            onClick={() => loadConfiguration(config)}
-                                                            className="w-full text-left px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 rounded"
-                                                        >
-                                                            {config.name}
-                                                            {config.is_active && (
-                                                                <span className="ml-2 text-green-600">●</span>
-                                                            )}
-                                                        </button>
+                                                    {configs.slice(0, 3).map(config => (
+                                                        <div key={config.id} className="flex items-center justify-between px-2 py-1 hover:bg-gray-50 rounded">
+                                                            <button
+                                                                onClick={() => loadConfiguration(config)}
+                                                                className="flex-1 text-left text-xs text-gray-700"
+                                                            >
+                                                                {config.name}
+                                                                {config.is_active && (
+                                                                    <span className="ml-2 text-green-600">●</span>
+                                                                )}
+                                                            </button>
+                                                        </div>
                                                     ))}
+                                                    {configs.length > 3 && (
+                                                        <div className="text-xs text-gray-400 px-2">
+                                                            +{configs.length - 3} more...
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -608,6 +678,17 @@ export default function Builder({
                     </div>
                 </div>
             </div>
+
+            {/* Configurations Modal */}
+            <ConfigurationsModal
+                isOpen={showConfigurationsModal}
+                onClose={() => setShowConfigurationsModal(false)}
+                configurations={configurations}
+                onLoadConfiguration={loadConfiguration}
+                onDeleteConfiguration={deleteConfiguration}
+                users={users}
+                roles={roles}
+            />
         </CentralAdminLayout>
     );
 } 
