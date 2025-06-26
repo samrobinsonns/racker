@@ -99,6 +99,11 @@ Route::prefix('central-admin')->name('central-admin.')->middleware(['auth', 'cen
         ->middleware('permission:' . Permission::MANAGE_USER_ROLES)
         ->name('roles.destroy');
     
+    // Permission Management
+    Route::post('/permissions', [CentralAdminController::class, 'storePermission'])
+        ->middleware('permission:' . Permission::MANAGE_SYSTEM_SETTINGS)
+        ->name('permissions.store');
+    
     // Tenant Management
     Route::resource('tenants', TenantController::class)->except(['show'])
         ->middleware('permission:' . Permission::MANAGE_TENANTS);

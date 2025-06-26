@@ -45,11 +45,11 @@ class Permission
     const MANAGE_CATEGORIES = 'manage_categories';
 
     /**
-     * Get all permissions organized by category
+     * Get all permissions organized by category (including custom permissions)
      */
     public static function getGroupedPermissions(): array
     {
-        return [
+        $basePermissions = [
             'System Management' => [
                 self::MANAGE_TENANTS => [
                     'label' => 'Manage Tenants',
@@ -187,6 +187,24 @@ class Permission
                 ],
             ],
         ];
+
+        // Merge with custom permissions from database
+        if (class_exists(\App\Models\CustomPermission::class)) {
+            $customPermissions = \App\Models\CustomPermission::getGroupedPermissions();
+            foreach ($customPermissions as $category => $permissions) {
+                if (!isset($basePermissions[$category])) {
+                    $basePermissions[$category] = [];
+                }
+                foreach ($permissions as $permission) {
+                    $basePermissions[$category][$permission['key']] = [
+                        'label' => $permission['label'],
+                        'description' => $permission['description']
+                    ];
+                }
+            }
+        }
+
+        return $basePermissions;
     }
 
     /**

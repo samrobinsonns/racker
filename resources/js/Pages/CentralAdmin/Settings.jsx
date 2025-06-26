@@ -24,13 +24,15 @@ import {
     XMarkIcon
 } from '@heroicons/react/24/outline';
 
-export default function Settings({ settings, roles, stats, permissions }) {
+export default function Settings({ settings, roles, stats, permissions, tenants }) {
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [roleToDelete, setRoleToDelete] = useState(null);
     const [activeRoleTab, setActiveRoleTab] = useState('central');
     const [selectedTenantId, setSelectedTenantId] = useState('');
+    const [showPermissionModal, setShowPermissionModal] = useState(false);
+    const [creatingCustomPermission, setCreatingCustomPermission] = useState(false);
 
     const { data, setData, patch, processing, errors } = useForm({
         app_name: settings?.app_name || 'Racker',
@@ -49,7 +51,15 @@ export default function Settings({ settings, roles, stats, permissions }) {
         display_name: '',
         description: '',
         type: 'tenant',
+        tenant_id: '',
         permissions: [],
+    });
+
+    const permissionForm = useForm({
+        key: '',
+        label: '',
+        description: '',
+        category: 'Content Management',
     });
 
     // Available permissions organized by category - now using the Permission enum structure
@@ -114,6 +124,7 @@ export default function Settings({ settings, roles, stats, permissions }) {
             display_name: role.display_name,
             description: role.description,
             type: role.type,
+            tenant_id: role.tenant_id || '',
             permissions: role.permissions || [],
         });
         setShowRoleModal(true);
@@ -201,6 +212,28 @@ export default function Settings({ settings, roles, stats, permissions }) {
         });
         
         return tenants.sort((a, b) => a.name.localeCompare(b.name));
+    };
+
+    const openCreatePermissionModal = () => {
+        permissionForm.reset();
+        setShowPermissionModal(true);
+    };
+
+    const submitPermission = (e) => {
+        e.preventDefault();
+        setCreatingCustomPermission(true);
+        
+        permissionForm.post(route('central-admin.permissions.store'), {
+            onSuccess: () => {
+                setShowPermissionModal(false);
+                setCreatingCustomPermission(false);
+                // Reload the page to get updated permissions
+                window.location.reload();
+            },
+            onError: () => {
+                setCreatingCustomPermission(false);
+            }
+        });
     };
 
     return (
@@ -476,10 +509,16 @@ export default function Settings({ settings, roles, stats, permissions }) {
                             <UsersIcon className="h-5 w-5 mr-2 text-purple-600" />
                             Roles & Permissions
                         </h3>
-                        <PrimaryButton onClick={openCreateRoleModal}>
-                            <PlusIcon className="h-4 w-4 mr-2" />
-                            Create Role
-                        </PrimaryButton>
+                        <div className="flex items-center space-x-3">
+                            <SecondaryButton onClick={openCreatePermissionModal}>
+                                <PlusIcon className="h-4 w-4 mr-2" />
+                                Create Permission
+                            </SecondaryButton>
+                            <PrimaryButton onClick={openCreateRoleModal}>
+                                <PlusIcon className="h-4 w-4 mr-2" />
+                                Create Role
+                            </PrimaryButton>
+                        </div>
                     </div>
                     
                     <div className="p-6">
@@ -774,7 +813,12 @@ export default function Settings({ settings, roles, stats, permissions }) {
                                             type="radio"
                                             value="central"
                                             checked={roleForm.data.type === 'central'}
-                                            onChange={(e) => roleForm.setData('type', e.target.value)}
+                                            onChange={(e) => {
+                                                roleForm.setData('type', e.target.value);
+                                                if (e.target.value === 'central') {
+                                                    roleForm.setData('tenant_id', '');
+                                                }
+                                            }}
                                             className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
                                         />
                                         <label htmlFor="type_central" className="ml-2 block text-sm text-gray-700">
@@ -798,15 +842,49 @@ export default function Settings({ settings, roles, stats, permissions }) {
                                 </div>
                                 <InputError message={roleForm.errors.type} className="mt-1" />
                             </div>
+
+                            {/* Tenant Selection - only show when type is tenant */}
+                            {roleForm.data.type === 'tenant' && (
+                                <div>
+                                    <InputLabel htmlFor="tenant_id" value="Assign to Tenant" />
+                                    <select
+                                        id="tenant_id"
+                                        value={roleForm.data.tenant_id}
+                                        onChange={(e) => roleForm.setData('tenant_id', e.target.value)}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                    >
+                                        <option value="">Select a tenant (or leave blank for template)</option>
+                                        {tenants && tenants.map((tenant) => (
+                                            <option key={tenant.id} value={tenant.id}>
+                                                {tenant.data?.name || tenant.id}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={roleForm.errors.tenant_id} className="mt-1" />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Leave blank to create a tenant role template that can be copied to new tenants.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Permissions Section */}
                         <div className="bg-gray-50 rounded-lg p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-gray-900">Permissions</h3>
-                                <span className="text-xs text-gray-500">
-                                    {roleForm.data.permissions.length} selected
-                                </span>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        type="button"
+                                        onClick={openCreatePermissionModal}
+                                        className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
+                                    >
+                                        <PlusIcon className="h-3 w-3 inline mr-1" />
+                                        Create Custom
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                        {roleForm.data.permissions.length} selected
+                                    </span>
+                                </div>
                             </div>
                             
                             <div className="max-h-64 overflow-y-auto space-y-3">
@@ -907,6 +985,101 @@ export default function Settings({ settings, roles, stats, permissions }) {
                             Cancel
                         </SecondaryButton>
                     </div>
+                </div>
+            </Modal>
+
+            {/* Permission Creation Modal */}
+            <Modal show={showPermissionModal} onClose={() => setShowPermissionModal(false)} maxWidth="lg">
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-semibold text-gray-900">
+                            Create Custom Permission
+                        </h2>
+                        <button
+                            onClick={() => setShowPermissionModal(false)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <XMarkIcon className="h-6 w-6" />
+                        </button>
+                    </div>
+
+                    <form onSubmit={submitPermission} className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="permission_key" value="Permission Key" />
+                            <TextInput
+                                id="permission_key"
+                                type="text"
+                                value={permissionForm.data.key}
+                                className="mt-1 block w-full text-sm"
+                                onChange={(e) => permissionForm.setData('key', e.target.value)}
+                                placeholder="e.g. manage_custom_feature"
+                            />
+                            <InputError message={permissionForm.errors.key} className="mt-1" />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Use lowercase letters, numbers, and underscores only
+                            </p>
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="permission_label" value="Display Label" />
+                            <TextInput
+                                id="permission_label"
+                                type="text"
+                                value={permissionForm.data.label}
+                                className="mt-1 block w-full text-sm"
+                                onChange={(e) => permissionForm.setData('label', e.target.value)}
+                                placeholder="e.g. Manage Custom Feature"
+                            />
+                            <InputError message={permissionForm.errors.label} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="permission_description" value="Description" />
+                            <textarea
+                                id="permission_description"
+                                value={permissionForm.data.description}
+                                onChange={(e) => permissionForm.setData('description', e.target.value)}
+                                className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                rows={2}
+                                placeholder="Describe what this permission allows..."
+                            />
+                            <InputError message={permissionForm.errors.description} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="permission_category" value="Category" />
+                            <select
+                                id="permission_category"
+                                value={permissionForm.data.category}
+                                onChange={(e) => permissionForm.setData('category', e.target.value)}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                            >
+                                {Object.keys(availablePermissions).map((category) => (
+                                    <option key={category} value={category}>
+                                        {category}
+                                    </option>
+                                ))}
+                                <option value="Custom">Custom</option>
+                            </select>
+                            <InputError message={permissionForm.errors.category} className="mt-1" />
+                        </div>
+
+                        <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+                            <SecondaryButton onClick={() => setShowPermissionModal(false)} className="text-sm">
+                                Cancel
+                            </SecondaryButton>
+                            <PrimaryButton disabled={creatingCustomPermission} className="text-sm">
+                                {creatingCustomPermission ? (
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                        Creating...
+                                    </div>
+                                ) : (
+                                    'Create Permission'
+                                )}
+                            </PrimaryButton>
+                        </div>
+                    </form>
                 </div>
             </Modal>
         </AuthenticatedLayout>

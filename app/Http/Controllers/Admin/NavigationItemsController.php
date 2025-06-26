@@ -209,11 +209,65 @@ class NavigationItemsController extends Controller
     /**
      * Get available permissions for frontend
      */
-    public function permissions()
+    public function permissions(Request $request)
     {
+        $tenantId = $request->get('tenant_id');
+        
+        // Get all permissions
+        $allPermissions = Permission::getGroupedPermissions();
+        
+        if ($tenantId) {
+            // Filter permissions to only show tenant-relevant ones
+            $tenantRelevantPermissions = $this->filterTenantPermissions($allPermissions);
+            
+            return response()->json([
+                'success' => true,
+                'permissions' => $tenantRelevantPermissions,
+                'tenant_id' => $tenantId,
+            ]);
+        }
+        
+        // Return all permissions if no tenant context
         return response()->json([
             'success' => true,
-            'permissions' => Permission::getGroupedPermissions(),
+            'permissions' => $allPermissions,
         ]);
+    }
+    
+    /**
+     * Filter permissions to only show those relevant to tenants
+     */
+    private function filterTenantPermissions(array $allPermissions): array
+    {
+        $tenantRelevantPermissions = [];
+        
+        foreach ($allPermissions as $category => $permissions) {
+            $filteredPermissions = [];
+            
+            foreach ($permissions as $key => $permission) {
+                // Exclude system-level permissions that shouldn't be available to tenant users
+                if (!in_array($key, [
+                    Permission::MANAGE_TENANTS,
+                    Permission::MANAGE_SYSTEM_SETTINGS,
+                    Permission::VIEW_SYSTEM_ANALYTICS,
+                    Permission::IMPERSONATE_USERS,
+                    Permission::VIEW_ALL_DATA,
+                    Permission::EXPORT_SYSTEM_DATA,
+                    Permission::MANAGE_SYSTEM_BACKUPS,
+                    Permission::MANAGE_CENTRAL_USERS,
+                    Permission::CREATE_TENANTS,
+                    Permission::DELETE_TENANTS,
+                ])) {
+                    $filteredPermissions[$key] = $permission;
+                }
+            }
+            
+            // Only include categories that have remaining permissions
+            if (!empty($filteredPermissions)) {
+                $tenantRelevantPermissions[$category] = $filteredPermissions;
+            }
+        }
+        
+        return $tenantRelevantPermissions;
     }
 } 

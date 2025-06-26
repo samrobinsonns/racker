@@ -142,6 +142,7 @@ class CentralAdminController extends Controller
             'roles' => Role::with('tenant')->withCount('users')->get(),
             'stats' => $stats,
             'permissions' => $formattedPermissions,
+            'tenants' => Tenant::get(['id', 'data']),
         ]);
     }
 
@@ -318,7 +319,7 @@ class CentralAdminController extends Controller
     // Role Management Methods
     public function storeRole(Request $request)
     {
-        $tenantId = $request->type === 'tenant' ? null : null; // Template for tenant roles
+        $tenantId = $request->type === 'central' ? null : $request->tenant_id;
         
         $request->validate([
             'name' => [
@@ -332,16 +333,24 @@ class CentralAdminController extends Controller
             'display_name' => 'required|string|max:255',
             'description' => 'required|string|max:500',
             'type' => 'required|in:central,tenant',
+            'tenant_id' => 'nullable|exists:tenants,id',
             'permissions' => 'array',
             'permissions.*' => 'string',
         ]);
+
+        // Validate tenant assignment
+        if ($request->type === 'central' && $request->tenant_id) {
+            return redirect()->back()
+                ->withErrors(['tenant_id' => 'Central roles cannot be assigned to specific tenants.'])
+                ->withInput();
+        }
 
         $role = Role::create([
             'name' => $request->name,
             'display_name' => $request->display_name,
             'description' => $request->description,
             'type' => $request->type,
-            'tenant_id' => $request->type === 'tenant' ? null : null, // Template for tenant roles
+            'tenant_id' => $tenantId,
             'permissions' => $request->permissions ?? [],
         ]);
 
@@ -351,32 +360,43 @@ class CentralAdminController extends Controller
 
     public function updateRole(Request $request, Role $role)
     {
+        $tenantId = $request->type === 'central' ? null : $request->tenant_id;
+        
         $request->validate([
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                \Illuminate\Validation\Rule::unique('roles')->ignore($role->id)->where(function ($query) use ($role) {
-                    return $query->where('tenant_id', $role->tenant_id);
+                \Illuminate\Validation\Rule::unique('roles')->ignore($role->id)->where(function ($query) use ($tenantId) {
+                    return $query->where('tenant_id', $tenantId);
                 })
             ],
             'display_name' => 'required|string|max:255',
             'description' => 'required|string|max:500',
             'type' => 'required|in:central,tenant',
+            'tenant_id' => 'nullable|exists:tenants,id',
             'permissions' => 'array',
             'permissions.*' => 'string',
         ]);
+
+        // Validate tenant assignment
+        if ($request->type === 'central' && $request->tenant_id) {
+            return redirect()->back()
+                ->withErrors(['tenant_id' => 'Central roles cannot be assigned to specific tenants.'])
+                ->withInput();
+        }
 
         $role->update([
             'name' => $request->name,
             'display_name' => $request->display_name,
             'description' => $request->description,
             'type' => $request->type,
+            'tenant_id' => $tenantId,
             'permissions' => $request->permissions ?? [],
         ]);
 
         // Clear permission cache for all users with this role
-        $permissionService = app(PermissionService::class);
+        $permissionService = app(\App\Services\PermissionService::class);
         foreach ($role->users as $user) {
             $permissionService->clearUserPermissionCache($user, $user->tenant_id);
         }
@@ -403,5 +423,41 @@ class CentralAdminController extends Controller
 
         return redirect()->route('central-admin.settings')
             ->with('success', 'Role deleted successfully.');
+    }
+
+    // Permission Management Methods
+    public function storePermission(Request $request)
+    {
+        $request->validate([
+            'key' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-z0-9_]+$/', // Only lowercase, numbers, and underscores
+                'unique:custom_permissions,key'
+            ],
+            'label' => 'required|string|max:255',
+            'description' => 'required|string|max:500',
+            'category' => 'required|string|max:255',
+        ]);
+
+        // Check if permission key conflicts with existing enum permissions
+        $existingPermissions = \App\Enums\Permission::getAllPermissions();
+        if (in_array($request->key, $existingPermissions)) {
+            return redirect()->back()
+                ->withErrors(['key' => 'This permission key conflicts with an existing system permission.'])
+                ->withInput();
+        }
+
+        \App\Models\CustomPermission::create([
+            'key' => $request->key,
+            'label' => $request->label,
+            'description' => $request->description,
+            'category' => $request->category,
+            'created_by_user_id' => auth()->id(),
+        ]);
+
+        return redirect()->route('central-admin.settings')
+            ->with('success', 'Custom permission created successfully.');
     }
 }

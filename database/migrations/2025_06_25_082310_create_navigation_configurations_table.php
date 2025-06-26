@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('navigation_configurations', function (Blueprint $table) {
+        if (!Schema::hasTable('navigation_configurations')) {
+            Schema::create('navigation_configurations', function (Blueprint $table) {
             $table->id();
             $table->string('tenant_id')->index();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade'); // null = tenant-wide config
@@ -32,7 +33,8 @@ return new class extends Migration
             $table->index(['tenant_id', 'is_active']);
             $table->index(['tenant_id', 'user_id', 'is_active']);
             $table->index(['tenant_id', 'role_id', 'is_active']);
-        });
+            });
+        }
     }
 
     /**

@@ -888,6 +888,7 @@ export default function Builder({
                 show={showCustomPagesModal}
                 onClose={() => setShowCustomPagesModal(false)}
                 onSuccess={handleCustomPageSuccess}
+                tenantId={tenant.id}
             />
         </CentralAdminLayout>
     );

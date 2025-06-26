@@ -49,3 +49,9 @@ Route::get('/user_directory', function () {
         'pageTitle' => 'User Directory'
     ]);
 })->middleware('auth')->name('tenant.user_directory');
+// Auto-generated route for: TestPage
+Route::get('/testpage', function () {
+    return Inertia::render('Testpage/Testpage', [
+        'pageTitle' => 'TestPage'
+    ]);
+})->middleware('auth')->name('tenant.testpage');
