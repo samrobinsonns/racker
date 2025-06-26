@@ -36,6 +36,16 @@ class NavigationItemsSeeder extends Seeder
                 'sort_order' => 2,
                 'description' => 'User profile management',
             ],
+            [
+                'key' => 'messages',
+                'label' => 'Messages',
+                'icon' => 'ChatBubbleLeftRightIcon',
+                'route_name' => 'messages',
+                'permission_required' => Permission::VIEW_TENANT_DATA,
+                'category' => NavigationItem::CATEGORY_CORE,
+                'sort_order' => 3,
+                'description' => 'Real-time messaging and conversations',
+            ],
 
             // Administrative Items
             [

@@ -258,6 +258,7 @@ export default function AuthenticatedLayout({ header, children }) {
         if (isCentralAdmin) {
             return [
                 { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
+                { name: 'Messages', href: route('messages'), icon: HeroIcons.ChatBubbleLeftRightIcon },
                 { name: 'Tenants', href: route('central-admin.tenants.index'), icon: BuildingOfficeIcon },
                 { name: 'All Users', href: route('central-admin.users.index'), icon: UsersIcon },
                 { name: 'Settings', href: route('central-admin.settings'), icon: Cog6ToothIcon },
@@ -265,6 +266,7 @@ export default function AuthenticatedLayout({ header, children }) {
         } else if (isTenantAdmin) {
             return [
                 { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon },
+                { name: 'Messages', href: route('messages'), icon: HeroIcons.ChatBubbleLeftRightIcon },
                 { name: 'Users', href: route('tenant-admin.users.index'), icon: UsersIcon },
                 { name: 'Settings', href: route('tenant-admin.settings'), icon: Cog6ToothIcon },
             ];
@@ -534,6 +536,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Dashboard
                                         </NavLink>
+                                        <NavLink
+                                            href={route('messages')}
+                                            active={route().current('messages')}
+                                        >
+                                            Messages
+                                        </NavLink>
                                     </div>
                                 )}
                             </div>
@@ -647,6 +655,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current('dashboard')}
                                 >
                                     Dashboard
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('messages')}
+                                    active={route().current('messages')}
+                                >
+                                    Messages
                                 </ResponsiveNavLink>
                             </div>
 

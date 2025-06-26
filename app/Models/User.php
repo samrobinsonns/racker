@@ -64,6 +64,29 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 
+    // Messaging relationships
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_participants')
+                    ->withPivot(['joined_at', 'last_read_at', 'role'])
+                    ->withTimestamps();
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    public function conversationParticipants()
+    {
+        return $this->hasMany(ConversationParticipant::class);
+    }
+
+    public function createdConversations()
+    {
+        return $this->hasMany(Conversation::class, 'created_by');
+    }
+
     // Get roles for specific tenant
     public function rolesForTenant($tenantId = null)
     {

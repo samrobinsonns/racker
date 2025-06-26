@@ -1,0 +1,47 @@
+[90m= [39m[34;4mIlluminate\Database\Eloquent\Collection[39;24m {#6413
+    [34mall[39m: [
+      [34;4mApp\Models\User[39;24m {#6436
+        [34mid[39m: [35m3[39m,
+        [34mtenant_id[39m: "[32m897ef1f3-5286-4da5-b761-01137e81bc53[39m",
+        [34mname[39m: "[32mCCS Admin[39m",
+        [34memail[39m: "[32mccs@ccs.com[39m",
+        [34memail_verified_at[39m: [36mnull[39m,
+        [34mis_central_admin[39m: [35m0[39m,
+        #[33mpassword[39m: "[32m$2y$12$yt4fao1kSqb.1IKyH9ewBO.t8jjP3gM0L8OstpsWGmEg5I5w6Ux86[39m",
+        #[33mremember_token[39m: [36mnull[39m,
+        [34mcreated_at[39m: "[32m2025-06-25 17:12:54[39m",
+        [34mupdated_at[39m: "[32m2025-06-25 17:12:54[39m",
+        [34mpivot[39m: [34;4mIlluminate\Database\Eloquent\Relations\Pivot[39;24m {#6414
+          [34mconversation_id[39m: [35m1[39m,
+          [34muser_id[39m: [35m3[39m,
+          [34mjoined_at[39m: "[32m2025-06-26 19:42:19[39m",
+          [34mlast_read_at[39m: "[32m2025-06-26 20:05:13[39m",
+          [34mrole[39m: "[32madmin[39m",
+          [34mcreated_at[39m: "[32m2025-06-26 19:42:19[39m",
+          [34mupdated_at[39m: "[32m2025-06-26 20:05:13[39m",
+        },
+      },
+      [34;4mApp\Models\User[39;24m {#6430
+        [34mid[39m: [35m4[39m,
+        [34mtenant_id[39m: "[32m897ef1f3-5286-4da5-b761-01137e81bc53[39m",
+        [34mname[39m: "[32mTest[39m",
+        [34memail[39m: "[32mjohn@doe.com[39m",
+        [34memail_verified_at[39m: [36mnull[39m,
+        [34mis_central_admin[39m: [35m0[39m,
+        #[33mpassword[39m: "[32m$2y$12$vC9PVEYhAyFFlTjPBc5aQ.tulNGBroAqxenhGfJGggpt11hi5pOP6[39m",
+        #[33mremember_token[39m: [36mnull[39m,
+        [34mcreated_at[39m: "[32m2025-06-26 19:15:10[39m",
+        [34mupdated_at[39m: "[32m2025-06-26 19:15:10[39m",
+        [34mpivot[39m: [34;4mIlluminate\Database\Eloquent\Relations\Pivot[39;24m {#6418
+          [34mconversation_id[39m: [35m1[39m,
+          [34muser_id[39m: [35m4[39m,
+          [34mjoined_at[39m: "[32m2025-06-26 19:42:19[39m",
+          [34mlast_read_at[39m: "[32m2025-06-26 20:07:04[39m",
+          [34mrole[39m: "[32mmember[39m",
+          [34mcreated_at[39m: "[32m2025-06-26 19:42:19[39m",
+          [34mupdated_at[39m: "[32m2025-06-26 20:07:04[39m",
+        },
+      },
+    ],
+  }
+

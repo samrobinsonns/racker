@@ -19,3 +19,16 @@ Route::get('/testpage', function () {
         'pageTitle' => 'TestPage'
     ]);
 })->middleware('auth')->name('tenant.testpage');
+// Auto-generated route for: Bogdan
+Route::get('/bogdan', function () {
+    $user = auth()->user();
+    $tenant = $user->tenant;
+    
+    return Inertia::render('Bogdan/Bogdan', [
+        'pageTitle' => 'Bogdan',
+        'stats' => [
+            'tenant_id' => $user->tenant_id,
+            'tenant_name' => $tenant?->name ?? 'Your Organization',
+        ],
+    ]);
+})->middleware('auth')->name('tenant.bogdan');
