@@ -4,50 +4,78 @@ import Modal from '@/Components/Modal';
 import * as HeroIcons from '@heroicons/react/24/outline';
 
 const ICON_CATEGORIES = {
-    'Navigation': [
-        'HomeIcon', 'FolderIcon', 'DocumentIcon', 'ChartBarIcon', 'Cog6ToothIcon', 
-        'UserIcon', 'UsersIcon', 'BuildingOfficeIcon', 'MapIcon', 'GlobeAltIcon',
-        'ArrowRightIcon', 'ChevronRightIcon', 'Bars3Icon', 'EllipsisHorizontalIcon'
+    'Popular': [
+        'BuildingOfficeIcon', 'BuildingOffice2Icon', 'HomeIcon', 'ChartBarIcon', 'UsersIcon', 
+        'CogIcon', 'DocumentIcon', 'BriefcaseIcon', 'GlobeAltIcon', 'ShieldCheckIcon',
+        'CurrencyDollarIcon', 'ChartPieIcon', 'TrendingUpIcon', 'UserGroupIcon', 'ServerIcon'
     ],
-    'Business': [
-        'BriefcaseIcon', 'CurrencyDollarIcon', 'ChartPieIcon', 'TrendingUpIcon', 'TrendingDownIcon',
-        'BanknotesIcon', 'CreditCardIcon', 'ScaleIcon', 'ShoppingCartIcon',
-        'TruckIcon', 'BuildingStorefrontIcon', 'PresentationChartLineIcon', 'ClipboardDocumentListIcon'
+    'Buildings & Places': [
+        'BuildingOfficeIcon', 'BuildingOffice2Icon', 'BuildingStorefrontIcon', 'BuildingLibraryIcon',
+        'HomeIcon', 'HomeModernIcon', 'MapIcon', 'MapPinIcon', 'GlobeAltIcon', 'GlobeAmericasIcon',
+        'GlobeAsiaAustraliaIcon', 'GlobeEuropeAfricaIcon', 'FlagIcon', 'BeakerIcon', 'AcademicCapIcon'
+    ],
+    'Business & Finance': [
+        'BriefcaseIcon', 'CurrencyDollarIcon', 'CurrencyEuroIcon', 'CurrencyPoundIcon', 'CurrencyYenIcon',
+        'BanknotesIcon', 'CreditCardIcon', 'CalculatorIcon', 'ScaleIcon', 'ReceiptPercentIcon',
+        'ReceiptRefundIcon', 'ShoppingBagIcon', 'ShoppingCartIcon', 'TruckIcon', 'ClipboardDocumentCheckIcon',
+        'ClipboardDocumentListIcon', 'PresentationChartBarIcon', 'PresentationChartLineIcon'
+    ],
+    'Analytics & Charts': [
+        'ChartBarIcon', 'ChartBarSquareIcon', 'ChartPieIcon', 'PresentationChartBarIcon', 'PresentationChartLineIcon',
+        'TrendingUpIcon', 'TrendingDownIcon', 'ArrowTrendingUpIcon', 'ArrowTrendingDownIcon', 'FunnelIcon',
+        'TableCellsIcon', 'QueueListIcon', 'ListBulletIcon', 'Squares2X2Icon', 'SquaresPlusIcon'
     ],
     'People & Teams': [
-        'UserIcon', 'UsersIcon', 'UserGroupIcon', 'UserCircleIcon', 'IdentificationIcon',
-        'AcademicCapIcon', 'HandRaisedIcon', 'HeartIcon', 'ChatBubbleLeftRightIcon', 'PhoneIcon',
-        'EnvelopeIcon', 'AtSymbolIcon', 'MegaphoneIcon', 'SpeakerWaveIcon'
+        'UserIcon', 'UsersIcon', 'UserGroupIcon', 'UserCircleIcon', 'UserPlusIcon', 'UserMinusIcon',
+        'IdentificationIcon', 'AcademicCapIcon', 'HandRaisedIcon', 'HeartIcon', 'FaceSmileIcon',
+        'ChatBubbleLeftRightIcon', 'PhoneIcon', 'EnvelopeIcon', 'AtSymbolIcon', 'MegaphoneIcon', 
+        'SpeakerWaveIcon', 'CommandLineIcon'
     ],
-    'Technology': [
-        'ComputerDesktopIcon', 'DevicePhoneMobileIcon', 'ServerIcon', 'CloudIcon', 'WifiIcon',
-        'CpuChipIcon', 'CommandLineIcon', 'CodeBracketIcon', 'BugAntIcon',
-        'WrenchScrewdriverIcon', 'CogIcon', 'Cog6ToothIcon'
+    'Technology & Tools': [
+        'ComputerDesktopIcon', 'DevicePhoneMobileIcon', 'DeviceTabletIcon', 'ServerIcon', 'CloudIcon', 
+        'CloudArrowUpIcon', 'CloudArrowDownIcon', 'WifiIcon', 'CpuChipIcon', 'CommandLineIcon', 
+        'CodeBracketIcon', 'CodeBracketSquareIcon', 'BugAntIcon', 'WrenchScrewdriverIcon', 'CogIcon', 
+        'Cog6ToothIcon', 'Cog8ToothIcon', 'RocketLaunchIcon', 'CircuitBoardIcon'
+    ],
+    'Security & Protection': [
+        'ShieldCheckIcon', 'ShieldExclamationIcon', 'LockClosedIcon', 'LockOpenIcon', 'KeyIcon',
+        'FingerPrintIcon', 'EyeIcon', 'EyeSlashIcon', 'NoSymbolIcon', 'ExclamationTriangleIcon',
+        'FireIcon', 'BoltIcon', 'MagnifyingGlassIcon', 'DocumentMagnifyingGlassIcon'
     ],
     'Communication': [
-        'ChatBubbleLeftIcon', 'ChatBubbleLeftRightIcon', 'EnvelopeIcon', 'PhoneIcon', 'VideoCameraIcon',
-        'MicrophoneIcon', 'SpeakerWaveIcon', 'BellIcon', 'MegaphoneIcon',
-        'SignalIcon', 'WifiIcon', 'GlobeAltIcon', 'ShareIcon'
+        'ChatBubbleLeftIcon', 'ChatBubbleLeftRightIcon', 'ChatBubbleOvalLeftIcon', 'ChatBubbleOvalLeftEllipsisIcon',
+        'EnvelopeIcon', 'EnvelopeOpenIcon', 'InboxIcon', 'InboxArrowDownIcon', 'PhoneIcon', 'DevicePhoneMobileIcon',
+        'VideoCameraIcon', 'MicrophoneIcon', 'SpeakerWaveIcon', 'BellIcon', 'BellAlertIcon', 'BellSlashIcon',
+        'MegaphoneIcon', 'SignalIcon', 'WifiIcon', 'ShareIcon', 'LinkIcon', 'PaperAirplaneIcon'
     ],
-    'Files & Content': [
-        'DocumentIcon', 'DocumentTextIcon', 'ClipboardDocumentIcon', 'FolderIcon', 'FolderOpenIcon',
-        'ArchiveBoxIcon', 'InboxIcon', 'PaperClipIcon', 'PhotoIcon', 'FilmIcon',
-        'MusicalNoteIcon', 'DocumentArrowDownIcon', 'DocumentArrowUpIcon', 'CloudArrowUpIcon'
+    'Files & Documents': [
+        'DocumentIcon', 'DocumentTextIcon', 'DocumentDuplicateIcon', 'DocumentArrowUpIcon', 'DocumentArrowDownIcon',
+        'DocumentChartBarIcon', 'DocumentCheckIcon', 'DocumentMinusIcon', 'DocumentPlusIcon', 'ClipboardIcon',
+        'ClipboardDocumentIcon', 'ClipboardDocumentCheckIcon', 'ClipboardDocumentListIcon', 'FolderIcon', 
+        'FolderOpenIcon', 'FolderPlusIcon', 'FolderMinusIcon', 'ArchiveBoxIcon', 'ArchiveBoxArrowDownIcon',
+        'PaperClipIcon', 'BookOpenIcon', 'NewspaperIcon'
     ],
-    'Actions': [
-        'PlusIcon', 'MinusIcon', 'XMarkIcon', 'CheckIcon', 'PencilIcon', 'TrashIcon',
-        'EyeIcon', 'EyeSlashIcon', 'LockClosedIcon', 'LockOpenIcon', 'KeyIcon', 'ShieldCheckIcon',
-        'ArrowPathIcon', 'MagnifyingGlassIcon', 'FunnelIcon'
+    'Media & Creative': [
+        'PhotoIcon', 'CameraIcon', 'FilmIcon', 'VideoCameraIcon', 'VideoCameraSlashIcon', 'PlayIcon',
+        'PauseIcon', 'StopIcon', 'SpeakerWaveIcon', 'SpeakerXMarkIcon', 'MusicalNoteIcon', 'MicrophoneIcon',
+        'PaintBrushIcon', 'SwatchIcon', 'ColorSwatchIcon', 'SparklesIcon', 'StarIcon', 'SunIcon', 'MoonIcon'
     ],
-    'Status & Alerts': [
+    'Navigation & Actions': [
+        'HomeIcon', 'ArrowRightIcon', 'ArrowLeftIcon', 'ArrowUpIcon', 'ArrowDownIcon', 'ChevronRightIcon', 
+        'ChevronLeftIcon', 'ChevronUpIcon', 'ChevronDownIcon', 'ChevronDoubleRightIcon', 'ChevronDoubleLeftIcon',
+        'Bars3Icon', 'Bars4Icon', 'EllipsisHorizontalIcon', 'EllipsisVerticalIcon', 'PlusIcon', 'MinusIcon',
+        'XMarkIcon', 'CheckIcon', 'PencilIcon', 'PencilSquareIcon', 'TrashIcon', 'ArrowPathIcon'
+    ],
+    'Status & Indicators': [
         'CheckCircleIcon', 'XCircleIcon', 'ExclamationTriangleIcon', 'ExclamationCircleIcon', 'InformationCircleIcon',
-        'BellIcon', 'BellAlertIcon', 'FireIcon', 'BoltIcon', 'SparklesIcon',
-        'StarIcon', 'HeartIcon', 'FlagIcon'
+        'QuestionMarkCircleIcon', 'BellIcon', 'BellAlertIcon', 'FireIcon', 'BoltIcon', 'SparklesIcon',
+        'StarIcon', 'HeartIcon', 'FlagIcon', 'ClockIcon', 'CalendarIcon', 'CalendarDaysIcon',
+        'SignalIcon', 'SignalSlashIcon', 'WifiIcon', 'NoSymbolIcon'
     ]
 };
 
 export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon }) {
-    const [selectedCategory, setSelectedCategory] = useState('Navigation');
+    const [selectedCategory, setSelectedCategory] = useState('Popular');
 
     const handleIconSelect = (iconName) => {
         onSelectIcon(iconName);
@@ -60,7 +88,7 @@ export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon 
     };
 
     return (
-        <Modal show={isOpen} onClose={onClose} maxWidth="3xl">
+        <Modal show={isOpen} onClose={onClose} maxWidth="4xl">
             <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -85,7 +113,7 @@ export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon 
                             <div className="mr-3 text-blue-600">
                                 {renderIcon(currentIcon)}
                             </div>
-                            <span>Current icon: {currentIcon}</span>
+                            <span>Current icon: <strong>{currentIcon.replace('Icon', '')}</strong></span>
                         </div>
                     </div>
                 )}
@@ -111,7 +139,7 @@ export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon 
 
                 {/* Icon Grid */}
                 <div className="max-h-96 overflow-y-auto">
-                    <div className="grid grid-cols-6 gap-3">
+                    <div className="grid grid-cols-8 gap-2">
                         {ICON_CATEGORIES[selectedCategory]
                             .filter(iconName => {
                                 const exists = !!HeroIcons[iconName];
@@ -128,7 +156,7 @@ export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon 
                                     key={iconName}
                                     onClick={() => handleIconSelect(iconName)}
                                     className={`
-                                        p-3 flex flex-col items-center justify-center rounded-lg border
+                                        p-2 flex flex-col items-center justify-center rounded-lg border
                                         transition-all duration-150 hover:scale-105 hover:shadow-md
                                         ${currentIcon === iconName 
                                             ? 'bg-blue-100 border-blue-400 text-blue-600' 
@@ -137,9 +165,9 @@ export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon 
                                     `}
                                     title={iconName.replace('Icon', '')}
                                 >
-                                    <IconComponent className="h-6 w-6 mb-1" />
-                                    <span className="text-xs font-medium truncate w-full text-center">
-                                        {iconName.replace('Icon', '')}
+                                    <IconComponent className="h-5 w-5 mb-1" />
+                                    <span className="text-[10px] font-medium truncate w-full text-center leading-tight">
+                                        {iconName.replace('Icon', '').replace(/([A-Z])/g, ' $1').trim()}
                                     </span>
                                 </button>
                             );
@@ -147,8 +175,18 @@ export default function IconPicker({ isOpen, onClose, onSelectIcon, currentIcon 
                     </div>
                 </div>
 
+                {/* Search Tip */}
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-start">
+                        <HeroIcons.LightBulbIcon className="h-4 w-4 text-amber-500 mr-2 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-gray-600">
+                            <strong>Tip:</strong> Can't find what you're looking for? Try the "{selectedCategory === 'Popular' ? 'Buildings & Places' : 'Popular'}" category or browse through the other categories for more options.
+                        </div>
+                    </div>
+                </div>
+
                 {/* Quick Actions */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
                         <button
                             onClick={() => handleIconSelect('')}

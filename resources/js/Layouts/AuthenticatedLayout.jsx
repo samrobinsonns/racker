@@ -75,8 +75,23 @@ function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={`group flex items-center px-2 py-1 text-sm transition-colors duration-150 rounded-md ${
-                                            themeConfig ? `text-gray-600 hover:text-${themeConfig.primary}-600 hover:bg-gray-50` : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                                            themeConfig?.customColor ? 'text-gray-600 hover:bg-gray-50' : 
+                                            themeConfig ? `text-gray-600 hover:text-${themeConfig.primary}-600 hover:bg-gray-50` : 
+                                            'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                                         }`}
+                                        style={themeConfig?.customColor ? { 
+                                            '--hover-color': themeConfig.customColor 
+                                        } : {}}
+                                        onMouseEnter={(e) => {
+                                            if (themeConfig?.customColor) {
+                                                e.target.style.color = themeConfig.customColor;
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (themeConfig?.customColor) {
+                                                e.target.style.color = '#4b5563'; // text-gray-600
+                                            }
+                                        }}
                                     >
                                         {ChildIcon && <ChildIcon className="mr-2 h-4 w-4 flex-shrink-0" />}
                                         {child.name}
@@ -89,8 +104,23 @@ function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }
                                     key={child.name}
                                     href={child.href || '#'}
                                     className={`group flex items-center px-2 py-1 text-sm transition-colors duration-150 rounded-md ${
-                                        themeConfig ? `text-gray-600 hover:text-${themeConfig.primary}-600 hover:bg-gray-50` : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                                        themeConfig?.customColor ? 'text-gray-600 hover:bg-gray-50' : 
+                                        themeConfig ? `text-gray-600 hover:text-${themeConfig.primary}-600 hover:bg-gray-50` : 
+                                        'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                                     }`}
+                                    style={themeConfig?.customColor ? { 
+                                        '--hover-color': themeConfig.customColor 
+                                    } : {}}
+                                    onMouseEnter={(e) => {
+                                        if (themeConfig?.customColor) {
+                                            e.target.style.color = themeConfig.customColor;
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (themeConfig?.customColor) {
+                                            e.target.style.color = '#4b5563'; // text-gray-600
+                                        }
+                                    }}
                                 >
                                     {ChildIcon && <ChildIcon className="mr-2 h-4 w-4 flex-shrink-0" />}
                                     {child.name}
@@ -120,14 +150,22 @@ function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }
     }
     
     // Regular link item
+    const isActive = isCurrentRoute(item.href);
+    
     return (
         <Link
             href={item.href}
             className={`${
-                isCurrentRoute(item.href)
+                isActive && themeConfig?.customColor
+                    ? 'bg-gray-100 border-r-2 font-medium'
+                    : isActive
                     ? themeConfig.activeColor
                     : 'text-gray-700 hover:bg-gray-50'
             } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-150`}
+            style={isActive && themeConfig?.customColor ? {
+                color: themeConfig.customColor,
+                borderRightColor: themeConfig.customColor
+            } : {}}
         >
             <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
             {item.name}
@@ -236,6 +274,9 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Theme configuration based on user type
     const getThemeConfig = () => {
+        // Get custom branding from user navigation
+        const customBranding = user.navigation_branding || {};
+        
         if (isCentralAdmin) {
             return {
                 primary: 'indigo',
@@ -244,20 +285,47 @@ export default function AuthenticatedLayout({ header, children }) {
                 hoverColor: 'hover:bg-indigo-700',
                 activeColor: 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-500',
                 title: 'Central Admin',
+                subtitle: '',
                 icon: BuildingOfficeIcon,
+                logoUrl: null,
+                customColor: null,
                 navigation: getAdminNavigation()
             };
-        } else if (isTenantAdmin) {
-            return {
-                primary: 'emerald',
-                bgColor: 'bg-emerald-500',
-                textColor: 'text-emerald-600',
-                hoverColor: 'hover:bg-emerald-700',
-                activeColor: 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-500',
-                title: 'Tenant Admin',
-                icon: BuildingOffice2Icon,
-                navigation: getAdminNavigation()
-            };
+        } else if (isTenantAdmin || user?.tenant_id) {
+            // Check if we have a custom hex color
+            const hasCustomColor = customBranding.primaryColor && customBranding.primaryColor.startsWith('#');
+            
+            if (hasCustomColor) {
+                return {
+                    primary: 'custom',
+                    customColor: customBranding.primaryColor,
+                    title: customBranding.title || stats?.tenant_name || 'Tenant Portal',
+                    subtitle: customBranding.subtitle || '',
+                    icon: customBranding.logoType === 'icon' 
+                        ? getIconComponent(customBranding.logo) || BuildingOffice2Icon
+                        : BuildingOffice2Icon,
+                    logoUrl: customBranding.logoType === 'image' ? customBranding.logoUrl : null,
+                    navigation: getAdminNavigation()
+                };
+            } else {
+                // Fallback to named colors for backwards compatibility
+                const primaryColor = customBranding.primaryColor || 'emerald';
+                return {
+                    primary: primaryColor,
+                    bgColor: `bg-${primaryColor}-500`,
+                    textColor: `text-${primaryColor}-600`,
+                    hoverColor: `hover:bg-${primaryColor}-700`,
+                    activeColor: `bg-${primaryColor}-100 text-${primaryColor}-700 border-r-2 border-${primaryColor}-500`,
+                    title: customBranding.title || stats?.tenant_name || 'Tenant Portal',
+                    subtitle: customBranding.subtitle || '',
+                    icon: customBranding.logoType === 'icon' 
+                        ? getIconComponent(customBranding.logo) || BuildingOffice2Icon
+                        : BuildingOffice2Icon,
+                    logoUrl: customBranding.logoType === 'image' ? customBranding.logoUrl : null,
+                    customColor: null,
+                    navigation: getAdminNavigation()
+                };
+            }
         }
         return null;
     };
@@ -313,11 +381,28 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
                         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
                         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-                            <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
-                                <div className="flex items-center">
+                                                    <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
+                            <div className="flex items-center">
+                                {themeConfig.logoUrl ? (
+                                    <img 
+                                        src={themeConfig.logoUrl} 
+                                        alt="Logo" 
+                                        className="h-8 w-8 mr-2 object-contain" 
+                                    />
+                                ) : (
                                     <themeConfig.icon className={`h-8 w-8 ${themeConfig.textColor} mr-2`} />
-                                    <span className={`text-lg font-bold ${themeConfig.textColor}`}>{themeConfig.title}</span>
+                                )}
+                                <div className="flex flex-col">
+                                    <span className={`text-lg font-bold ${themeConfig.textColor}`}>
+                                        {themeConfig.title}
+                                    </span>
+                                    {themeConfig.subtitle && (
+                                        <span className={`text-xs ${themeConfig.textColor} opacity-75`}>
+                                            {themeConfig.subtitle}
+                                        </span>
+                                    )}
                                 </div>
+                            </div>
                                 <button
                                     type="button"
                                     className="text-gray-400 hover:text-gray-600"
@@ -350,8 +435,51 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
                         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
                             <div className="flex h-16 flex-shrink-0 items-center px-4 border-b">
-                                <themeConfig.icon className={`h-8 w-8 ${themeConfig.textColor} mr-2`} />
-                                <span className={`text-lg font-bold ${themeConfig.textColor}`}>{themeConfig.title}</span>
+                                {themeConfig.logoUrl ? (
+                                    <img 
+                                        src={themeConfig.logoUrl} 
+                                        alt="Logo" 
+                                        className="h-8 w-8 mr-2 object-contain" 
+                                    />
+                                ) : themeConfig.customColor ? (
+                                    <themeConfig.icon 
+                                        className="h-8 w-8 mr-2" 
+                                        style={{ color: themeConfig.customColor }}
+                                    />
+                                ) : (
+                                    <themeConfig.icon className={`h-8 w-8 ${themeConfig.textColor} mr-2`} />
+                                )}
+                                <div className="flex flex-col">
+                                    {themeConfig.customColor ? (
+                                        <>
+                                            <span 
+                                                className="text-lg font-bold" 
+                                                style={{ color: themeConfig.customColor }}
+                                            >
+                                                {themeConfig.title}
+                                            </span>
+                                            {themeConfig.subtitle && (
+                                                <span 
+                                                    className="text-xs opacity-75" 
+                                                    style={{ color: themeConfig.customColor }}
+                                                >
+                                                    {themeConfig.subtitle}
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className={`text-lg font-bold ${themeConfig.textColor}`}>
+                                                {themeConfig.title}
+                                            </span>
+                                            {themeConfig.subtitle && (
+                                                <span className={`text-xs ${themeConfig.textColor} opacity-75`}>
+                                                    {themeConfig.subtitle}
+                                                </span>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
                             </div>
                             {(isTenantAdmin || user?.tenant_id) && (
                                 <div className="px-4 py-3 border-b bg-gray-50">

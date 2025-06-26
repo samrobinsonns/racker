@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DraggableNavigationItem from '@/Components/NavigationBuilder/DraggableNavigationItem';
 import ConfigurationsModal from '@/Components/NavigationBuilder/ConfigurationsModal';
 import CustomPagesModal from '@/Components/NavigationBuilder/CustomPagesModal';
+import BrandingEditor from '@/Components/NavigationBuilder/BrandingEditor';
 import { 
     DndContext, 
     closestCenter,
@@ -28,7 +29,8 @@ import {
     CheckCircleIcon,
     ExclamationTriangleIcon,
     FolderOpenIcon,
-    ChevronDownIcon
+    ChevronDownIcon,
+    PaintBrushIcon
 } from '@heroicons/react/24/outline';
 import * as HeroIcons from '@heroicons/react/24/outline';
 
@@ -43,7 +45,15 @@ export default function Builder({
         name: 'New Configuration',
         items: [],
         layout: 'sidebar',
-        theme: 'emerald'
+        theme: 'emerald',
+        branding: {
+            logo: 'BuildingOffice2Icon',
+            logoType: 'icon',
+            title: '',
+            subtitle: '',
+            primaryColor: '#22c55e',
+            logoUrl: null
+        }
     });
     
     const [selectedRoleId, setSelectedRoleId] = useState(null);
@@ -54,6 +64,7 @@ export default function Builder({
     const [notification, setNotification] = useState(null);
     const [showConfigurationsModal, setShowConfigurationsModal] = useState(false);
     const [showCustomPagesModal, setShowCustomPagesModal] = useState(false);
+    const [activeTab, setActiveTab] = useState('items'); // 'items' or 'branding'
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -69,7 +80,15 @@ export default function Builder({
             items: config.configuration.items || [],
             layout: config.configuration.layout || 'sidebar',
             theme: config.configuration.theme || 'emerald',
-            version: config.configuration.version || '1.0'
+            version: config.configuration.version || '1.0',
+            branding: {
+                logo: config.configuration.branding?.logo || 'BuildingOffice2Icon',
+                logoType: config.configuration.branding?.logoType || 'icon',
+                title: config.configuration.branding?.title || '',
+                subtitle: config.configuration.branding?.subtitle || '',
+                primaryColor: config.configuration.branding?.primaryColor || '#22c55e',
+                logoUrl: config.configuration.branding?.logoUrl || null
+            }
         });
         
         if (config.role_id) {
@@ -123,7 +142,15 @@ export default function Builder({
                     ...prev,
                     items: result.navigation.items || [],
                     layout: result.navigation.layout || 'sidebar',
-                    theme: result.navigation.theme || 'emerald'
+                    theme: result.navigation.theme || 'emerald',
+                    branding: {
+                        logo: result.navigation.branding?.logo || 'BuildingOffice2Icon',
+                        logoType: result.navigation.branding?.logoType || 'icon',
+                        title: result.navigation.branding?.title || '',
+                        subtitle: result.navigation.branding?.subtitle || '',
+                        primaryColor: result.navigation.branding?.primaryColor || '#22c55e',
+                        logoUrl: result.navigation.branding?.logoUrl || null
+                    }
                 }));
                 
                 setNotification({
@@ -351,7 +378,8 @@ export default function Builder({
                     items: currentConfig.items,
                     layout: currentConfig.layout,
                     theme: currentConfig.theme,
-                    version: currentConfig.version
+                    version: currentConfig.version,
+                    branding: currentConfig.branding
                 },
                 activate
             };
@@ -558,10 +586,45 @@ export default function Builder({
                                 </button>
                             </div>
                             
-                            <div className="bg-white shadow rounded-lg p-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                    Role Settings
-                                </h3>
+                            <div className="bg-white shadow rounded-lg">
+                                {/* Tab Navigation */}
+                                <div className="border-b border-gray-200">
+                                    <nav className="-mb-px flex">
+                                        <button
+                                            onClick={() => setActiveTab('items')}
+                                            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                                                activeTab === 'items'
+                                                    ? 'border-purple-500 text-purple-600'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center">
+                                                <UserGroupIcon className="h-4 w-4 mr-2" />
+                                                Role Settings
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('branding')}
+                                            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                                                activeTab === 'branding'
+                                                    ? 'border-purple-500 text-purple-600'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center">
+                                                <PaintBrushIcon className="h-4 w-4 mr-2" />
+                                                Branding
+                                            </div>
+                                        </button>
+                                    </nav>
+                                </div>
+
+                                <div className="p-6">
+                                    {activeTab === 'items' && (
+                                        <div>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-4">
+                                                Role Settings
+                                            </h3>
 
                                 {/* Configuration Name */}
                                 <div className="mb-4">
@@ -715,8 +778,22 @@ export default function Builder({
                                         ))}
                                     </div>
                                 </div>
+                                        </div>
+                                    )}
 
-
+                                    {activeTab === 'branding' && (
+                                        <BrandingEditor
+                                            branding={currentConfig.branding}
+                                            onUpdate={(updatedBranding) => 
+                                                setCurrentConfig(prev => ({
+                                                    ...prev, 
+                                                    branding: updatedBranding
+                                                }))
+                                            }
+                                            tenantName={tenant.name}
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -865,6 +942,44 @@ export default function Builder({
                                     )}
                                 </div>
                                 
+                                {/* Branding Preview */}
+                                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                    <div className="text-xs font-medium text-gray-600 mb-3">Navigation Header Preview</div>
+                                    <div className="border border-gray-300 rounded-lg p-3 bg-white flex items-center">
+                                        {currentConfig.branding.logoType === 'image' && currentConfig.branding.logoUrl ? (
+                                            <img 
+                                                src={currentConfig.branding.logoUrl} 
+                                                alt="Logo" 
+                                                className="h-6 w-6 mr-2 object-contain" 
+                                            />
+                                        ) : (
+                                            <div 
+                                                className="h-6 w-6 mr-2 flex items-center justify-center"
+                                                style={{ color: currentConfig.branding.primaryColor || '#22c55e' }}
+                                            >
+                                                {renderIcon(currentConfig.branding.logo, "h-6 w-6") || 
+                                                <HeroIcons.BuildingOffice2Icon className="h-6 w-6" />}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col">
+                                            <span 
+                                                className="text-sm font-bold"
+                                                style={{ color: currentConfig.branding.primaryColor || '#22c55e' }}
+                                            >
+                                                {currentConfig.branding.title || tenant.name || 'Tenant Portal'}
+                                            </span>
+                                            {currentConfig.branding.subtitle && (
+                                                <span 
+                                                    className="text-xs opacity-75"
+                                                    style={{ color: currentConfig.branding.primaryColor || '#22c55e' }}
+                                                >
+                                                    {currentConfig.branding.subtitle}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Configuration Info */}
                                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                                     <div className="text-xs font-medium text-gray-600 mb-1">Configuration</div>

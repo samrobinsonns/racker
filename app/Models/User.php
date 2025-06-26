@@ -131,4 +131,23 @@ class User extends Authenticatable
         }
         return $query->whereNotNull('tenant_id');
     }
+
+    /**
+     * Get the user's data for frontend serialization
+     * Includes navigation items and branding
+     */
+    public function toArrayWithNavigation(): array
+    {
+        $array = $this->toArray();
+        
+        // Add navigation items
+        $array['navigation_items'] = $this->getNavigationItems();
+        
+        // Add navigation branding for tenant users
+        if (!$this->is_central_admin && $this->tenant_id) {
+            $array['navigation_branding'] = $this->getNavigationBranding();
+        }
+        
+        return $array;
+    }
 }

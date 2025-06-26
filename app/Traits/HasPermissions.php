@@ -162,6 +162,8 @@ trait HasPermissions
                 $customNavigation = $navigationService->getNavigationForUser($this);
                 
                 if (!empty($customNavigation['items'])) {
+                    // Store branding information for frontend use
+                    $this->navigation_branding = $customNavigation['branding'] ?? null;
                     return $this->transformNavigationItems($customNavigation['items']);
                 }
             } catch (\Exception $e) {
@@ -172,6 +174,35 @@ trait HasPermissions
 
         // Fallback to default navigation
         return $this->getDefaultNavigation();
+    }
+
+    /**
+     * Get navigation branding configuration
+     */
+    public function getNavigationBranding(): ?array
+    {
+        // Return cached branding if available
+        if (isset($this->navigation_branding)) {
+            return $this->navigation_branding;
+        }
+
+        // For central admin, no custom branding
+        if ($this->is_central_admin) {
+            return null;
+        }
+
+        // For tenant users, get branding from navigation configuration
+        if ($this->tenant_id) {
+            try {
+                $navigationService = app(\App\Services\NavigationService::class);
+                $customNavigation = $navigationService->getNavigationForUser($this);
+                return $customNavigation['branding'] ?? null;
+            } catch (\Exception $e) {
+                \Log::warning('Failed to get navigation branding for user ' . $this->id . ': ' . $e->getMessage());
+            }
+        }
+
+        return null;
     }
 
     /**

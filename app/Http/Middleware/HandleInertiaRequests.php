@@ -42,6 +42,10 @@ class HandleInertiaRequests extends Middleware
             $userWithPermissions->admin_level = $user->getAdminLevel();
             // Add navigation items to the frontend
             $userWithPermissions->navigation_items = $user->getNavigationItems();
+            // Add navigation branding for tenant users
+            if (!$user->is_central_admin && $user->tenant_id) {
+                $userWithPermissions->navigation_branding = $user->getNavigationBranding();
+            }
         }
 
         return [

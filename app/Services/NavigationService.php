@@ -76,7 +76,26 @@ class NavigationService
             'version' => $configuration['version'] ?? '1.0',
             'layout' => $configuration['layout'] ?? 'sidebar',
             'theme' => $configuration['theme'] ?? 'emerald',
+            'branding' => $this->processBranding($configuration['branding'] ?? [], $user),
             'items' => $filteredItems,
+        ];
+    }
+
+    /**
+     * Process branding configuration for the user
+     */
+    private function processBranding(array $branding, User $user): array
+    {
+        // Get tenant information for fallback
+        $tenant = $user->tenant;
+        
+        return [
+            'logo' => $branding['logo'] ?? 'BuildingOffice2Icon',
+            'logoType' => $branding['logoType'] ?? 'icon',
+            'title' => $branding['title'] ?? ($tenant ? $tenant->name : 'Tenant Portal'),
+            'subtitle' => $branding['subtitle'] ?? '',
+            'primaryColor' => $branding['primaryColor'] ?? 'emerald',
+            'logoUrl' => $branding['logoUrl'] ?? null,
         ];
     }
 
