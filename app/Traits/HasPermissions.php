@@ -231,6 +231,12 @@ trait HasPermissions
         if ($this->canAccessTenantAdmin()) {
             $items = array_merge($items, [
                 [
+                    'name' => 'Admin Dashboard',
+                    'route' => 'tenant-admin.dashboard',
+                    'permission' => Permission::MANAGE_TENANT_USERS,
+                    'icon' => 'ChartBarIcon'
+                ],
+                [
                     'name' => 'Manage Users',
                     'route' => 'tenant-admin.users.index',
                     'permission' => Permission::MANAGE_TENANT_USERS,

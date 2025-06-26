@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { 
     BuildingOfficeIcon, 
     UserIcon, 
@@ -18,23 +18,14 @@ export default function Show({ tenant, users }) {
     };
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
-                <div className="flex items-center space-x-4">
-                    <Link
-                        href={route('central-admin.tenants.index')}
-                        className="text-gray-500 hover:text-gray-700 flex items-center"
-                    >
-                        <ArrowLeftIcon className="h-5 w-5 mr-1" />
-                        Back to Tenants
-                    </Link>
-                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                        {tenant.name || 'Unnamed Tenant'}
-                    </h2>
-                </div>
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Tenant: {tenant.data?.name || tenant.id}
+                </h2>
             }
         >
-            <Head title={`Tenant - ${tenant.name || 'Unnamed Tenant'}`} />
+            <Head title={`Tenant - ${tenant.data?.name || 'Unnamed Tenant'}`} />
 
             <div className="space-y-6">
                 {/* Tenant Overview */}
@@ -49,37 +40,37 @@ export default function Show({ tenant, users }) {
                         <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                             <div>
                                 <dt className="text-sm font-medium text-gray-500">Name</dt>
-                                <dd className="mt-1 text-sm text-gray-900">{tenant.name || 'Unnamed Tenant'}</dd>
+                                <dd className="mt-1 text-sm text-gray-900">{tenant.data?.name || 'Unnamed Tenant'}</dd>
                             </div>
                             <div>
                                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                                 <dd className="mt-1">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(tenant.status)}`}>
-                                        {tenant.status || 'active'}
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(tenant.data?.status)}`}>
+                                        {tenant.data?.status || 'active'}
                                     </span>
                                 </dd>
                             </div>
                             <div>
                                 <dt className="text-sm font-medium text-gray-500">Plan</dt>
-                                <dd className="mt-1 text-sm text-gray-900">{tenant.plan || 'basic'}</dd>
+                                <dd className="mt-1 text-sm text-gray-900">{tenant.data?.plan || 'basic'}</dd>
                             </div>
                             <div>
                                 <dt className="text-sm font-medium text-gray-500">Created</dt>
                                 <dd className="mt-1 text-sm text-gray-900">
-                                    {new Date(tenant.created_at).toLocaleDateString()}
+                                    {new Date(tenant.data?.created_at).toLocaleDateString()}
                                 </dd>
                             </div>
                             <div>
                                 <dt className="text-sm font-medium text-gray-500">Tenant ID</dt>
-                                <dd className="mt-1 text-sm text-gray-900 font-mono">{tenant.id}</dd>
+                                <dd className="mt-1 text-sm text-gray-900 font-mono">{tenant.data?.id}</dd>
                             </div>
                             <div>
                                 <dt className="text-sm font-medium text-gray-500">Domain</dt>
                                 <dd className="mt-1 text-sm text-gray-900">
-                                    {tenant.domains && tenant.domains.length > 0 ? (
+                                    {tenant.data?.domains && tenant.data?.domains.length > 0 ? (
                                         <div className="flex items-center">
                                             <GlobeAltIcon className="h-4 w-4 mr-1 text-gray-400" />
-                                            {tenant.domains[0].domain}
+                                            {tenant.data?.domains[0].domain}
                                         </div>
                                     ) : (
                                         'No domain configured'
@@ -163,13 +154,13 @@ export default function Show({ tenant, users }) {
                 {/* Actions */}
                 <div className="flex justify-end space-x-3">
                     <Link
-                        href={route('central-admin.tenants.edit', tenant.id)}
+                        href={route('central-admin.tenants.edit', tenant.data?.id)}
                         className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                         Edit Tenant
                     </Link>
                 </div>
             </div>
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

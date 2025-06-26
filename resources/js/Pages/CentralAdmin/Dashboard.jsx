@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { 
     BuildingOfficeIcon, 
     UsersIcon, 
@@ -57,7 +57,7 @@ export default function Dashboard({ stats }) {
     };
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold leading-tight text-gray-900">
@@ -295,6 +295,6 @@ export default function Dashboard({ stats }) {
                     </div>
                 </div>
             </div>
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

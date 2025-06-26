@@ -1,91 +1,103 @@
-import { Head } from '@inertiajs/react';
-import TenantAdminLayout from '@/Layouts/TenantAdminLayout';
-import { 
-    UsersIcon, 
-    CheckCircleIcon,
-    UserPlusIcon,
+import { Head, Link, usePage } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PermissionGate from '@/Components/PermissionGate';
+import { usePermissions } from '@/Hooks/usePermissions';
+import {
+    UsersIcon,
+    UserGroupIcon,
     ChartBarIcon,
     PlusIcon,
-    EyeIcon,
     ClockIcon,
-    BellIcon,
+    CheckCircleIcon,
+    UserPlusIcon,
     ShieldCheckIcon,
-    EnvelopeIcon 
+    BuildingOffice2Icon,
+    Cog6ToothIcon,
+    EyeIcon,
+    ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
-import { Link } from '@inertiajs/react';
 
-export default function Dashboard({ stats, tenantId }) {
-    const statCards = [
-        {
-            name: 'Total Users',
-            stat: stats.total_users,
-            icon: UsersIcon,
-            change: stats.user_growth?.growth_percentage ? `${stats.user_growth.growth_percentage > 0 ? '+' : ''}${stats.user_growth.growth_percentage}%` : '0%',
-            changeType: stats.user_growth?.trend === 'up' ? 'increase' : stats.user_growth?.trend === 'down' ? 'decrease' : 'neutral',
-            color: 'emerald',
-        },
-        {
-            name: 'Active Users',
-            stat: stats.active_users,
-            icon: CheckCircleIcon,
-            change: `${Math.round((stats.active_users / stats.total_users) * 100) || 0}%`,
-            changeType: 'neutral',
-            color: 'blue',
-        },
-        {
-            name: 'This Month',
-            stat: stats.user_growth?.this_month || 0,
-            icon: UserPlusIcon,
-            change: stats.user_growth?.growth_percentage ? `${stats.user_growth.growth_percentage > 0 ? '+' : ''}${stats.user_growth.growth_percentage}%` : '0%',
-            changeType: stats.user_growth?.trend === 'up' ? 'increase' : stats.user_growth?.trend === 'down' ? 'decrease' : 'neutral',
-            color: 'purple',
-        },
-        {
-            name: 'Roles',
-            stat: stats.role_distribution ? stats.role_distribution.length : 0,
-            icon: ChartBarIcon,
-            change: 'Active',
-            changeType: 'neutral',
-            color: 'indigo',
-        },
-    ];
+export default function TenantAdminDashboard() {
+    const { props } = usePage();
+    const { auth, stats } = props;
+    const { user } = auth;
+    const { hasPermission } = usePermissions();
 
+    // Helper function for stat colors
     const getStatColor = (color) => {
         const colors = {
             emerald: 'bg-emerald-500',
             blue: 'bg-blue-500',
             purple: 'bg-purple-500',
             indigo: 'bg-indigo-500',
+            orange: 'bg-orange-500'
         };
         return colors[color] || 'bg-gray-500';
     };
 
+    const statCards = [
+        {
+            name: 'Total Users',
+            stat: stats?.total_users || 0,
+            icon: UsersIcon,
+            change: stats?.user_growth?.growth_percentage ? `${stats.user_growth.growth_percentage > 0 ? '+' : ''}${stats.user_growth.growth_percentage}%` : '0%',
+            changeType: stats?.user_growth?.trend === 'up' ? 'increase' : stats?.user_growth?.trend === 'down' ? 'decrease' : 'neutral',
+            color: 'emerald',
+        },
+        {
+            name: 'Active Users',
+            stat: stats?.active_users || 0,
+            icon: CheckCircleIcon,
+            change: `${Math.round(((stats?.active_users || 0) / (stats?.total_users || 1)) * 100)}%`,
+            changeType: 'neutral',
+            color: 'blue',
+        },
+        {
+            name: 'New This Month',
+            stat: stats?.user_growth?.this_month || 0,
+            icon: UserPlusIcon,
+            change: stats?.user_growth?.growth_percentage ? `${stats.user_growth.growth_percentage > 0 ? '+' : ''}${stats.user_growth.growth_percentage}%` : '0%',
+            changeType: stats?.user_growth?.trend === 'up' ? 'increase' : stats?.user_growth?.trend === 'down' ? 'decrease' : 'neutral',
+            color: 'purple',
+        },
+        {
+            name: 'Active Roles',
+            stat: stats?.role_distribution ? stats.role_distribution.length : 0,
+            icon: ShieldCheckIcon,
+            change: 'Configured',
+            changeType: 'neutral',
+            color: 'indigo',
+        },
+    ];
+
     return (
-        <TenantAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                            Tenant Dashboard
+                            Admin Dashboard
                         </h2>
                         <p className="text-sm text-gray-600">
-                            Welcome to {stats.tenant_name}
+                            Administrative overview for {stats?.tenant_name || 'your organization'}
                         </p>
                     </div>
-                    <Link
-                        href={route('tenant-admin.users.create')}
-                        className="inline-flex items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
-                    >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Add User
-                    </Link>
+                    <PermissionGate permission="manage_tenant_users">
+                        <Link
+                            href={route('tenant-admin.users.create')}
+                            className="inline-flex items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
+                        >
+                            <PlusIcon className="h-4 w-4 mr-2" />
+                            Add User
+                        </Link>
+                    </PermissionGate>
                 </div>
             }
         >
-            <Head title="Tenant Admin Dashboard" />
+            <Head title="Admin Dashboard" />
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                 {statCards.map((card) => (
                     <div
                         key={card.name}
@@ -112,9 +124,9 @@ export default function Dashboard({ stats, tenantId }) {
                             </p>
                             <div className="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
                                 <div className="text-sm">
-                                    <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500">
-                                        View details
-                                    </a>
+                                    <span className="font-medium text-emerald-600">
+                                        {card.changeType === 'increase' ? 'Growing' : card.changeType === 'decrease' ? 'Declining' : 'Stable'}
+                                    </span>
                                 </div>
                             </div>
                         </dd>
@@ -123,7 +135,7 @@ export default function Dashboard({ stats, tenantId }) {
             </div>
 
             {/* Main Content Grid */}
-            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
                 {/* Recent Activity - Takes 2 columns */}
                 <div className="lg:col-span-2">
                     <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -131,12 +143,12 @@ export default function Dashboard({ stats, tenantId }) {
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
                                     <ClockIcon className="h-5 w-5 mr-2 text-emerald-600" />
-                                    Recent Activity
+                                    Recent Administrative Activity
                                 </h3>
                                 <span className="text-sm text-gray-500">Last 7 days</span>
                             </div>
                             
-                            {stats.recent_activity && stats.recent_activity.length > 0 ? (
+                            {stats?.recent_activity && stats.recent_activity.length > 0 ? (
                                 <div className="flow-root">
                                     <ul className="-my-3 divide-y divide-gray-200">
                                         {stats.recent_activity.map((activity, index) => (
@@ -198,112 +210,117 @@ export default function Dashboard({ stats, tenantId }) {
                                 </div>
                             ) : (
                                 <div className="text-center py-8">
-                                    <BellIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                    <h4 className="mt-2 text-sm font-medium text-gray-900">No recent activity</h4>
-                                    <p className="mt-1 text-sm text-gray-500">Activity from the last 7 days will appear here.</p>
+                                    <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-gray-500">No recent administrative activity</p>
+                                    <p className="text-sm text-gray-400 mt-1">User management activities will appear here</p>
                                 </div>
                             )}
-                            
+
                             <div className="mt-6">
-                                <Link
-                                    href={route('tenant-admin.users.index')}
-                                    className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                >
-                                    View all users
-                                </Link>
+                                <PermissionGate permission="manage_tenant_users">
+                                    <Link
+                                        href={route('tenant-admin.users.index')}
+                                        className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    >
+                                        <EyeIcon className="h-4 w-4 mr-2" />
+                                        View all users
+                                    </Link>
+                                </PermissionGate>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar - Takes 1 column */}
+                {/* Sidebar Content */}
                 <div className="space-y-6">
-                    {/* Quick Actions */}
+                    {/* Tenant Overview */}
                     <div className="bg-white overflow-hidden shadow rounded-lg">
                         <div className="p-6">
-                            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h3>
+                            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
+                                <BuildingOffice2Icon className="h-5 w-5 mr-2 text-emerald-600" />
+                                Organization Overview
+                            </h3>
                             <div className="space-y-3">
-                                <Link
-                                    href={route('tenant-admin.users.create')}
-                                    className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 transition-colors duration-200"
-                                >
-                                    <UserPlusIcon className="h-5 w-5 mr-2" />
-                                    Add New User
-                                </Link>
-                                
-                                <Link
-                                    href={route('tenant-admin.users.index')}
-                                    className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
-                                >
-                                    <UsersIcon className="h-5 w-5 mr-2" />
-                                    Manage Users
-                                </Link>
-
-                                <Link
-                                    href={route('tenant-admin.settings')}
-                                    className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
-                                >
-                                    <ChartBarIcon className="h-5 w-5 mr-2" />
-                                    Settings
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Recent Users */}
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-6">
-                            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Users</h3>
-                            <div className="space-y-3">
-                                {stats.recent_users && stats.recent_users.length > 0 ? (
-                                    stats.recent_users.slice(0, 3).map((user) => (
-                                        <div key={user.id} className="flex items-center space-x-3">
-                                            <div className="flex-shrink-0">
-                                                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                                                    <span className="text-sm font-medium text-emerald-700">
-                                                        {user.name.charAt(0).toUpperCase()}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-sm text-gray-500">No users yet</p>
-                                )}
-                                <div className="pt-2 border-t border-gray-200">
-                                    <Link
-                                        href={route('tenant-admin.users.index')}
-                                        className="text-sm text-emerald-600 hover:text-emerald-500"
-                                    >
-                                        View all →
-                                    </Link>
+                                <div>
+                                    <dt className="text-sm font-medium text-gray-500">Organization</dt>
+                                    <dd className="text-sm text-gray-900">{stats?.tenant_name || 'Unknown'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-gray-500">Plan</dt>
+                                    <dd className="text-sm text-gray-900">{stats?.tenant_plan || 'Basic'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-gray-500">Status</dt>
+                                    <dd>
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Active
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-gray-500">User Growth</dt>
+                                    <dd className="flex items-center text-sm text-gray-900">
+                                        <ArrowTrendingUpIcon className="h-4 w-4 mr-1 text-green-500" />
+                                        {stats?.user_growth?.growth_percentage || 0}% this month
+                                    </dd>
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    {/* Quick Administrative Actions */}
+                    <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="p-6">
+                            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Administrative Actions</h3>
+                            <div className="space-y-3">
+                                <PermissionGate permission="manage_tenant_users">
+                                    <Link
+                                        href={route('tenant-admin.users.create')}
+                                        className="w-full inline-flex items-center justify-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
+                                    >
+                                        <PlusIcon className="h-4 w-4 mr-2" />
+                                        Add User
+                                    </Link>
+                                </PermissionGate>
+                                
+                                <PermissionGate permission="manage_tenant_users">
+                                    <Link
+                                        href={route('tenant-admin.users.index')}
+                                        className="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition ease-in-out duration-150"
+                                    >
+                                        <UsersIcon className="h-4 w-4 mr-2" />
+                                        Manage Users
+                                    </Link>
+                                </PermissionGate>
+
+                                <PermissionGate permission="manage_tenant_settings">
+                                    <Link
+                                        href={route('tenant-admin.settings')}
+                                        className="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition ease-in-out duration-150"
+                                    >
+                                        <Cog6ToothIcon className="h-4 w-4 mr-2" />
+                                        Settings
+                                    </Link>
+                                </PermissionGate>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Role Distribution */}
-                    {stats.role_distribution && stats.role_distribution.length > 0 && (
+                    {stats?.role_distribution && stats.role_distribution.length > 0 && (
                         <div className="bg-white overflow-hidden shadow rounded-lg">
                             <div className="p-6">
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Role Distribution</h3>
+                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
+                                    <UserGroupIcon className="h-5 w-5 mr-2 text-emerald-600" />
+                                    Role Distribution
+                                </h3>
                                 <div className="space-y-3">
                                     {stats.role_distribution.map((role, index) => (
                                         <div key={index} className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-2">
-                                                <div className={`h-3 w-3 rounded-full ${
-                                                    role.color === 'emerald' ? 'bg-emerald-500' :
-                                                    role.color === 'blue' ? 'bg-blue-500' :
-                                                    role.color === 'gray' ? 'bg-gray-500' :
-                                                    'bg-purple-500'
-                                                }`}></div>
-                                                <span className="text-sm text-gray-900">{role.name}</span>
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-600">{role.count}</span>
+                                            <span className="text-sm text-gray-600">{role.display_name || role.name}</span>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                {role.user_count || 0} users
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -312,6 +329,6 @@ export default function Dashboard({ stats, tenantId }) {
                     )}
                 </div>
             </div>
-        </TenantAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

@@ -1,5 +1,5 @@
 import { Head, useForm, Link } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -38,20 +38,11 @@ export default function Edit({ tenant }) {
     ];
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
-                <div className="flex items-center space-x-4">
-                    <Link
-                        href={route('central-admin.tenants.index')}
-                        className="text-gray-500 hover:text-gray-700 flex items-center"
-                    >
-                        <ArrowLeftIcon className="h-5 w-5 mr-1" />
-                        Back to Tenants
-                    </Link>
-                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                        Edit Tenant
-                    </h2>
-                </div>
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Edit Tenant: {tenant.data?.name || tenant.id}
+                </h2>
             }
         >
             <Head title="Edit Tenant" />
@@ -158,6 +149,6 @@ export default function Edit({ tenant }) {
                     </form>
                 </div>
             </div>
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

@@ -873,8 +873,15 @@ PHP;
 
 // Auto-generated route for: {$title}
 Route::get('/{$key}', function () {
+    \$user = auth()->user();
+    \$tenant = \$user->tenant;
+    
     return Inertia::render('{$pageDirectory}/{$componentName}', [
-        'pageTitle' => '{$title}'
+        'pageTitle' => '{$title}',
+        'stats' => [
+            'tenant_id' => \$user->tenant_id,
+            'tenant_name' => \$tenant?->name ?? 'Your Organization',
+        ],
     ]);
 })->middleware('auth')->name('{$routeName}');
 PHP;

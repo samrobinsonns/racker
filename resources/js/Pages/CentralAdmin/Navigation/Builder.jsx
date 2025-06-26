@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DraggableNavigationItem from '@/Components/NavigationBuilder/DraggableNavigationItem';
 import ConfigurationsModal from '@/Components/NavigationBuilder/ConfigurationsModal';
 import CustomPagesModal from '@/Components/NavigationBuilder/CustomPagesModal';
@@ -479,7 +479,7 @@ export default function Builder({
     };
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
@@ -890,6 +890,6 @@ export default function Builder({
                 onSuccess={handleCustomPageSuccess}
                 tenantId={tenant.id}
             />
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { 
     BuildingOffice2Icon, 
     UsersIcon, 
@@ -18,7 +18,7 @@ export default function Index({ tenants }) {
     );
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
                 <div>
                     <h2 className="text-2xl font-bold leading-tight text-gray-900">
@@ -191,6 +191,6 @@ export default function Index({ tenants }) {
                     </div>
                 </div>
             </div>
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

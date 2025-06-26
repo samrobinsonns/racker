@@ -1,4 +1,3 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
@@ -144,7 +143,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Determine user type and context
     const isCentralAdmin = user.is_central_admin;
-    const isTenantAdmin = user.roles?.some(role => role.name === 'tenant_admin') || false;
+    const isTenantAdmin = user?.admin_level === 'tenant_admin';
     const isAdmin = isCentralAdmin || isTenantAdmin;
 
     // Helper to get icon component from string name - now supports all HeroIcons
@@ -297,7 +296,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const getUserTypeLabel = () => {
         if (isCentralAdmin) return 'Central Administrator';
-        if (isTenantAdmin) return 'Tenant Administrator';
+        if (isTenantAdmin) {
+            // Get the actual role display name from user's roles
+            const tenantRole = user.roles?.find(role => role.tenant_id === user.tenant_id);
+            return tenantRole?.display_name || 'Tenant Administrator';
+        }
         return 'User';
     };
 
@@ -323,7 +326,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <XMarkIcon className="h-6 w-6" />
                                 </button>
                             </div>
-                            {isTenantAdmin && (
+                            {(isTenantAdmin || user?.tenant_id) && (
                                 <div className="px-4 py-2 border-b">
                                     <p className="text-xs text-gray-500 uppercase tracking-wide">Current Tenant</p>
                                     <p className="text-sm font-medium text-gray-900">{stats?.tenant_name || 'Unknown'}</p>
@@ -350,7 +353,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <themeConfig.icon className={`h-8 w-8 ${themeConfig.textColor} mr-2`} />
                                 <span className={`text-lg font-bold ${themeConfig.textColor}`}>{themeConfig.title}</span>
                             </div>
-                            {isTenantAdmin && (
+                            {(isTenantAdmin || user?.tenant_id) && (
                                 <div className="px-4 py-3 border-b bg-gray-50">
                                     <p className="text-xs text-gray-500 uppercase tracking-wide">Current Tenant</p>
                                     <p className="text-sm font-medium text-gray-900">{stats?.tenant_name || 'Unknown'}</p>
@@ -392,11 +395,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </button>
                                 )}
 
-                                <div className="flex shrink-0 items-center">
-                                    <Link href="/">
-                                        <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                                    </Link>
-                                </div>
+
 
                                 {/* Navigation for non-admin users */}
                                 {!isAdmin && (

@@ -1,5 +1,5 @@
 import { Head, useForm, Link } from '@inertiajs/react';
-import CentralAdminLayout from '@/Layouts/CentralAdminLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -23,19 +23,11 @@ export default function Create() {
     };
 
     return (
-        <CentralAdminLayout
+        <AuthenticatedLayout
             header={
-                <div className="flex items-center space-x-4">
-                    <Link
-                        href={route('central-admin.tenants.index')}
-                        className="text-gray-500 hover:text-gray-700"
-                    >
-                        ← Back to Tenants
-                    </Link>
-                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                        Create New Tenant
-                    </h2>
-                </div>
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Create New Tenant
+                </h2>
             }
         >
             <Head title="Create Tenant" />
@@ -194,6 +186,6 @@ export default function Create() {
                     </div>
                 </div>
             </div>
-        </CentralAdminLayout>
+        </AuthenticatedLayout>
     );
 } 

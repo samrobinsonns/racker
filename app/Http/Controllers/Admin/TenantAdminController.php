@@ -17,7 +17,6 @@ class TenantAdminController extends Controller
 
         return Inertia::render('TenantAdmin/Dashboard', [
             'stats' => $stats,
-            'tenantId' => $stats['tenant_id'] ?? null,
         ]);
     }
 

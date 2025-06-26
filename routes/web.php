@@ -30,23 +30,17 @@ Route::get('/dashboard', function () {
         $controller = app(CentralAdminController::class);
         $stats = $controller->getDashboardStats();
         $layoutType = 'central_admin';
-    } elseif ($user->hasRole('tenant_admin')) {
-        // Tenant Admin stats and layout
-        $controller = app(TenantAdminController::class);
-        $stats = $controller->getDashboardStats();
-        $tenantId = $stats['tenant_id'] ?? $user->tenant_id;
-        $layoutType = 'tenant_admin';
     } elseif ($user->tenant_id) {
-        // Tenant User - use tenant layout with appropriate navigation
+        // All Tenant Users (including admins) - user-focused dashboard
         $tenantId = $user->tenant_id;
         $tenant = $user->tenant;
         $layoutType = 'tenant_user';
         $stats = [
             'tenant_id' => $tenantId,
             'tenant_name' => $tenant?->name ?? 'Your Organization',
-            'user_activities' => 0, // Placeholder for future implementation
-            'user_messages' => 0,   // Placeholder for future implementation
-            'user_reports' => 0,    // Placeholder for future implementation
+            'user_activities' => rand(5, 25), // Placeholder for future implementation
+            'user_messages' => rand(0, 8),   // Placeholder for future implementation
+            'user_reports' => rand(2, 12),    // Placeholder for future implementation
         ];
     }
     
@@ -136,6 +130,10 @@ Route::prefix('central-admin')->name('central-admin.')->middleware(['auth', 'cen
 
 // Tenant Admin Routes - now with granular permissions
 Route::prefix('tenant-admin')->name('tenant-admin.')->middleware(['auth', 'tenant.admin'])->group(function () {
+    Route::get('/dashboard', [TenantAdminController::class, 'dashboard'])
+        ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
+        ->name('dashboard');
+        
     Route::get('/settings', [TenantAdminController::class, 'settings'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_SETTINGS)
         ->name('settings');
@@ -164,20 +162,41 @@ Route::prefix('tenant-admin')->name('tenant-admin.')->middleware(['auth', 'tenan
 // Tenant User Routes - for regular tenant users
 Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function () {
     Route::get('/reports', function () {
+        $user = auth()->user();
+        $tenant = $user->tenant;
+        
         return Inertia::render('Tenant/Reports', [
-            'pageTitle' => 'Reports'
+            'pageTitle' => 'Reports',
+            'stats' => [
+                'tenant_id' => $user->tenant_id,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
         ]);
     })->middleware('permission:' . Permission::VIEW_REPORTS)->name('reports');
     
     Route::get('/content', function () {
+        $user = auth()->user();
+        $tenant = $user->tenant;
+        
         return Inertia::render('Tenant/Content', [
-            'pageTitle' => 'Content'
+            'pageTitle' => 'Content',
+            'stats' => [
+                'tenant_id' => $user->tenant_id,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
         ]);
     })->middleware('permission:' . Permission::VIEW_TENANT_DATA)->name('content');
     
     Route::get('/analytics', function () {
+        $user = auth()->user();
+        $tenant = $user->tenant;
+        
         return Inertia::render('Tenant/Analytics', [
-            'pageTitle' => 'Analytics'
+            'pageTitle' => 'Analytics',
+            'stats' => [
+                'tenant_id' => $user->tenant_id,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
         ]);
     })->middleware('permission:' . Permission::VIEW_TENANT_ANALYTICS)->name('analytics');
 });
