@@ -6,6 +6,7 @@ use App\Models\NavigationConfiguration;
 use App\Models\NavigationItem;
 use App\Models\User;
 use App\Models\Role;
+use App\Services\RouteDiscoveryService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -247,8 +248,15 @@ class NavigationService
     /**
      * Get all available navigation items
      */
-    public function getAvailableItems(): array
+    public function getAvailableItems(bool $includeDiscovered = false): array
     {
+        if ($includeDiscovered) {
+            // Use RouteDiscoveryService to merge seeded + discovered items
+            $routeDiscovery = app(RouteDiscoveryService::class);
+            return $routeDiscovery->getMergedAvailableItems();
+        }
+        
+        // Return only seeded items (default behavior)
         return NavigationItem::active()
             ->ordered()
             ->get()

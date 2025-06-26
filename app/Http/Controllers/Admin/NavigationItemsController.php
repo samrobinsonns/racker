@@ -159,11 +159,19 @@ class NavigationItemsController extends Controller
                 ], 422);
             }
 
+            // Check if this is a custom generated page that needs cleanup
+            $generatedPage = \App\Models\GeneratedPage::where('navigation_item_key', $item->key)->first();
+            
+            if ($generatedPage) {
+                // Clean up generated files and routes
+                $this->cleanupGeneratedPage($generatedPage, $item);
+            }
+
             $item->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Navigation item deleted successfully!',
+                'message' => 'Navigation item and associated files deleted successfully!',
             ]);
 
         } catch (\Exception $e) {
@@ -172,6 +180,64 @@ class NavigationItemsController extends Controller
                 'message' => 'Failed to delete navigation item: ' . $e->getMessage(),
             ], 422);
         }
+    }
+
+    /**
+     * Clean up all files and routes associated with a generated page
+     */
+    protected function cleanupGeneratedPage(\App\Models\GeneratedPage $generatedPage, NavigationItem $item): void
+    {
+        try {
+            // 1. Delete the React component file
+            $componentPath = resource_path('js/Pages/' . $generatedPage->file_path);
+            if (file_exists($componentPath)) {
+                unlink($componentPath);
+                
+                // Check if directory is empty and remove it
+                $directory = dirname($componentPath);
+                if (is_dir($directory) && count(scandir($directory)) === 2) { // Only . and .. remain
+                    rmdir($directory);
+                }
+            }
+
+            // 2. Remove route from dynamic.php
+            $this->removeRouteFromDynamicFile($item->route_name, $item->label);
+
+            // 3. Delete the GeneratedPage record
+            $generatedPage->delete();
+
+        } catch (\Exception $e) {
+            // Log error but don't fail the deletion
+            \Log::warning('Failed to cleanup some generated page files', [
+                'navigation_item' => $item->key,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Remove a specific route from the dynamic.php file
+     */
+    protected function removeRouteFromDynamicFile(string $routeName, string $title): void
+    {
+        $dynamicRoutesFile = base_path('routes/dynamic.php');
+        
+        if (!file_exists($dynamicRoutesFile)) {
+            return;
+        }
+
+        $content = file_get_contents($dynamicRoutesFile);
+        
+        // Find and remove the specific route block
+        // Pattern matches from comment to the route definition
+        $pattern = '/\/\/ Auto-generated route for: ' . preg_quote($title, '/') . '.*?->name\(\'' . preg_quote($routeName, '/') . '\'\);/s';
+        
+        $newContent = preg_replace($pattern, '', $content);
+        
+        // Clean up any extra blank lines
+        $newContent = preg_replace('/\n\s*\n\s*\n/', "\n\n", $newContent);
+        
+        file_put_contents($dynamicRoutesFile, $newContent);
     }
 
     /**

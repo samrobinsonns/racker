@@ -352,7 +352,17 @@ export default function CustomPagesModal({ show, onClose, onSuccess, tenantId })
     };
 
     const handleDeletePage = async (pageId) => {
-        if (!confirm('Delete this page? This cannot be undone.')) return;
+        const confirmed = confirm(
+            'Delete this custom page?\n\n' +
+            '⚠️ This will permanently remove:\n' +
+            '• The navigation item from the database\n' +
+            '• The React component file from disk\n' +
+            '• The route from dynamic.php\n' +
+            '• The page directory (if empty)\n\n' +
+            'This action cannot be undone!'
+        );
+        
+        if (!confirmed) return;
 
         try {
             const response = await fetch(route('central-admin.navigation.items.destroy', pageId), {
@@ -365,13 +375,13 @@ export default function CustomPagesModal({ show, onClose, onSuccess, tenantId })
             const result = await response.json();
             if (result.success) {
                 loadExistingPages();
-                alert('Page deleted successfully!');
+                alert('✅ Page and all associated files deleted successfully!');
             } else {
-                alert('Failed to delete page: ' + result.message);
+                alert('❌ Failed to delete page: ' + result.message);
             }
         } catch (error) {
             console.error('Delete error:', error);
-            alert('Failed to delete page.');
+            alert('❌ Failed to delete page. Please try again.');
         }
     };
 

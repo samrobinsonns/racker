@@ -439,6 +439,9 @@ $navItem = [
 - ✅ **External Links & Dividers**: Custom navigation item types implemented
 - ✅ **Configuration Deduplication**: Prevents duplicate configurations on save
 - ✅ **Content Page Layouts**: Analytics, Reports, and Content pages wrapped in proper layouts
+- ✅ **Dashboard Separation**: Complete user/admin dashboard separation implemented
+- ✅ **Route Discovery**: Automatic route detection and navigation item generation
+- ✅ **Page Cleanup**: Complete file lifecycle management for custom pages
 
 ### 🎯 Next Development Priorities
 1. **User Experience Enhancements**
@@ -595,19 +598,841 @@ dd($items); // Check transformed navigation items
 - `app/Http/Middleware/HandleInertiaRequests.php` - Frontend data passing
 - `resources/js/Layouts/AuthenticatedLayout.jsx` - Layout integration
 - `resources/js/Layouts/TenantAdminLayout.jsx` - Tenant admin layout
-  - Advanced search functionality (by name/email)
-  - Multi-level filtering (user type, tenant, status)
-  - Modal-based user editing with form validation
-  - Confirmation modals for user deletion
-  - Real-time search with debouncing
-  - Comprehensive user statistics dashboard
-- **System Settings Page**
-  - Application configuration management
-  - Permission toggles (tenant creation, user registration, etc.)
-  - Tenant limit settings
-  - Role management overview
-  - System status monitoring
-- **Enhanced Modal System**
-  - Reusable Modal component with proper animations
-  - Form handling within modals
-  - Error handling and validation display 
+
+## 🎯 Dashboard Separation & User Experience Architecture
+
+### **Dashboard Philosophy & Architecture**
+
+**Core Principle**: Clear separation between **user experience** and **administrative tools** while maintaining role flexibility.
+
+**System Design**:
+- **Single Landing Point**: ALL users (including admins) land on `/dashboard` as their default home
+- **User-Focused Main Dashboard**: Personal, welcoming experience for everyone
+- **Separate Admin Tools**: Administrative functionality available as separate tools via navigation
+- **Navigation Builder Control**: What users see is controlled by the Navigation Builder system
+
+### **Dashboard Implementation**
+
+#### **1. Main Dashboard (`/dashboard`)** - Universal User Experience
+```php
+// Route: /dashboard - FOR ALL USERS
+Route::get('/dashboard', function () {
+    $user = auth()->user();
+    $tenant = $user->tenant;
+    
+    // Same experience for ALL users, including admins
+    return Inertia::render('Dashboard', [
+        'pageTitle' => 'Dashboard',
+        'stats' => [
+            'tenant_id' => $user->tenant_id,
+            'tenant_name' => $tenant?->name ?? 'Your Organization',
+            'user_metrics' => [
+                'tasks_completed' => 12,
+                'projects_active' => 3,
+                'team_members' => 8,
+                'notifications' => 5
+            ]
+        ],
+    ]);
+});
+```
+
+**Features**:
+- 👤 **Personal Welcome**: "Welcome back, [Name]!"
+- 📊 **User Metrics**: Personal productivity stats, activity feed
+- 🎯 **Quick Actions**: User-relevant shortcuts
+- 📱 **Responsive Design**: Mobile-friendly personal dashboard
+- ⚡ **Fast Loading**: Focused on user's immediate needs
+
+#### **2. Admin Dashboard (`/tenant-admin/dashboard`)** - Administrative Tools
+```php
+// Route: /tenant-admin/dashboard - FOR TENANT ADMINS ONLY
+Route::get('/tenant-admin/dashboard', [TenantAdminController::class, 'dashboard'])
+    ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
+    ->name('tenant-admin.dashboard');
+```
+
+**Features**:
+- 👥 **User Management Metrics**: Active users, recent signups, role distribution
+- 🏢 **Organization Overview**: Tenant stats, settings summary
+- ⚙️ **Admin Quick Actions**: Add User, Manage Users, Settings links
+- 📈 **Administrative Analytics**: System usage, performance metrics
+- 🔧 **Management Tools**: Focused on administrative tasks
+
+#### **3. Navigation Integration**
+```php
+// app/Traits/HasPermissions.php - Default Navigation for Tenant Admins
+protected function getDefaultNavigation(): array
+{
+    $items = [
+        ['name' => 'Dashboard', 'route' => 'dashboard'], // ← All users land here
+        ['name' => 'Admin Dashboard', 'route' => 'tenant-admin.dashboard'], // ← Admin tool
+        ['name' => 'Manage Users', 'route' => 'tenant-admin.users.index'],
+        ['name' => 'Settings', 'route' => 'tenant-admin.settings'],
+    ];
+}
+```
+
+### **Route Discovery & Auto-Navigation System**
+
+#### **Automatic Route Discovery**
+```php
+// app/Services/RouteDiscoveryService.php
+class RouteDiscoveryService
+{
+    public function discoverRoutes(): array
+    {
+        // Scans Laravel's registered routes
+        $routes = Route::getRoutes();
+        
+        // Filters and categorizes automatically
+        foreach ($routes as $route) {
+            if ($this->shouldInclude($route)) {
+                $items[] = $this->analyzeRoute($route);
+            }
+        }
+    }
+}
+```
+
+**Smart Analysis**:
+- 🎯 **Icon Suggestions**: `users` → `UsersIcon`, `analytics` → `ChartPieIcon`
+- 🔐 **Permission Mapping**: Admin routes → `MANAGE_TENANT_USERS`
+- 📂 **Auto-Categorization**: Core, Admin, Content, Custom
+- 🚫 **Intelligent Filtering**: Excludes auth, API, form submission routes
+
+**Configuration**:
+```php
+// config/navigation.php
+return [
+    'enable_route_discovery' => env('NAVIGATION_ENABLE_ROUTE_DISCOVERY', false),
+    'discovery_exclude_patterns' => ['auth.*', '*.store', '*.api.*'],
+    'icon_mapping' => ['dashboard' => 'HomeIcon', 'users' => 'UsersIcon'],
+    'permission_mapping' => ['admin' => 'MANAGE_TENANT_USERS'],
+];
+```
+
+**Commands**:
+```bash
+# Test discovery without enabling
+./vendor/bin/sail artisan navigation:discovery test
+
+# Enable route discovery
+./vendor/bin/sail artisan navigation:discovery enable
+
+# View discovered routes
+./vendor/bin/sail artisan navigation:discovery list
+```
+
+### **Page Cleanup & File Management System**
+
+#### **Problem Solved**: Custom page deletion previously left orphaned files
+- ❌ **Before**: Only removed database records
+- ✅ **Now**: Complete cleanup of files, routes, and database records
+
+#### **Enhanced Deletion Process**
+```php
+// app/Http/Controllers/Admin/NavigationItemsController.php
+public function destroy(NavigationItem $item)
+{
+    $generatedPage = GeneratedPage::where('navigation_item_key', $item->key)->first();
+    
+    if ($generatedPage) {
+        $this->cleanupGeneratedPage($generatedPage, $item);
+    }
+    
+    $item->delete();
+}
+
+protected function cleanupGeneratedPage(GeneratedPage $page, NavigationItem $item): void
+{
+    // 1. Delete React component file
+    $componentPath = resource_path('js/Pages/' . $page->file_path);
+    if (file_exists($componentPath)) {
+        unlink($componentPath);
+        
+        // Remove empty directory
+        $directory = dirname($componentPath);
+        if ($this->isDirectoryEmpty($directory)) {
+            rmdir($directory);
+        }
+    }
+    
+    // 2. Remove route from dynamic.php
+    $this->removeRouteFromDynamicFile($item->route_name, $item->label);
+    
+    // 3. Delete database record
+    $page->delete();
+}
+```
+
+#### **Page Cleanup Service**
+```php
+// app/Services/PageCleanupService.php
+class PageCleanupService
+{
+    public function cleanupOrphanedFiles(): array
+    {
+        // Find orphaned database records
+        $orphanedPages = GeneratedPage::whereDoesntHave('navigationItem')->get();
+        
+        // Find orphaned component files
+        $this->cleanupUnreferencedFiles($report);
+        
+        // Clean up dynamic routes
+        $this->cleanupDynamicRoutes($report);
+    }
+}
+```
+
+**Cleanup Commands**:
+```bash
+# Check status
+./vendor/bin/sail artisan pages:cleanup status
+
+# Perform cleanup
+./vendor/bin/sail artisan pages:cleanup clean
+
+# Validate integrity
+./vendor/bin/sail artisan pages:cleanup validate
+```
+
+#### **Enhanced User Experience**
+```jsx
+// resources/js/Components/NavigationBuilder/CustomPagesModal.jsx
+const handleDeletePage = async (pageId) => {
+    const confirmed = confirm(
+        'Delete this custom page?\n\n' +
+        '⚠️ This will permanently remove:\n' +
+        '• The navigation item from the database\n' +
+        '• The React component file from disk\n' +
+        '• The route from dynamic.php\n' +
+        '• The page directory (if empty)\n\n' +
+        'This action cannot be undone!'
+    );
+    
+    // Complete cleanup process...
+};
+```
+
+### **Navigation Builder Enhancements**
+
+#### **Auto-Discovery Integration**
+```jsx
+// resources/js/Pages/CentralAdmin/Navigation/Builder.jsx
+{category.items.map(item => (
+    <button onClick={() => addItemFromLibrary(item)}>
+        <span>{item.label}</span>
+        {item.is_discovered && (
+            <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs">
+                Auto
+            </span>
+        )}
+    </button>
+))}
+```
+
+**Features**:
+- 🏷️ **Auto-Discovery Indicators**: Items marked with "Auto" badge
+- 🔄 **Refresh Button**: Reload available items to pick up new routes
+- 📊 **Discovery Statistics**: Shows seeded vs discovered items
+- ⚙️ **Configurable**: Enable/disable via environment variables
+
+### **System Integration Points**
+
+#### **NavigationService Enhancement**
+```php
+// app/Services/NavigationService.php
+public function getAvailableItems(bool $includeDiscovered = false): array
+{
+    if ($includeDiscovered) {
+        $routeDiscovery = app(RouteDiscoveryService::class);
+        return $routeDiscovery->getMergedAvailableItems();
+    }
+    
+    // Default: only seeded items
+    return NavigationItem::active()->ordered()->get()->groupBy('category');
+}
+```
+
+#### **NavigationController Integration**
+```php
+// app/Http/Controllers/Admin/NavigationController.php
+public function builder(Request $request)
+{
+    $includeDiscovered = config('navigation.enable_route_discovery', false);
+    $availableItems = $this->navigationService->getAvailableItems($includeDiscovered);
+    
+    return Inertia::render('CentralAdmin/Navigation/Builder', [
+        'availableItems' => $availableItems,
+    ]);
+}
+```
+
+### **Key Benefits Achieved**
+
+#### **Dashboard Separation**
+- ✅ **Clear User Experience**: All users get welcoming, personal dashboard
+- ✅ **Separated Admin Tools**: Administrative functionality isolated as tools
+- ✅ **Flexible Role Management**: Navigation Builder controls what users see
+- ✅ **Single Entry Point**: Universal `/dashboard` landing for all users
+
+#### **Route Discovery**
+- ✅ **Automatic Detection**: New routes automatically available in Navigation Builder
+- ✅ **Smart Categorization**: Intelligent analysis of route purpose and permissions
+- ✅ **Production Ready**: Configurable, safe, with comprehensive filtering
+- ✅ **Development Friendly**: Easy to discover new functionality
+
+#### **Page Cleanup**
+- ✅ **Complete Cleanup**: No orphaned files when deleting custom pages
+- ✅ **File System Integrity**: Automatic removal of empty directories
+- ✅ **Route Management**: Dynamic route cleanup from `dynamic.php`
+- ✅ **Audit Capabilities**: Status checking and validation commands
+
+### **Commands Summary**
+
+```bash
+# Navigation Discovery
+./vendor/bin/sail artisan navigation:discovery test      # Test & show stats
+./vendor/bin/sail artisan navigation:discovery list      # List discovered routes
+./vendor/bin/sail artisan navigation:discovery enable    # Enable auto-discovery
+./vendor/bin/sail artisan navigation:discovery disable   # Disable auto-discovery
+
+# Page Cleanup
+./vendor/bin/sail artisan pages:cleanup status          # Show cleanup status
+./vendor/bin/sail artisan pages:cleanup clean           # Perform cleanup
+./vendor/bin/sail artisan pages:cleanup validate        # Validate integrity
+./vendor/bin/sail artisan pages:cleanup clean --force   # Force cleanup without confirmation
+
+# Navigation Items
+./vendor/bin/sail artisan db:seed --class=NavigationItemsSeeder  # Seed navigation items
+```
+
+This architecture provides a scalable, maintainable system for dashboard management, automatic route discovery, and complete file lifecycle management while maintaining a clear separation between user experience and administrative tools.
+
+### 🎯 Navigation Builder Styling & User Experience Guide
+
+All navigation icons should display correctly by checking Heroicons package and ensuring proper mapping.
+
+**Navigation Styling Principles:**
+
+- **Icon Mapping**: Always check if new icons exist in @heroicons/react/24/outline and map correctly
+- **Consistent Spacing**: Navigation items should use consistent padding and spacing
+- **Status Indicators**: Active states should be visually clear for all navigation items
+- **Responsive Behavior**: Navigation should collapse appropriately on mobile devices
+- **Permission-Based Display**: Items should only show when user has appropriate permissions
+
+**🚨 Critical Implementation Notes:**
+
+- **AuthenticatedLayout**: Updated NavigationItem component with external link and divider support
+- **TenantAdminLayout**: Same enhancements for consistency across all layouts
+- **Proper URL Handling**: Fixed URL field processing from database through backend to frontend rendering
+- **Icon Consistency**: Both layouts use same external link indicators and divider styling
+
+**Key Technical Details:**
+```php
+// Backend: URL field processing in HasPermissions trait
+$navItem = [
+    'name' => $item['label'] ?? $item['name'] ?? 'Unknown',
+    'route' => $item['route'] ?? '#',
+    'url' => $item['url'], // ✅ Added URL field support
+    'icon' => $item['icon'] ?? 'QuestionMarkCircleIcon',
+    'type' => $item['type'] ?? 'link',
+];
+```
+
+```jsx
+// Frontend: External link rendering
+{item.type === 'external' && (
+    <a href={item.url || item.href || '#'} target="_blank" rel="noopener noreferrer">
+        {/* Link content with external icon */}
+    </a>
+)}
+```
+
+**🔧 Configuration Deduplication Fix:**
+- **Problem**: Builder created new configuration every time "Save & Activate" was clicked
+- **Solution**: Added check for existing configurations with same name/role combination
+- **Behavior**: Now updates existing configuration instead of creating duplicates
+- **Scope**: Configurations scoped by tenant + name + target (role/user)
+
+### 🔄 Current System Status
+**System is now stable** - Major architectural improvements completed:
+- ✅ **Tenant Name Display**: Fixed using direct property access (`tenant.name`)
+- ✅ **Layout Unification**: Single layout supporting all user types  
+- ✅ **Admin Experience**: Consistent navigation across all admin pages
+- ✅ **Roles & Permissions**: Complete management system implemented
+- ✅ **Custom Navigation**: Complete navigation builder system with real-time integration
+- ✅ **External Links & Dividers**: Custom navigation item types implemented
+- ✅ **Configuration Deduplication**: Prevents duplicate configurations on save
+- ✅ **Content Page Layouts**: Analytics, Reports, and Content pages wrapped in proper layouts
+- ✅ **Dashboard Separation**: Complete user/admin dashboard separation implemented
+- ✅ **Route Discovery**: Automatic route detection and navigation item generation
+- ✅ **Page Cleanup**: Complete file lifecycle management for custom pages
+
+### 🎯 Next Development Priorities
+1. **User Experience Enhancements**
+   - User invitation system with email notifications
+   - Bulk user operations (import/export)
+   - Advanced search and filtering across all modules
+   - User activity logging and audit trails
+
+2. **Advanced Tenant Features**
+   - Tenant details view with comprehensive statistics
+   - Tenant-specific settings and customization
+   - Tenant analytics and reporting dashboard
+   - Bulk tenant operations and management tools
+
+3. **System Administration**
+   - Email configuration and testing interface
+   - System backup and maintenance tools
+   - Advanced analytics and reporting
+   - Performance monitoring and optimization
+
+4. **Security & Compliance**
+   - Two-factor authentication implementation
+   - Session management and security
+   - API rate limiting and protection
+   - Security audit logs and compliance reporting
+
+5. **Developer Experience**
+   - API documentation and testing tools
+   - Database backup and migration tools
+   - Development environment improvements
+   - Automated testing and deployment pipelines
+
+## Troubleshooting Common Issues
+
+### Tenant Name Displays as "Unnamed Tenant" or "Unknown Tenant"
+
+**Problem**: Tenants showing as "Unnamed Tenant" or "Unknown Tenant" in various parts of the application (tenant lists, user management, dashboards).
+
+**Root Cause**: The Stancl\Tenancy package uses a different approach for accessing tenant data. Instead of using `tenant.data.name`, individual properties are accessible directly on the tenant model (e.g., `tenant.name`).
+
+**Solution Steps**:
+
+1. **Backend - Fix Controller Data Access**:
+   ```php
+   // ❌ WRONG - Using nested data object
+   'tenant_name' => optional($user->tenant)->data['name'] ?? 'Unknown Tenant'
+   
+   // ✅ CORRECT - Direct property access
+   'tenant_name' => optional($user->tenant)->name ?? 'Unknown Tenant'
+   ```
+
+2. **Backend - Fix Tenant Data Queries**:
+   ```php
+   // ❌ WRONG - Selecting only specific data fields
+   'tenants' => Tenant::select(['id', 'data'])->get()
+   
+   // ✅ CORRECT - Select all fields for proper model hydration
+   'tenants' => Tenant::all()
+   ```
+
+3. **Frontend - Fix Display References**:
+   ```jsx
+   // ❌ WRONG - Accessing nested data property
+   {tenant.data?.name || 'Unnamed Tenant'}
+   
+   // ✅ CORRECT - Direct property access
+   {tenant.name || 'Unnamed Tenant'}
+   ```
+
+4. **Model Updates - Ensure Proper Data Handling**:
+   ```php
+   // ✅ CORRECT - Setting tenant properties directly
+   $tenant->name = $request->name;
+   $tenant->status = 'active';
+   $tenant->plan = 'basic';
+   $tenant->save();
+   ```
+
+**Files Commonly Affected**:
+- `app/Http/Controllers/Admin/TenantAdminController.php`
+- `app/Http/Controllers/Admin/CentralAdminController.php`
+- `resources/js/Pages/CentralAdmin/Users/Index.jsx`
+- `resources/js/Pages/CentralAdmin/Tenants/Index.jsx`
+- `resources/js/Pages/TenantAdmin/Dashboard.jsx`
+- `resources/js/Layouts/TenantAdminLayout.jsx`
+
+**Prevention**: Always use direct property access (`tenant.name`) instead of nested data access (`tenant.data.name`) when working with the Stancl\Tenancy package.
+
+### Navigation Builder System Issues
+
+**Problem**: Custom navigation not appearing or falling back to defaults.
+
+**Common Causes & Solutions**:
+
+1. **NavigationService Cache Issues**:
+   ```php
+   // Clear navigation cache for specific user
+   Cache::forget("navigation.user.{$userId}.tenant.{$tenantId}");
+   
+   // Or clear all navigation caches
+   Cache::flush(); // Use sparingly in production
+   ```
+
+2. **Permission Filtering Too Restrictive**:
+   ```php
+   // Check user permissions
+   $user = User::find($userId);
+   $permissions = $user->getAllPermissions($tenantId);
+   dd($permissions); // Debug available permissions
+   ```
+
+3. **Navigation Configuration Not Active**:
+   ```php
+   // Ensure configuration is activated
+   $config = NavigationConfiguration::find($configId);
+   $config->activate(); // Sets is_active = true and deactivates others
+   ```
+
+4. **Frontend Icon Mapping Missing**:
+   ```jsx
+   // Add missing icons to icon map in layouts
+   const iconMap = {
+       'HomeIcon': HomeIcon,
+       'UsersIcon': UsersIcon,
+       'NewIconName': NewIconComponent, // Add missing icons here
+   };
+   ```
+
+5. **Database Migration Issues**:
+   ```bash
+   # Ensure navigation tables exist
+   ./vendor/bin/sail artisan migrate
+   
+   # Seed navigation items library
+   ./vendor/bin/sail artisan db:seed --class=NavigationItemsSeeder
+   ```
+
+**Debugging Navigation Issues**:
+```php
+// Test navigation service directly
+$user = User::find($userId);
+$navigationService = app(App\Services\NavigationService::class);
+$navigation = $navigationService->getNavigationForUser($user);
+dd($navigation); // Check returned navigation structure
+
+// Test user navigation items
+$items = $user->getNavigationItems();
+dd($items); // Check transformed navigation items
+```
+
+**Files to Check**:
+- `app/Services/NavigationService.php` - Core navigation logic
+- `app/Traits/HasPermissions.php` - User navigation method
+- `app/Http/Middleware/HandleInertiaRequests.php` - Frontend data passing
+- `resources/js/Layouts/AuthenticatedLayout.jsx` - Layout integration
+- `resources/js/Layouts/TenantAdminLayout.jsx` - Tenant admin layout
+
+## 🎯 Dashboard Separation & User Experience Architecture
+
+### **Dashboard Philosophy & Architecture**
+
+**Core Principle**: Clear separation between **user experience** and **administrative tools** while maintaining role flexibility.
+
+**System Design**:
+- **Single Landing Point**: ALL users (including admins) land on `/dashboard` as their default home
+- **User-Focused Main Dashboard**: Personal, welcoming experience for everyone
+- **Separate Admin Tools**: Administrative functionality available as separate tools via navigation
+- **Navigation Builder Control**: What users see is controlled by the Navigation Builder system
+
+### **Dashboard Implementation**
+
+#### **1. Main Dashboard (`/dashboard`)** - Universal User Experience
+```php
+// Route: /dashboard - FOR ALL USERS
+Route::get('/dashboard', function () {
+    $user = auth()->user();
+    $tenant = $user->tenant;
+    
+    // Same experience for ALL users, including admins
+    return Inertia::render('Dashboard', [
+        'pageTitle' => 'Dashboard',
+        'stats' => [
+            'tenant_id' => $user->tenant_id,
+            'tenant_name' => $tenant?->name ?? 'Your Organization',
+            'user_metrics' => [
+                'tasks_completed' => 12,
+                'projects_active' => 3,
+                'team_members' => 8,
+                'notifications' => 5
+            ]
+        ],
+    ]);
+});
+```
+
+**Features**:
+- 👤 **Personal Welcome**: "Welcome back, [Name]!"
+- 📊 **User Metrics**: Personal productivity stats, activity feed
+- 🎯 **Quick Actions**: User-relevant shortcuts
+- 📱 **Responsive Design**: Mobile-friendly personal dashboard
+- ⚡ **Fast Loading**: Focused on user's immediate needs
+
+#### **2. Admin Dashboard (`/tenant-admin/dashboard`)** - Administrative Tools
+```php
+// Route: /tenant-admin/dashboard - FOR TENANT ADMINS ONLY
+Route::get('/tenant-admin/dashboard', [TenantAdminController::class, 'dashboard'])
+    ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
+    ->name('tenant-admin.dashboard');
+```
+
+**Features**:
+- 👥 **User Management Metrics**: Active users, recent signups, role distribution
+- 🏢 **Organization Overview**: Tenant stats, settings summary
+- ⚙️ **Admin Quick Actions**: Add User, Manage Users, Settings links
+- 📈 **Administrative Analytics**: System usage, performance metrics
+- 🔧 **Management Tools**: Focused on administrative tasks
+
+#### **3. Navigation Integration**
+```php
+// app/Traits/HasPermissions.php - Default Navigation for Tenant Admins
+protected function getDefaultNavigation(): array
+{
+    $items = [
+        ['name' => 'Dashboard', 'route' => 'dashboard'], // ← All users land here
+        ['name' => 'Admin Dashboard', 'route' => 'tenant-admin.dashboard'], // ← Admin tool
+        ['name' => 'Manage Users', 'route' => 'tenant-admin.users.index'],
+        ['name' => 'Settings', 'route' => 'tenant-admin.settings'],
+    ];
+}
+```
+
+### **Route Discovery & Auto-Navigation System**
+
+#### **Automatic Route Discovery**
+```php
+// app/Services/RouteDiscoveryService.php
+class RouteDiscoveryService
+{
+    public function discoverRoutes(): array
+    {
+        // Scans Laravel's registered routes
+        $routes = Route::getRoutes();
+        
+        // Filters and categorizes automatically
+        foreach ($routes as $route) {
+            if ($this->shouldInclude($route)) {
+                $items[] = $this->analyzeRoute($route);
+            }
+        }
+    }
+}
+```
+
+**Smart Analysis**:
+- 🎯 **Icon Suggestions**: `users` → `UsersIcon`, `analytics` → `ChartPieIcon`
+- 🔐 **Permission Mapping**: Admin routes → `MANAGE_TENANT_USERS`
+- 📂 **Auto-Categorization**: Core, Admin, Content, Custom
+- 🚫 **Intelligent Filtering**: Excludes auth, API, form submission routes
+
+**Configuration**:
+```php
+// config/navigation.php
+return [
+    'enable_route_discovery' => env('NAVIGATION_ENABLE_ROUTE_DISCOVERY', false),
+    'discovery_exclude_patterns' => ['auth.*', '*.store', '*.api.*'],
+    'icon_mapping' => ['dashboard' => 'HomeIcon', 'users' => 'UsersIcon'],
+    'permission_mapping' => ['admin' => 'MANAGE_TENANT_USERS'],
+];
+```
+
+**Commands**:
+```bash
+# Test discovery without enabling
+./vendor/bin/sail artisan navigation:discovery test
+
+# Enable route discovery
+./vendor/bin/sail artisan navigation:discovery enable
+
+# View discovered routes
+./vendor/bin/sail artisan navigation:discovery list
+```
+
+### **Page Cleanup & File Management System**
+
+#### **Problem Solved**: Custom page deletion previously left orphaned files
+- ❌ **Before**: Only removed database records
+- ✅ **Now**: Complete cleanup of files, routes, and database records
+
+#### **Enhanced Deletion Process**
+```php
+// app/Http/Controllers/Admin/NavigationItemsController.php
+public function destroy(NavigationItem $item)
+{
+    $generatedPage = GeneratedPage::where('navigation_item_key', $item->key)->first();
+    
+    if ($generatedPage) {
+        $this->cleanupGeneratedPage($generatedPage, $item);
+    }
+    
+    $item->delete();
+}
+
+protected function cleanupGeneratedPage(GeneratedPage $page, NavigationItem $item): void
+{
+    // 1. Delete React component file
+    $componentPath = resource_path('js/Pages/' . $page->file_path);
+    if (file_exists($componentPath)) {
+        unlink($componentPath);
+        
+        // Remove empty directory
+        $directory = dirname($componentPath);
+        if ($this->isDirectoryEmpty($directory)) {
+            rmdir($directory);
+        }
+    }
+    
+    // 2. Remove route from dynamic.php
+    $this->removeRouteFromDynamicFile($item->route_name, $item->label);
+    
+    // 3. Delete database record
+    $page->delete();
+}
+```
+
+#### **Page Cleanup Service**
+```php
+// app/Services/PageCleanupService.php
+class PageCleanupService
+{
+    public function cleanupOrphanedFiles(): array
+    {
+        // Find orphaned database records
+        $orphanedPages = GeneratedPage::whereDoesntHave('navigationItem')->get();
+        
+        // Find orphaned component files
+        $this->cleanupUnreferencedFiles($report);
+        
+        // Clean up dynamic routes
+        $this->cleanupDynamicRoutes($report);
+    }
+}
+```
+
+**Cleanup Commands**:
+```bash
+# Check status
+./vendor/bin/sail artisan pages:cleanup status
+
+# Perform cleanup
+./vendor/bin/sail artisan pages:cleanup clean
+
+# Validate integrity
+./vendor/bin/sail artisan pages:cleanup validate
+```
+
+#### **Enhanced User Experience**
+```jsx
+// resources/js/Components/NavigationBuilder/CustomPagesModal.jsx
+const handleDeletePage = async (pageId) => {
+    const confirmed = confirm(
+        'Delete this custom page?\n\n' +
+        '⚠️ This will permanently remove:\n' +
+        '• The navigation item from the database\n' +
+        '• The React component file from disk\n' +
+        '• The route from dynamic.php\n' +
+        '• The page directory (if empty)\n\n' +
+        'This action cannot be undone!'
+    );
+    
+    // Complete cleanup process...
+};
+```
+
+### **Navigation Builder Enhancements**
+
+#### **Auto-Discovery Integration**
+```jsx
+// resources/js/Pages/CentralAdmin/Navigation/Builder.jsx
+{category.items.map(item => (
+    <button onClick={() => addItemFromLibrary(item)}>
+        <span>{item.label}</span>
+        {item.is_discovered && (
+            <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs">
+                Auto
+            </span>
+        )}
+    </button>
+))}
+```
+
+**Features**:
+- 🏷️ **Auto-Discovery Indicators**: Items marked with "Auto" badge
+- 🔄 **Refresh Button**: Reload available items to pick up new routes
+- 📊 **Discovery Statistics**: Shows seeded vs discovered items
+- ⚙️ **Configurable**: Enable/disable via environment variables
+
+### **System Integration Points**
+
+#### **NavigationService Enhancement**
+```php
+// app/Services/NavigationService.php
+public function getAvailableItems(bool $includeDiscovered = false): array
+{
+    if ($includeDiscovered) {
+        $routeDiscovery = app(RouteDiscoveryService::class);
+        return $routeDiscovery->getMergedAvailableItems();
+    }
+    
+    // Default: only seeded items
+    return NavigationItem::active()->ordered()->get()->groupBy('category');
+}
+```
+
+#### **NavigationController Integration**
+```php
+// app/Http/Controllers/Admin/NavigationController.php
+public function builder(Request $request)
+{
+    $includeDiscovered = config('navigation.enable_route_discovery', false);
+    $availableItems = $this->navigationService->getAvailableItems($includeDiscovered);
+    
+    return Inertia::render('CentralAdmin/Navigation/Builder', [
+        'availableItems' => $availableItems,
+    ]);
+}
+```
+
+### **Key Benefits Achieved**
+
+#### **Dashboard Separation**
+- ✅ **Clear User Experience**: All users get welcoming, personal dashboard
+- ✅ **Separated Admin Tools**: Administrative functionality isolated as tools
+- ✅ **Flexible Role Management**: Navigation Builder controls what users see
+- ✅ **Single Entry Point**: Universal `/dashboard` landing for all users
+
+#### **Route Discovery**
+- ✅ **Automatic Detection**: New routes automatically available in Navigation Builder
+- ✅ **Smart Categorization**: Intelligent analysis of route purpose and permissions
+- ✅ **Production Ready**: Configurable, safe, with comprehensive filtering
+- ✅ **Development Friendly**: Easy to discover new functionality
+
+#### **Page Cleanup**
+- ✅ **Complete Cleanup**: No orphaned files when deleting custom pages
+- ✅ **File System Integrity**: Automatic removal of empty directories
+- ✅ **Route Management**: Dynamic route cleanup from `dynamic.php`
+- ✅ **Audit Capabilities**: Status checking and validation commands
+
+### **Commands Summary**
+
+```bash
+# Navigation Discovery
+./vendor/bin/sail artisan navigation:discovery test      # Test & show stats
+./vendor/bin/sail artisan navigation:discovery list      # List discovered routes
+./vendor/bin/sail artisan navigation:discovery enable    # Enable auto-discovery
+./vendor/bin/sail artisan navigation:discovery disable   # Disable auto-discovery
+
+# Page Cleanup
+./vendor/bin/sail artisan pages:cleanup status          # Show cleanup status
+./vendor/bin/sail artisan pages:cleanup clean           # Perform cleanup
+./vendor/bin/sail artisan pages:cleanup validate        # Validate integrity
+./vendor/bin/sail artisan pages:cleanup clean --force   # Force cleanup without confirmation
+
+# Navigation Items
+./vendor/bin/sail artisan db:seed --class=NavigationItemsSeeder  # Seed navigation items
+```
+
+This architecture provides a scalable, maintainable system for dashboard management, automatic route discovery, and complete file lifecycle management while maintaining a clear separation between user experience and administrative tools. 

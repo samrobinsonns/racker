@@ -48,8 +48,9 @@ class NavigationController extends Controller
         // Get existing configurations for this tenant
         $configurations = $this->navigationService->getTenantConfigurations($request->tenant_id);
         
-        // Get available navigation items
-        $availableItems = $this->navigationService->getAvailableItems();
+        // Get available navigation items (with optional route discovery)
+        $includeDiscovered = config('navigation.enable_route_discovery', false);
+        $availableItems = $this->navigationService->getAvailableItems($includeDiscovered);
 
         return Inertia::render('CentralAdmin/Navigation/Builder', [
             'tenant' => $tenant,

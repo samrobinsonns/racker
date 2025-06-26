@@ -39,13 +39,23 @@ class NavigationItemsSeeder extends Seeder
 
             // Administrative Items
             [
+                'key' => 'admin_dashboard',
+                'label' => 'Admin Dashboard',
+                'icon' => 'ChartBarIcon',
+                'route_name' => 'tenant-admin.dashboard',
+                'permission_required' => Permission::MANAGE_TENANT_USERS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 10,
+                'description' => 'Administrative overview and management tools',
+            ],
+            [
                 'key' => 'manage_users',
                 'label' => 'Manage Users',
                 'icon' => 'UsersIcon',
                 'route_name' => 'tenant-admin.users.index',
                 'permission_required' => Permission::MANAGE_TENANT_USERS,
                 'category' => NavigationItem::CATEGORY_ADMIN,
-                'sort_order' => 10,
+                'sort_order' => 11,
                 'description' => 'User management interface',
             ],
             [
@@ -55,7 +65,7 @@ class NavigationItemsSeeder extends Seeder
                 'route_name' => 'tenant-admin.settings',
                 'permission_required' => Permission::MANAGE_TENANT_SETTINGS,
                 'category' => NavigationItem::CATEGORY_ADMIN,
-                'sort_order' => 11,
+                'sort_order' => 12,
                 'description' => 'Tenant configuration settings',
             ],
 

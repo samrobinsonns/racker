@@ -37,6 +37,14 @@ class GeneratedPage extends Model
     }
 
     /**
+     * Scope for orphaned pages (no corresponding navigation item)
+     */
+    public function scopeOrphaned($query)
+    {
+        return $query->whereDoesntHave('navigationItem');
+    }
+
+    /**
      * Scope for active pages
      */
     public function scopeActive($query)

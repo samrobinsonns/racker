@@ -661,13 +661,21 @@ export default function Builder({
                                             Add Divider
                                         </button>
                                         
-                                        <button
-                                            onClick={() => setShowCustomPagesModal(true)}
-                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-emerald-300 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
-                                        >
-                                            <HeroIcons.PlusCircleIcon className="h-5 w-5 mr-2" />
-                                            Custom Pages
-                                        </button>
+                                                                <button
+                            onClick={() => setShowCustomPagesModal(true)}
+                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-emerald-300 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
+                        >
+                            <HeroIcons.PlusCircleIcon className="h-5 w-5 mr-2" />
+                            Custom Pages
+                        </button>
+                        
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-yellow-300 rounded-lg text-sm font-medium text-yellow-600 bg-yellow-50 hover:bg-yellow-100 hover:border-yellow-400 transition-all duration-200"
+                        >
+                            <HeroIcons.ArrowPathIcon className="h-5 w-5 mr-2" />
+                            Refresh Available Items
+                        </button>
                                     </div>
                                 </div>
 
@@ -686,14 +694,19 @@ export default function Builder({
                                                 <div className="space-y-1">
                                                     {category.items.map(item => (
                                                         <button
-                                                            key={item.id}
+                                                            key={item.id || item.key}
                                                             onClick={() => addItemFromLibrary(item)}
                                                             className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-md flex items-center transition-colors duration-150 group"
                                                         >
-                                                                                                                                        <div className="mr-2">
-                                                                                {item.icon ? renderIcon(item.icon) || getDefaultIcon(false) : getDefaultIcon(false)}
-                                                                            </div>
+                                                            <div className="mr-2">
+                                                                {item.icon ? renderIcon(item.icon) || getDefaultIcon(false) : getDefaultIcon(false)}
+                                                            </div>
                                                             <span className="flex-1">{item.label}</span>
+                                                            {item.is_discovered && (
+                                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 mr-1">
+                                                                    Auto
+                                                                </span>
+                                                            )}
                                                             <PlusIcon className="h-3 w-3 text-gray-400 group-hover:text-blue-500" />
                                                         </button>
                                                     ))}
