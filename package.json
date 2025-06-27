@@ -28,6 +28,9 @@
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
         "@heroicons/react": "^2.2.0",
+        "date-fns": "^4.1.0",
+        "laravel-echo": "^2.1.6",
+        "pusher-js": "^8.4.0",
         "react-dnd": "^16.0.1",
         "react-dnd-html5-backend": "^16.0.1"
     }
