@@ -214,36 +214,50 @@ class ConversationController extends Controller
     /**
      * Delete a conversation
      */
-    public function destroy(Request $request, $conversationId): JsonResponse
+    public function destroy($id)
     {
-        $user = auth()->user();
-        $tenantId = $user->is_central_admin ? $request->input('tenant_id') : $user->tenant_id;
+        try {
+            $user = auth()->user();
+            $tenantId = $user->tenant_id;
 
-        if (!$tenantId) {
-            return response()->json(['error' => 'No tenant context available'], 400);
+            // Find conversation and verify access
+            $conversation = Conversation::where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->first();
+
+            if (!$conversation) {
+                return response()->json(['error' => 'Conversation not found'], 404);
+            }
+
+            // Verify user is a participant
+            if (!$conversation->isParticipant($user)) {
+                return response()->json(['error' => 'Access denied'], 403);
+            }
+
+            // Delete all messages first
+            $conversation->messages()->delete();
+            
+            // Delete all participants
+            $conversation->participants()->detach();
+            
+            // Delete the conversation
+            $conversation->delete();
+
+            return response()->json(['message' => 'Conversation deleted successfully']);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete conversation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'conversation_id' => $id
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to delete conversation',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $conversation = Conversation::where('id', $conversationId)
-                                  ->where('tenant_id', $tenantId)
-                                  ->first();
-
-        if (!$conversation) {
-            return response()->json(['error' => 'Conversation not found'], 404);
-        }
-
-        // Only creator or tenant admin can delete (unless central admin)
-        if (!$user->is_central_admin && 
-            $conversation->created_by !== $user->id && 
-            !$user->hasRole('tenant_admin', $tenantId)) {
-            return response()->json(['error' => 'Access denied'], 403);
-        }
-
-        $conversation->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Conversation deleted successfully',
-        ]);
     }
 
     /**

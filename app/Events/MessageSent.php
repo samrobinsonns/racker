@@ -9,15 +9,17 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageSent implements ShouldBroadcast
+class MessageSent implements ShouldBroadcast, ShouldQueue
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $message;
     public $user;
+    public $afterCommit = true;
 
     /**
      * Create a new event instance.
@@ -26,6 +28,12 @@ class MessageSent implements ShouldBroadcast
     {
         $this->message = $message->load('user', 'conversation');
         $this->user = $message->user;
+
+        \Log::info('MessageSent event constructed', [
+            'message_id' => $message->id,
+            'user_id' => $message->user_id,
+            'conversation_id' => $message->conversation_id
+        ]);
     }
 
     /**
@@ -40,10 +48,15 @@ class MessageSent implements ShouldBroadcast
         $channelName = "tenant.{$tenantId}.conversation.{$conversationId}";
 
         \Log::info('Broadcasting to channel', [
-            'channel' => "private-{$channelName}",
-            'message_id' => $this->message->id
+            'channel' => $channelName,
+            'message_id' => $this->message->id,
+            'tenant_id' => $tenantId,
+            'conversation_id' => $conversationId,
+            'event_name' => $this->broadcastAs(),
+            'conversation_type' => $this->message->conversation->type
         ]);
 
+        // Always use PrivateChannel - presence channels are handled through the authorization
         return [
             new PrivateChannel($channelName)
         ];
@@ -56,7 +69,7 @@ class MessageSent implements ShouldBroadcast
      */
     public function broadcastWith(): array
     {
-        return [
+        $data = [
             'id' => $this->message->id,
             'conversation_id' => $this->message->conversation_id,
             'content' => $this->message->content,
@@ -71,6 +84,13 @@ class MessageSent implements ShouldBroadcast
                 'email' => $this->user->email,
             ],
         ];
+
+        \Log::info('Broadcasting message data', [
+            'message_id' => $this->message->id,
+            'data' => $data
+        ]);
+
+        return $data;
     }
 
     /**

@@ -1,7 +1,7 @@
 # Chat System Documentation
 
 ## Overview
-The chat system is a real-time messaging feature built using Laravel's broadcasting system with Soketi as the WebSocket server. It supports tenant-isolated conversations, real-time message updates, typing indicators, and conversation management.
+The chat system is a real-time messaging feature built using Laravel's broadcasting system with Soketi as the WebSocket server. It supports tenant-isolated conversations, real-time message updates, typing indicators, conversation management, and conversation deletion.
 
 ## Architecture
 
@@ -12,6 +12,8 @@ The chat system is a real-time messaging feature built using Laravel's broadcast
   - Has many `Message` models
   - Has many `ConversationParticipant` models
   - Belongs to a `Tenant`
+  - Supports soft deletes for data retention
+  - Includes helper methods for participant management
 
 - `Message`: Represents individual chat messages
   - Belongs to a `Conversation`
@@ -21,6 +23,7 @@ The chat system is a real-time messaging feature built using Laravel's broadcast
 - `ConversationParticipant`: Links users to conversations
   - Belongs to a `Conversation`
   - Belongs to a `User`
+  - Tracks last read time and role
 
 #### Events
 - `MessageSent`: Broadcast when a new message is sent
@@ -31,12 +34,22 @@ The chat system is a real-time messaging feature built using Laravel's broadcast
 - `UserTyping`: Broadcast when a user is typing
   - Uses private channels
   - Channel format: `tenant.{tenantId}.conversation.{conversationId}`
-  - Broadcasts with event name: `.user.typing`
+  - Broadcasts with event name: `typing`
+  - Payload includes user info and typing status
+
+- `ConversationUpdated`: Broadcast when conversation details change
+  - Uses private channels
+  - Channel format: `tenant.{tenantId}.notifications`
+  - Broadcasts with event name: `.conversation.updated`
+  - Includes unread counts and last message details
 
 #### Controllers
 - `MessageController`: Handles message CRUD operations
-- `ConversationController`: Manages conversations
+- `ConversationController`: Manages conversations and deletion
 - `TypingController`: Handles typing indicators
+  - Supports both typing start and stop events
+  - Validates participant access
+  - Includes error handling and logging
 
 ### Frontend Components
 
@@ -45,16 +58,28 @@ The chat system is a real-time messaging feature built using Laravel's broadcast
   - Manages WebSocket connections
   - Handles conversation selection
   - Coordinates message sending/receiving
+  - Manages typing indicator state
 
 - `MessageArea`: Displays messages and input
   - Renders message bubbles
   - Handles message input
   - Shows typing indicators
+  - Debounces typing events
 
 - `ConversationList`: Shows available conversations
   - Lists all conversations
   - Shows unread message counts
   - Displays last message preview
+  - Provides conversation deletion
+  - Updates in real-time with new messages
+
+#### Conversation Management
+The system includes full conversation lifecycle management:
+- Creation: Users can start new conversations
+- Updates: Real-time updates for messages and status
+- Deletion: Users can delete conversations they participate in
+- Cleanup: Automatically removes associated messages and participants
+- Typing: Real-time typing indicators with debouncing
 
 #### WebSocket Integration
 The frontend uses Laravel Echo with Pusher client to handle WebSocket connections:
@@ -123,6 +148,12 @@ VITE_SOKETI_APP_CLUSTER=mt1
 2. Check WebSocket connection in browser Network tab
 3. Verify environment variables match between frontend and backend
 
+### Typing Indicator Issues
+1. Check request payload contains `is_typing` boolean
+2. Verify user is a conversation participant
+3. Check Laravel logs for validation errors
+4. Ensure proper channel subscription
+
 ### Message Order Issues
 1. Backend returns messages in ascending order (oldest first)
 2. Frontend should maintain this order when displaying
@@ -135,12 +166,14 @@ VITE_SOKETI_APP_CLUSTER=mt1
 - Channel authorization happens through Laravel's built-in broadcasting auth
 - Users can only access conversations they're participants in
 - Tenant isolation is enforced at the channel level
+- Deletion is restricted to conversation participants
 
 ### Data Privacy
 - Messages are tenant-isolated
 - Users can only see conversations they're part of
-- Admins have additional access controls
+- Users can only delete conversations they participate in
 - All WebSocket connections are authenticated
+- Soft deletes preserve data for audit purposes
 
 ## Future Improvements
 1. Message read receipts
@@ -160,7 +193,7 @@ VITE_SOKETI_APP_CLUSTER=mt1
 - `GET /api/messaging/conversations`: List user's conversations
 - `POST /api/messaging/conversations`: Create new conversation
 - `GET /api/messaging/conversations/{id}`: Get conversation details
-- `DELETE /api/messaging/conversations/{id}`: Delete conversation
+- `DELETE /api/messaging/conversations/{id}`: Delete conversation and associated data
 
 ### Messages
 - `GET /api/messaging/conversations/{id}/messages`: Get conversation messages
@@ -169,4 +202,8 @@ VITE_SOKETI_APP_CLUSTER=mt1
 - `DELETE /api/messaging/conversations/{id}/messages/{messageId}`: Delete message
 
 ### Typing Indicators
-- `POST /api/messaging/conversations/{id}/typing`: Update typing status 
+- `POST /api/messaging/conversations/{id}/typing`: Update typing status
+  - Requires `is_typing` boolean in request body
+  - Returns 403 if user is not a participant
+  - Returns 404 if conversation not found
+  - Returns 400 if tenant context is missing 

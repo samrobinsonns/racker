@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use App\Models\Message;
 use App\Models\Conversation;
 use App\Events\MessageSent;
+use App\Events\ConversationUpdated;
 
 class MessageController extends Controller
 {
@@ -64,69 +65,70 @@ class MessageController extends Controller
      */
     public function store(Request $request, $conversationId): JsonResponse
     {
-        $user = auth()->user();
-        $tenantId = $user->is_central_admin ? $request->input('tenant_id') : $user->tenant_id;
-
-        if (!$tenantId) {
-            return response()->json(['error' => 'No tenant context available'], 400);
-        }
-
-        $request->validate([
-            'content' => 'required|string|max:5000',
-            'type' => 'sometimes|in:text,file,image,system',
-            'metadata' => 'sometimes|array',
-        ]);
-
-        // Find conversation and verify access
-        $conversation = Conversation::where('id', $conversationId)
-                                  ->where('tenant_id', $tenantId)
-                                  ->first();
-
-        if (!$conversation) {
-            return response()->json(['error' => 'Conversation not found'], 404);
-        }
-
-        // Verify user is a participant
-        if (!$conversation->isParticipant($user)) {
-            return response()->json(['error' => 'Access denied'], 403);
-        }
-
-        // Create the message
-        $message = Message::create([
-            'conversation_id' => $conversation->id,
-            'user_id' => $user->id,
-            'content' => $request->input('content'),
-            'type' => $request->input('type', 'text'),
-            'metadata' => $request->input('metadata'),
-        ]);
-
-        // Load relationships for response
-        $message->load(['user:id,name,email', 'conversation']);
-
-        // Broadcast the message
         try {
-            $event = new MessageSent($message);
-            \Log::info('Broadcasting message', [
+            $user = auth()->user();
+            $tenantId = $user->is_central_admin ? $request->input('tenant_id') : $user->tenant_id;
+
+            if (!$tenantId) {
+                return response()->json(['error' => 'No tenant context available'], 400);
+            }
+
+            $request->validate([
+                'content' => 'required|string|max:5000',
+                'type' => 'sometimes|in:text,file,image,system',
+                'metadata' => 'sometimes|array',
+            ]);
+
+            // Find conversation and verify access
+            $conversation = Conversation::where('id', $conversationId)
+                                    ->where('tenant_id', $tenantId)
+                                    ->first();
+
+            if (!$conversation) {
+                return response()->json(['error' => 'Conversation not found'], 404);
+            }
+
+            // Verify user is a participant
+            if (!$conversation->isParticipant($user)) {
+                return response()->json(['error' => 'Access denied'], 403);
+            }
+
+            // Create the message
+            $message = Message::create([
+                'conversation_id' => $conversation->id,
+                'user_id' => $user->id,
+                'content' => $request->input('content'),
+                'type' => $request->input('type', 'text'),
+                'metadata' => $request->input('metadata'),
+            ]);
+            
+            // Load relationships for response
+            $message->load(['user:id,name,email', 'conversation']);
+
+            \Log::info('Message created successfully', [
                 'message_id' => $message->id,
                 'conversation_id' => $message->conversation_id,
-                'channel' => "tenant.{$conversation->tenant_id}.conversation.{$conversation->id}",
-                'event_name' => $event->broadcastAs(),
-                'broadcast_data' => $event->broadcastWith(),
+                'user_id' => $user->id
             ]);
-            broadcast($event)->toOthers();
-            \Log::info('Message broadcast completed');
-        } catch (\Exception $e) {
-            \Log::error('Failed to broadcast message', [
-                'message_id' => $message->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
 
-        return response()->json([
-            'message' => $message->toArray(),
-            'success' => true,
-        ], 201);
+            return response()->json([
+                'message' => $message->toArray(),
+                'success' => true,
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to create message', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'conversation_id' => $conversationId
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to create message',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

@@ -14,6 +14,18 @@ export default function ChatInterface({ className = '' }) {
     const [showNewConversationModal, setShowNewConversationModal] = useState(false);
     const [typingUsers, setTypingUsers] = useState({});
     const echo = useRef(null);
+    const messagesRef = useRef(messages);
+    const conversationsRef = useRef(conversations);
+    const channelRef = useRef(null);
+
+    // Keep refs in sync with state
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
+
+    useEffect(() => {
+        conversationsRef.current = conversations;
+    }, [conversations]);
 
     // Initialize Echo connection
     useEffect(() => {
@@ -21,19 +33,50 @@ export default function ChatInterface({ className = '' }) {
         
         // Subscribe to tenant-wide notifications
         if (auth.user.tenant_id) {
-            echo.current.private(`tenant.${auth.user.tenant_id}.notifications`)
-                .listen('ConversationCreated', (e) => {
+            const notificationChannel = echo.current.private(`tenant.${auth.user.tenant_id}.notifications`);
+            
+            notificationChannel
+                .listen('.conversation.created', (e) => {
+                    console.log('New conversation created:', e);
                     fetchConversations();
+                })
+                .listen('.conversation.updated', (e) => {
+                    console.log('Conversation updated:', e);
+                    // Update the conversation in the list with the new data
+                    setConversations(prevConversations => {
+                        return prevConversations.map(conv => {
+                            if (conv.id === e.conversation.id) {
+                                // If this is not the selected conversation, update unread count
+                                const unreadCount = !selectedConversation || selectedConversation.id !== conv.id
+                                    ? (e.conversation.participants_data[auth.user.id]?.unread_count || 0)
+                                    : 0;
+                                
+                                return {
+                                    ...conv,
+                                    ...e.conversation,
+                                    unread_count: unreadCount,
+                                    last_message: e.conversation.last_message
+                                };
+                            }
+                            return conv;
+                        }).sort((a, b) => {
+                            const aTime = a.last_message?.created_at || a.created_at;
+                            const bTime = b.last_message?.created_at || b.created_at;
+                            return new Date(bTime) - new Date(aTime);
+                        });
+                    });
+                })
+                .error((error) => {
+                    console.error('Notifications channel error:', error);
                 });
-        }
 
-        return () => {
-            // Cleanup Echo subscriptions
-            if (echo.current && auth.user.tenant_id) {
+            return () => {
+                notificationChannel.stopListening('.conversation.created');
+                notificationChannel.stopListening('.conversation.updated');
                 echo.current.leave(`tenant.${auth.user.tenant_id}.notifications`);
-            }
-        };
-    }, [auth.user.tenant_id]);
+            };
+        }
+    }, [auth.user.tenant_id, selectedConversation?.id]);
 
     // Fetch conversations on component mount
     useEffect(() => {
@@ -42,47 +85,113 @@ export default function ChatInterface({ className = '' }) {
 
     // Subscribe to conversation when selected
     useEffect(() => {
-        if (selectedConversation && echo.current) {
-            const channelName = `tenant.${auth.user.tenant_id}.conversation.${selectedConversation.id}`;
-            console.log('Subscribing to channel:', channelName);
-            
-            const channel = echo.current.private(channelName);
-            
-            // Debug logging for connection status
-            channel.subscribed(() => {
-                console.log('Successfully subscribed to channel:', channelName);
-            });
-            
-            // Debug logging for subscription error
-            channel.error((error) => {
-                console.error('Channel subscription error:', error);
-            });
-            
-            // Listen for messages
-            channel.listen('.message.sent', (e) => {
-                console.log('Received message event:', e);
-                const newMessage = {
-                    id: e.id,
-                    conversation_id: e.conversation_id,
-                    content: e.content,
-                    type: e.type,
-                    metadata: e.metadata,
-                    created_at: e.created_at,
-                    formatted_date: e.formatted_date,
-                    time_ago: e.time_ago,
-                    user: e.user
-                };
-                setMessages(prev => [...prev, newMessage]);
-                updateConversationLastMessage(selectedConversation.id, newMessage);
-            });
+        const subscribeToConversation = async () => {
+            // Cleanup previous subscription
+            if (channelRef.current) {
+                console.log('Cleaning up previous subscription');
+                channelRef.current.stopListening('.message.sent');
+                channelRef.current.stopListening('typing');
+                channelRef.current = null;
+            }
 
-            // Cleanup subscription on unmount
-            return () => {
-                console.log('Unsubscribing from channel:', channelName);
-                channel.unsubscribe();
-            };
-        }
-    }, [selectedConversation, auth.user]);
+            if (selectedConversation && echo.current) {
+                const channelName = `tenant.${auth.user.tenant_id}.conversation.${selectedConversation.id}`;
+                console.log('Subscribing to channel:', channelName, 'Type:', selectedConversation.type);
+                
+                // Always use private channel
+                const channel = echo.current.private(channelName);
+                channelRef.current = channel;
+                
+                channel.subscribed(() => {
+                    console.log('Successfully subscribed to channel:', channelName);
+                }).error((error) => {
+                    console.error('Channel subscription error:', error);
+                });
+                
+                // Listen for messages
+                channel.listen('.message.sent', (e) => {
+                    console.log('Received message event:', e);
+                    
+                    const newMessage = {
+                        id: e.id,
+                        conversation_id: e.conversation_id,
+                        content: e.content,
+                        type: e.type,
+                        metadata: e.metadata,
+                        created_at: e.created_at,
+                        formatted_date: e.formatted_date,
+                        time_ago: e.time_ago,
+                        user: e.user
+                    };
+                    
+                    console.log('Adding new message to state:', newMessage);
+                    
+                    // Update messages state
+                    setMessages(prevMessages => {
+                        // Check if message already exists (including optimistic ones)
+                        if (prevMessages.some(msg => 
+                            msg.id === newMessage.id || 
+                            (msg.id.toString().startsWith('temp-') && 
+                             msg.content === newMessage.content && 
+                             msg.user.id === newMessage.user.id)
+                        )) {
+                            console.log('Message already exists in state');
+                            return prevMessages;
+                        }
+                        
+                        // If this is our own message in a group chat, remove the optimistic version
+                        if (selectedConversation.type === 'group' && newMessage.user.id === auth.user.id) {
+                            const updatedMessages = prevMessages.filter(msg => !msg.id.toString().startsWith('temp-'));
+                            return [...updatedMessages, newMessage];
+                        }
+                        
+                        const updatedMessages = [...prevMessages, newMessage];
+                        console.log('New messages state:', updatedMessages);
+                        return updatedMessages;
+                    });
+
+                    // Update conversation list
+                    const updatedConversation = {
+                        ...selectedConversation,
+                        last_message: newMessage,
+                        updated_at: newMessage.created_at
+                    };
+                    updateConversationInList(updatedConversation);
+                });
+
+                // Listen for typing events
+                channel.listenForWhisper('typing', (e) => {
+                    console.log('Typing event received:', e);
+                    if (e.user.id === auth.user.id) return;
+                    
+                    setTypingUsers(prev => ({
+                        ...prev,
+                        [e.user.id]: {
+                            ...e.user,
+                            isTyping: e.isTyping,
+                            timestamp: e.timestamp
+                        }
+                    }));
+                });
+            }
+        };
+
+        subscribeToConversation();
+
+        // Cleanup function
+        return () => {
+            if (channelRef.current) {
+                console.log('Cleaning up subscription on unmount');
+                channelRef.current.stopListening('.message.sent');
+                channelRef.current.stopListening('typing');
+                if (selectedConversation) {
+                    const channelName = `tenant.${auth.user.tenant_id}.conversation.${selectedConversation.id}`;
+                    echo.current.leave(`private-${channelName}`);
+                }
+                channelRef.current = null;
+            }
+        };
+    }, [selectedConversation?.id, auth.user.tenant_id]); // Only re-run if conversation ID changes
 
     const fetchConversations = async () => {
         try {
@@ -146,12 +255,42 @@ export default function ChatInterface({ className = '' }) {
         if (!selectedConversation || !content.trim()) return;
 
         try {
+            // Create optimistic message
+            const optimisticMessage = {
+                id: `temp-${Date.now()}`,
+                conversation_id: selectedConversation.id,
+                content: content.trim(),
+                type,
+                metadata: metadata ? (Array.isArray(metadata) ? metadata : [metadata]) : null,
+                created_at: new Date().toISOString(),
+                formatted_date: new Date().toLocaleString(),
+                time_ago: 'Just now',
+                user: {
+                    id: auth.user.id,
+                    name: auth.user.name,
+                    email: auth.user.email
+                }
+            };
+
+            // For direct messages, show optimistic update immediately
+            // For group messages, wait for the broadcast
+            if (selectedConversation.type === 'direct') {
+                setMessages(prevMessages => [...prevMessages, optimisticMessage]);
+                updateConversationInList({
+                    ...selectedConversation,
+                    last_message: optimisticMessage,
+                    updated_at: optimisticMessage.created_at
+                });
+            }
+
             const body = {
                 content: content.trim(),
                 type,
                 ...(metadata ? { metadata: Array.isArray(metadata) ? metadata : [metadata] } : {}),
                 ...(auth.user.is_central_admin ? { tenant_id: auth.user.tenant_id } : {})
             };
+
+            console.log('Sending message:', body);
 
             const response = await fetch(`/api/messaging/conversations/${selectedConversation.id}/messages`, {
                 method: 'POST',
@@ -169,22 +308,77 @@ export default function ChatInterface({ className = '' }) {
             }
 
             const data = await response.json();
-            // Message will be added via WebSocket broadcast
-            // But we can add it optimistically for immediate UI feedback
-            const newMessage = data.message;
-            setMessages(prev => [...prev, newMessage]);
-            updateConversationLastMessage(selectedConversation.id, newMessage);
+            console.log('Message sent successfully:', data);
+
+            // For direct messages, replace the optimistic message with the real one
+            if (selectedConversation.type === 'direct') {
+                setMessages(prevMessages => {
+                    const updatedMessages = prevMessages.filter(msg => msg.id !== optimisticMessage.id);
+                    return [...updatedMessages, data.message];
+                });
+                
+                updateConversationInList({
+                    ...selectedConversation,
+                    last_message: data.message,
+                    updated_at: data.message.created_at
+                });
+            }
         } catch (error) {
             console.error('Error sending message:', error);
+            
+            // Remove optimistic message on error (only for direct messages)
+            if (selectedConversation.type === 'direct') {
+                setMessages(prevMessages => prevMessages.filter(msg => msg.id !== optimisticMessage.id));
+            }
+            
+            // Show error to user
+            alert('Failed to send message. Please try again.');
         }
     };
 
-    const updateConversationLastMessage = (conversationId, message) => {
-        setConversations(prev => prev.map(conv => 
-            conv.id === conversationId 
-                ? { ...conv, last_message: message, unread_count: conv.id === selectedConversation?.id ? 0 : conv.unread_count + 1 }
-                : conv
-        ));
+    const updateConversationInList = (updatedConversation) => {
+        console.log('Updating conversation in list:', updatedConversation);
+        
+        setConversations(prevConversations => {
+            // Find the conversation in the list
+            const index = prevConversations.findIndex(c => c.id === updatedConversation.id);
+            
+            if (index === -1) {
+                console.log('Conversation not found in list, adding it');
+                return [updatedConversation, ...prevConversations];
+            }
+
+            // Create new array with updated conversation
+            const newConversations = [...prevConversations];
+            newConversations[index] = {
+                ...newConversations[index],
+                ...updatedConversation,
+                // Preserve unread count based on selection state
+                unread_count: selectedConversation?.id === updatedConversation.id 
+                    ? 0 
+                    : (newConversations[index].unread_count || 0) + (updatedConversation.last_message?.user?.id !== auth.user.id ? 1 : 0)
+            };
+
+            // Sort conversations by last message time
+            const sortedConversations = newConversations.sort((a, b) => {
+                const aTime = a.last_message?.created_at || a.created_at;
+                const bTime = b.last_message?.created_at || b.created_at;
+                return new Date(bTime) - new Date(aTime);
+            });
+
+            console.log('Updated conversations list:', sortedConversations);
+            return sortedConversations;
+        });
+
+        // Update selected conversation if it's the one being updated
+        if (selectedConversation?.id === updatedConversation.id) {
+            console.log('Updating selected conversation');
+            setSelectedConversation(prev => ({
+                ...prev,
+                ...updatedConversation,
+                unread_count: 0 // Always 0 for selected conversation
+            }));
+        }
     };
 
     const handleTyping = (isTyping) => {

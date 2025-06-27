@@ -28,13 +28,13 @@ window.Echo = new Echo({
     wssPort: import.meta.env.VITE_SOKETI_PORT,
     forceTLS: false,
     encrypted: false,
-    disableStats: true,
+    enableStats: false,
     enabledTransports: ['ws', 'wss'],
     cluster: import.meta.env.VITE_SOKETI_APP_CLUSTER,
     authEndpoint: '/broadcasting/auth',
     auth: {
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-CSRF-TOKEN': csrfToken.content,
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         }

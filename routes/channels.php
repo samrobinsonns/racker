@@ -70,13 +70,8 @@ Broadcast::channel('private-tenant.{tenantId}.conversation.{conversationId}', fu
 |
 */
 
-Broadcast::channel('tenant.{tenantId}.notifications', function (User $user, $tenantId) {
-    Log::info('Authorizing tenant notification channel', [
-        'user_id' => $user->id,
-        'tenant_id' => $tenantId,
-        'user_tenant_id' => $user->tenant_id
-    ]);
-    return $user->tenant_id === $tenantId;
+Broadcast::channel('tenant.{tenantId}.notifications', function ($user, $tenantId) {
+    return $user->tenant_id === $tenantId || $user->is_central_admin;
 });
 
 /*
@@ -123,4 +118,43 @@ Broadcast::channel('tenant.{tenantId}.conversation.{conversationId}', function (
             $query->where('user_id', $user->id);
         })
         ->exists();
+});
+
+// Private conversation channel (for direct messages)
+Broadcast::private('tenant.{tenantId}.conversation.{conversationId}', function ($user, $tenantId, $conversationId) {
+    $conversation = Conversation::where('id', $conversationId)
+                              ->where('tenant_id', $tenantId)
+                              ->first();
+
+    if (!$conversation) {
+        return false;
+    }
+
+    return $conversation->type === 'direct' && 
+           ($conversation->isParticipant($user) || $user->is_central_admin);
+});
+
+// Presence conversation channel (for group chats)
+Broadcast::presence('tenant.{tenantId}.conversation.{conversationId}', function ($user, $tenantId, $conversationId) {
+    $conversation = Conversation::where('id', $conversationId)
+                              ->where('tenant_id', $tenantId)
+                              ->first();
+
+    if (!$conversation) {
+        return false;
+    }
+
+    if ($conversation->type !== 'group') {
+        return false;
+    }
+
+    if (!$conversation->isParticipant($user) && !$user->is_central_admin) {
+        return false;
+    }
+
+    return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email
+    ];
 }); 

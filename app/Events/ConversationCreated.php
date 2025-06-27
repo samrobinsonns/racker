@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Models\User;
 use App\Models\Conversation;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,22 +11,18 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class UserTyping implements ShouldBroadcast
+class ConversationCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $user;
     public $conversation;
-    public $isTyping;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(User $user, Conversation $conversation, bool $isTyping = true)
+    public function __construct(Conversation $conversation)
     {
-        $this->user = $user;
-        $this->conversation = $conversation;
-        $this->isTyping = $isTyping;
+        $this->conversation = $conversation->load('participants.user', 'lastMessage');
     }
 
     /**
@@ -37,11 +32,8 @@ class UserTyping implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        $tenantId = $this->conversation->tenant_id;
-        $conversationId = $this->conversation->id;
-
         return [
-            new PrivateChannel("tenant.{$tenantId}.conversation.{$conversationId}"),
+            new PrivateChannel("tenant.{$this->conversation->tenant_id}.notifications")
         ];
     }
 
@@ -53,13 +45,7 @@ class UserTyping implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'user' => [
-                'id' => $this->user->id,
-                'name' => $this->user->name,
-            ],
-            'conversation_id' => $this->conversation->id,
-            'is_typing' => $this->isTyping,
-            'timestamp' => now()->toISOString(),
+            'conversation' => $this->conversation
         ];
     }
 
@@ -70,6 +56,6 @@ class UserTyping implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'typing';
+        return 'conversation.created';
     }
-}
+} 

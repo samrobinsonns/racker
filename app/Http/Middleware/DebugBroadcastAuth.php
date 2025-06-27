@@ -17,16 +17,26 @@ class DebugBroadcastAuth
             'cookies' => $request->cookies->all(),
             'session_id' => $request->session()->getId(),
             'user_id' => $request->user()?->id,
+            'tenant_id' => $request->user()?->tenant_id,
             'is_authenticated' => auth()->check(),
             'channel_name' => $request->input('channel_name'),
-            'socket_id' => $request->input('socket_id')
+            'socket_id' => $request->input('socket_id'),
+            'request_data' => $request->all()
         ]);
 
         $response = $next($request);
 
+        // Get response content and decode if JSON
+        $content = $response->content();
+        $decodedContent = json_decode($content, true);
+
         Log::info('Broadcasting auth response', [
             'status' => $response->status(),
-            'content' => $response->content()
+            'content_type' => $response->headers->get('Content-Type'),
+            'raw_content' => $content,
+            'decoded_content' => $decodedContent,
+            'is_json' => json_last_error() === JSON_ERROR_NONE,
+            'json_error' => json_last_error_msg()
         ]);
 
         return $response;

@@ -202,57 +202,21 @@ Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function (
     })->middleware('permission:' . Permission::VIEW_TENANT_ANALYTICS)->name('analytics');
 });
 
-// Messaging API Routes - Tenant-scoped messaging system
-Route::prefix('api/messaging')->name('api.messaging.')->middleware(['auth'])->group(function () {
+// Messaging API Routes
+Route::prefix('api/messaging')->middleware(['auth'])->group(function () {
     // Conversations
-    Route::get('/conversations', [\App\Http\Controllers\ConversationController::class, 'index'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('conversations.index');
-    Route::post('/conversations', [\App\Http\Controllers\ConversationController::class, 'store'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('conversations.store');
-    Route::get('/conversations/{conversation}', [\App\Http\Controllers\ConversationController::class, 'show'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('conversations.show');
-    Route::put('/conversations/{conversation}', [\App\Http\Controllers\ConversationController::class, 'update'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('conversations.update');
-    Route::delete('/conversations/{conversation}', [\App\Http\Controllers\ConversationController::class, 'destroy'])
-        ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
-        ->name('conversations.destroy');
-    
-    // Conversation Participants
-    Route::post('/conversations/{conversation}/participants', [\App\Http\Controllers\ConversationController::class, 'addParticipants'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('conversations.participants.add');
-    Route::delete('/conversations/{conversation}/participants/{user}', [\App\Http\Controllers\ConversationController::class, 'removeParticipant'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('conversations.participants.remove');
+    Route::get('/conversations', [App\Http\Controllers\ConversationController::class, 'index']);
+    Route::post('/conversations', [App\Http\Controllers\ConversationController::class, 'store']);
+    Route::get('/conversations/{conversation}', [App\Http\Controllers\ConversationController::class, 'show']);
+    Route::delete('/conversations/{conversation}', [App\Http\Controllers\ConversationController::class, 'destroy']);
     
     // Messages
-    Route::get('/conversations/{conversation}/messages', [\App\Http\Controllers\MessageController::class, 'index'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('messages.index');
-    Route::post('/conversations/{conversation}/messages', [\App\Http\Controllers\MessageController::class, 'store'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('messages.store');
-    Route::put('/conversations/{conversation}/messages/{message}', [\App\Http\Controllers\MessageController::class, 'update'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('messages.update');
-    Route::delete('/conversations/{conversation}/messages/{message}', [\App\Http\Controllers\MessageController::class, 'destroy'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('messages.destroy');
-    Route::post('/conversations/{conversation}/messages/read', [\App\Http\Controllers\MessageController::class, 'markAsRead'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('messages.read');
+    Route::get('/conversations/{conversation}/messages', [App\Http\Controllers\MessageController::class, 'index']);
+    Route::post('/conversations/{conversation}/messages', [App\Http\Controllers\MessageController::class, 'store']);
     
     // Typing Indicators
-    Route::post('/conversations/{conversation}/typing', [\App\Http\Controllers\TypingController::class, 'typing'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('typing.update');
-    Route::post('/conversations/{conversation}/typing/stop', [\App\Http\Controllers\TypingController::class, 'stopTyping'])
-        ->middleware('permission:' . Permission::VIEW_TENANT_DATA)
-        ->name('typing.stop');
+    Route::post('/conversations/{conversation}/typing', [App\Http\Controllers\TypingController::class, 'typing']);
+    Route::post('/conversations/{conversation}/stop-typing', [App\Http\Controllers\TypingController::class, 'stopTyping']);
 });
 
 // Users API for messaging

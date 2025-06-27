@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { UserGroupIcon, UserIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, UserIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 export default function ConversationList({ 
     conversations, 
     selectedConversation, 
     onSelectConversation, 
     loading, 
-    currentUser 
+    currentUser,
+    onConversationDeleted
 }) {
+    const [deletingId, setDeletingId] = useState(null);
+
     const getConversationDisplayName = (conversation) => {
         if (conversation.name) {
             return conversation.name;
@@ -67,6 +70,41 @@ export default function ConversationList({
                 return message.content;
             default:
                 return `${prefix}${message.content}`;
+        }
+    };
+
+    const handleDelete = async (e, conversationId) => {
+        e.stopPropagation(); // Prevent conversation selection when clicking delete
+        
+        if (confirm('Are you sure you want to delete this conversation?')) {
+            setDeletingId(conversationId);
+            try {
+                const response = await fetch(`/api/messaging/conversations/${conversationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to delete conversation');
+                }
+
+                // Remove the conversation from the list
+                onConversationDeleted?.(conversationId);
+                // If no onConversationDeleted prop, refresh the page
+                if (!onConversationDeleted) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error deleting conversation:', error);
+                alert(error.message || 'Failed to delete conversation. Please try again.');
+            } finally {
+                setDeletingId(null);
+            }
         }
     };
 
@@ -148,6 +186,15 @@ export default function ConversationList({
                                 </p>
                             )}
                         </div>
+                        <button
+                            onClick={(e) => handleDelete(e, conversation.id)}
+                            disabled={deletingId === conversation.id}
+                            className={`ml-4 p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 ${
+                                deletingId === conversation.id ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                        >
+                            <TrashIcon className="h-5 w-5" />
+                        </button>
                     </div>
                 </div>
             ))}

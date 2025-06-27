@@ -30,7 +30,25 @@ class Message extends Model
         parent::boot();
 
         static::created(function ($message) {
-            broadcast(new MessageSent($message))->toOthers();
+            // Load necessary relationships before broadcasting
+            $message->load(['user:id,name,email', 'conversation']);
+            
+            try {
+                broadcast(new \App\Events\MessageSent($message))->toOthers();
+                broadcast(new \App\Events\ConversationUpdated($message->conversation))->toOthers();
+                
+                \Log::info('Message events broadcast successfully', [
+                    'message_id' => $message->id,
+                    'conversation_id' => $message->conversation_id,
+                    'user_id' => $message->user_id
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast message events', [
+                    'message_id' => $message->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
         });
     }
 
