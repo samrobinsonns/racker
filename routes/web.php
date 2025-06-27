@@ -4,6 +4,13 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\CentralAdminController;
 use App\Http\Controllers\Admin\TenantController;
 use App\Http\Controllers\Admin\TenantAdminController;
+use App\Http\Controllers\SupportTicketsController;
+use App\Http\Controllers\SupportTicketRepliesController;
+use App\Http\Controllers\SupportTicketAttachmentsController;
+use App\Http\Controllers\TenantAdmin\SupportTicketCategoriesController;
+use App\Http\Controllers\TenantAdmin\SupportTicketSettingsController;
+use App\Http\Controllers\TenantAdmin\SupportTicketAnalyticsController;
+use App\Http\Controllers\TenantAdmin\SupportTicketsController as TenantAdminSupportTicketsController;
 use App\Enums\Permission;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -130,7 +137,7 @@ Route::prefix('central-admin')->name('central-admin.')->middleware(['auth', 'cen
 });
 
 // Tenant Admin Routes - now with granular permissions
-Route::prefix('tenant-admin')->name('tenant-admin.')->middleware(['auth', 'tenant.admin'])->group(function () {
+Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')->name('tenant-admin.')->group(function () {
     Route::get('/dashboard', [TenantAdminController::class, 'dashboard'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('dashboard');
@@ -158,6 +165,47 @@ Route::prefix('tenant-admin')->name('tenant-admin.')->middleware(['auth', 'tenan
     Route::delete('/users/{user}', [TenantAdminController::class, 'destroyUser'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('users.destroy');
+
+    // Support Ticket Management
+    Route::prefix('support-tickets')->name('support-tickets.')->group(function () {
+        // Main Support Tickets Management
+        Route::get('/', [TenantAdminSupportTicketsController::class, 'index'])
+            ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
+            ->name('index');
+        
+        // Categories Management
+        Route::get('/categories', [SupportTicketCategoriesController::class, 'index'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('categories');
+        Route::post('/categories', [SupportTicketCategoriesController::class, 'store'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('categories.store');
+        Route::get('/categories/create', [SupportTicketCategoriesController::class, 'create'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('categories.create');
+        Route::get('/categories/{category}/edit', [SupportTicketCategoriesController::class, 'edit'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('categories.edit');
+        Route::put('/categories/{category}', [SupportTicketCategoriesController::class, 'update'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('categories.update');
+        Route::delete('/categories/{category}', [SupportTicketCategoriesController::class, 'destroy'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('categories.destroy');
+        
+        // Settings Management
+        Route::get('/settings', [SupportTicketSettingsController::class, 'index'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('settings');
+        Route::put('/settings', [SupportTicketSettingsController::class, 'update'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('settings.update');
+
+        // Analytics
+        Route::get('/analytics', [SupportTicketAnalyticsController::class, 'index'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('analytics');
+    });
 });
 
 // Tenant User Routes - for regular tenant users
@@ -200,6 +248,53 @@ Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function (
             ],
         ]);
     })->middleware('permission:' . Permission::VIEW_TENANT_ANALYTICS)->name('analytics');
+});
+
+// Support Tickets Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('support-tickets', SupportTicketsController::class)->middleware([
+        'index' => 'permission:' . Permission::VIEW_SUPPORT_TICKETS,
+        'create' => 'permission:' . Permission::CREATE_SUPPORT_TICKETS,
+        'store' => 'permission:' . Permission::CREATE_SUPPORT_TICKETS,
+        'show' => 'permission:' . Permission::VIEW_SUPPORT_TICKETS,
+        'edit' => 'permission:' . Permission::MANAGE_SUPPORT_TICKETS,
+        'update' => 'permission:' . Permission::MANAGE_SUPPORT_TICKETS,
+        'destroy' => 'permission:' . Permission::MANAGE_SUPPORT_TICKETS,
+    ]);
+    
+    Route::post('support-tickets/{supportTicket}/assign', [SupportTicketsController::class, 'assign'])
+        ->middleware('permission:' . Permission::ASSIGN_SUPPORT_TICKETS)
+        ->name('support-tickets.assign');
+    
+    Route::post('support-tickets/{supportTicket}/status', [SupportTicketsController::class, 'changeStatus'])
+        ->middleware('permission:' . Permission::MANAGE_SUPPORT_TICKETS)
+        ->name('support-tickets.status');
+    
+    Route::post('support-tickets/{supportTicket}/escalate', [SupportTicketsController::class, 'escalate'])
+        ->middleware('permission:' . Permission::ESCALATE_SUPPORT_TICKETS)
+        ->name('support-tickets.escalate');
+    
+    // Support Ticket Replies
+    Route::resource('support-tickets.replies', SupportTicketRepliesController::class)
+        ->middleware([
+            'store' => 'permission:' . Permission::VIEW_SUPPORT_TICKETS,
+            'update' => 'permission:' . Permission::MANAGE_SUPPORT_TICKETS,
+            'destroy' => 'permission:' . Permission::MANAGE_SUPPORT_TICKETS,
+        ])
+        ->shallow();
+    
+    // Support Ticket Attachments
+    Route::resource('support-tickets.attachments', SupportTicketAttachmentsController::class)
+        ->middleware([
+            'store' => 'permission:' . Permission::VIEW_SUPPORT_TICKETS,
+            'destroy' => 'permission:' . Permission::MANAGE_SUPPORT_TICKETS,
+        ])
+        ->only(['store', 'destroy'])
+        ->shallow();
+    
+    Route::get('attachments/{attachment}/download', [SupportTicketAttachmentsController::class, 'download'])
+        ->middleware('permission:' . Permission::VIEW_SUPPORT_TICKETS)
+        ->name('attachments.download');
 });
 
 // Messaging API Routes

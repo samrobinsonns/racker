@@ -11,7 +11,11 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "*",
         "laravel/tinker": "^2.10.1",
+        "league/oauth2-client": "^2.8",
+        "microsoft/microsoft-graph": "^2.38",
         "pusher/pusher-php-server": "^7.2",
+        "spatie/laravel-activitylog": "^4.10",
+        "spatie/laravel-query-builder": "^6.3",
         "stancl/tenancy": "^3.9",
         "tightenco/ziggy": "^2.0"
     },
@@ -73,7 +77,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "tbachert/spi": true
         }
     },
     "minimum-stability": "stable",
