@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('navigation_items_library', function (Blueprint $table) {
             $table->id();
-            $table->string('key')->unique(); // "dashboard", "reports", "analytics"
-            $table->string('label'); // "Dashboard", "Reports"
-            $table->string('icon'); // "HomeIcon", "ChartBarIcon"
-            $table->string('route_name'); // "dashboard", "tenant.reports"
+            $table->string('key')->unique();
+            $table->string('label');
+            $table->string('icon');
+            $table->string('route_name');
             $table->string('permission_required')->nullable();
-            $table->string('category')->default('core'); // "core", "admin", "content", "custom"
+            $table->string('category')->default('core');
             $table->boolean('is_active')->default(true);
             $table->integer('sort_order')->default(0);
             $table->text('description')->nullable();

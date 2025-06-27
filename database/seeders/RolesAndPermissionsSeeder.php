@@ -46,6 +46,21 @@ class RolesAndPermissionsSeeder extends Seeder
                     Permission::MANAGE_TENANT_BILLING,
                     Permission::VIEW_DASHBOARD,
                     Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
+                    Permission::MANAGE_SUPPORT_TICKETS,
+                    Permission::VIEW_ALL_SUPPORT_TICKETS,
+                    Permission::ASSIGN_SUPPORT_TICKETS,
+                    Permission::ESCALATE_SUPPORT_TICKETS,
+                    Permission::RESOLVE_SUPPORT_TICKETS,
+                    Permission::DELETE_SUPPORT_TICKETS,
+                    Permission::MANAGE_TICKET_CATEGORIES,
+                    Permission::MANAGE_TICKET_WORKFLOWS,
+                    Permission::MANAGE_TICKET_SLA,
+                    Permission::VIEW_TICKET_REPORTS,
+                    Permission::CONFIGURE_SUPPORT_TICKETS,
+                    Permission::VIEW_SUPPORT_ANALYTICS,
+                    Permission::MANAGE_MICROSOFT365_INTEGRATION,
                 ]
             ]
         );
@@ -71,6 +86,17 @@ class RolesAndPermissionsSeeder extends Seeder
                     Permission::EXPORT_TENANT_DATA,
                     Permission::VIEW_DASHBOARD,
                     Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
+                    Permission::MANAGE_SUPPORT_TICKETS,
+                    Permission::VIEW_ALL_SUPPORT_TICKETS,
+                    Permission::ASSIGN_SUPPORT_TICKETS,
+                    Permission::ESCALATE_SUPPORT_TICKETS,
+                    Permission::RESOLVE_SUPPORT_TICKETS,
+                    Permission::MANAGE_TICKET_CATEGORIES,
+                    Permission::VIEW_TICKET_REPORTS,
+                    Permission::CONFIGURE_SUPPORT_TICKETS,
+                    Permission::VIEW_SUPPORT_ANALYTICS,
                 ]
             ]
         );
@@ -89,6 +115,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     Permission::CREATE_CONTENT,
                     Permission::EDIT_OWN_CONTENT,
                     Permission::VIEW_REPORTS,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
                 ]
             ]
         );
@@ -111,6 +139,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     Permission::MODERATE_CONTENT,
                     Permission::VIEW_REPORTS,
                     Permission::MANAGE_CATEGORIES,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
                 ]
             ]
         );
@@ -127,6 +157,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     Permission::MANAGE_OWN_PROFILE,
                     Permission::VIEW_TENANT_DATA,
                     Permission::VIEW_REPORTS,
+                    Permission::VIEW_SUPPORT_TICKETS,
                 ]
             ]
         );

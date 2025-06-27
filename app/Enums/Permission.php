@@ -44,6 +44,23 @@ class Permission
     const VIEW_REPORTS = 'view_reports';
     const MANAGE_CATEGORIES = 'manage_categories';
 
+    // Support Ticket Management
+    const VIEW_SUPPORT_TICKETS = 'view_support_tickets';
+    const CREATE_SUPPORT_TICKETS = 'create_support_tickets';
+    const MANAGE_SUPPORT_TICKETS = 'manage_support_tickets';
+    const VIEW_ALL_SUPPORT_TICKETS = 'view_all_support_tickets';
+    const ASSIGN_SUPPORT_TICKETS = 'assign_support_tickets';
+    const ESCALATE_SUPPORT_TICKETS = 'escalate_support_tickets';
+    const RESOLVE_SUPPORT_TICKETS = 'resolve_support_tickets';
+    const DELETE_SUPPORT_TICKETS = 'delete_support_tickets';
+    const MANAGE_TICKET_CATEGORIES = 'manage_ticket_categories';
+    const MANAGE_TICKET_WORKFLOWS = 'manage_ticket_workflows';
+    const MANAGE_TICKET_SLA = 'manage_ticket_sla';
+    const VIEW_TICKET_REPORTS = 'view_ticket_reports';
+    const CONFIGURE_SUPPORT_TICKETS = 'configure_support_tickets';
+    const VIEW_SUPPORT_ANALYTICS = 'view_support_analytics';
+    const MANAGE_MICROSOFT365_INTEGRATION = 'manage_microsoft365_integration';
+
     /**
      * Get all permissions organized by category (including custom permissions)
      */
@@ -184,6 +201,68 @@ class Permission
                 self::MANAGE_CATEGORIES => [
                     'label' => 'Manage Categories',
                     'description' => 'Create and manage content categories'
+                ],
+            ],
+            'Support Ticket Management' => [
+                self::VIEW_SUPPORT_TICKETS => [
+                    'label' => 'View Support Tickets',
+                    'description' => 'View support tickets within tenant'
+                ],
+                self::CREATE_SUPPORT_TICKETS => [
+                    'label' => 'Create Support Tickets',
+                    'description' => 'Create new support tickets'
+                ],
+                self::MANAGE_SUPPORT_TICKETS => [
+                    'label' => 'Manage Support Tickets',
+                    'description' => 'Full ticket management capabilities'
+                ],
+                self::VIEW_ALL_SUPPORT_TICKETS => [
+                    'label' => 'View All Support Tickets',
+                    'description' => 'View all tickets across tenant regardless of assignment'
+                ],
+                self::ASSIGN_SUPPORT_TICKETS => [
+                    'label' => 'Assign Support Tickets',
+                    'description' => 'Assign tickets to team members'
+                ],
+                self::ESCALATE_SUPPORT_TICKETS => [
+                    'label' => 'Escalate Support Tickets',
+                    'description' => 'Escalate tickets to higher priority or management'
+                ],
+                self::RESOLVE_SUPPORT_TICKETS => [
+                    'label' => 'Resolve Support Tickets',
+                    'description' => 'Mark tickets as resolved or closed'
+                ],
+                self::DELETE_SUPPORT_TICKETS => [
+                    'label' => 'Delete Support Tickets',
+                    'description' => 'Delete support tickets'
+                ],
+                self::MANAGE_TICKET_CATEGORIES => [
+                    'label' => 'Manage Ticket Categories',
+                    'description' => 'Create and manage ticket categories'
+                ],
+                self::MANAGE_TICKET_WORKFLOWS => [
+                    'label' => 'Manage Ticket Workflows',
+                    'description' => 'Configure automated workflows and escalations'
+                ],
+                self::MANAGE_TICKET_SLA => [
+                    'label' => 'Manage Ticket SLA',
+                    'description' => 'Configure SLA policies and response times'
+                ],
+                self::VIEW_TICKET_REPORTS => [
+                    'label' => 'View Ticket Reports',
+                    'description' => 'Access ticket analytics and reporting'
+                ],
+                self::CONFIGURE_SUPPORT_TICKETS => [
+                    'label' => 'Configure Support Tickets',
+                    'description' => 'Configure support ticket system settings'
+                ],
+                self::VIEW_SUPPORT_ANALYTICS => [
+                    'label' => 'View Support Analytics',
+                    'description' => 'Access detailed support ticket analytics and metrics'
+                ],
+                self::MANAGE_MICROSOFT365_INTEGRATION => [
+                    'label' => 'Manage Microsoft 365 Integration',
+                    'description' => 'Configure Microsoft 365 email integration'
                 ],
             ],
         ];

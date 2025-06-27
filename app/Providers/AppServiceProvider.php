@@ -13,6 +13,13 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(\App\Services\PageTemplateService::class);
+        
+        // Support Ticket Services
+        $this->app->singleton(\App\Services\SupportTickets\TicketService::class);
+        $this->app->singleton(\App\Services\SupportTickets\ReplyService::class);
+        $this->app->singleton(\App\Services\SupportTickets\AttachmentService::class);
+        $this->app->singleton(\App\Services\SupportTickets\NotificationService::class);
+        $this->app->singleton(\App\Services\SupportTickets\Microsoft365EmailService::class);
     }
 
     /**

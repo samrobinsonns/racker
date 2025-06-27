@@ -14,6 +14,9 @@ class NavigationItemsSeeder extends Seeder
      */
     public function run(): void
     {
+        // Clear existing navigation items
+        NavigationItem::truncate();
+
         $items = [
             // Core Navigation Items
             [
@@ -46,6 +49,26 @@ class NavigationItemsSeeder extends Seeder
                 'sort_order' => 3,
                 'description' => 'Real-time messaging and conversations',
             ],
+            [
+                'key' => 'support_tickets',
+                'label' => 'Support Tickets',
+                'icon' => 'TicketIcon',
+                'route_name' => 'support-tickets.index',
+                'permission_required' => Permission::VIEW_SUPPORT_TICKETS,
+                'category' => NavigationItem::CATEGORY_CORE,
+                'sort_order' => 4,
+                'description' => 'View and manage support tickets',
+            ],
+            [
+                'key' => 'create_ticket',
+                'label' => 'Create Ticket',
+                'icon' => 'PlusCircleIcon',
+                'route_name' => 'support-tickets.create',
+                'permission_required' => Permission::CREATE_SUPPORT_TICKETS,
+                'category' => NavigationItem::CATEGORY_CORE,
+                'sort_order' => 5,
+                'description' => 'Create a new support ticket',
+            ],
 
             // Administrative Items
             [
@@ -77,6 +100,46 @@ class NavigationItemsSeeder extends Seeder
                 'category' => NavigationItem::CATEGORY_ADMIN,
                 'sort_order' => 12,
                 'description' => 'Tenant configuration settings',
+            ],
+            [
+                'key' => 'admin_support_tickets',
+                'label' => 'Support Tickets',
+                'icon' => 'TicketIcon',
+                'route_name' => 'tenant-admin.support-tickets.index',
+                'permission_required' => Permission::MANAGE_SUPPORT_TICKETS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 13,
+                'description' => 'Manage all support tickets',
+            ],
+            [
+                'key' => 'ticket_categories',
+                'label' => 'Ticket Categories',
+                'icon' => 'TagIcon',
+                'route_name' => 'tenant-admin.support-tickets.categories',
+                'permission_required' => Permission::MANAGE_TICKET_CATEGORIES,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 14,
+                'description' => 'Manage support ticket categories',
+            ],
+            [
+                'key' => 'ticket_settings',
+                'label' => 'Ticket Settings',
+                'icon' => 'Cog6ToothIcon',
+                'route_name' => 'tenant-admin.support-tickets.settings',
+                'permission_required' => Permission::CONFIGURE_SUPPORT_TICKETS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 15,
+                'description' => 'Configure support ticket system settings',
+            ],
+            [
+                'key' => 'ticket_analytics',
+                'label' => 'Ticket Analytics',
+                'icon' => 'ChartBarIcon',
+                'route_name' => 'tenant-admin.support-tickets.analytics',
+                'permission_required' => Permission::VIEW_TENANT_ANALYTICS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 16,
+                'description' => 'View support ticket analytics and insights',
             ],
 
             // Content Management Items
@@ -135,10 +198,7 @@ class NavigationItemsSeeder extends Seeder
         ];
 
         foreach ($items as $item) {
-            NavigationItem::firstOrCreate(
-                ['key' => $item['key']],
-                $item
-            );
+            NavigationItem::create($item);
         }
 
         $this->command->info('Navigation items library seeded successfully!');
