@@ -12,32 +12,31 @@ class SupportTicketReply extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tenant_id',
         'ticket_id',
-        'user_id',
+        'content',
+        'content_html',
+        'created_by',
         'author_email',
         'author_name',
         'reply_type',
-        'content',
-        'content_html',
+        'source',
         'is_internal',
         'is_via_email',
         'microsoft365_message_id',
         'email_headers',
         'email_received_at',
-        'email_sent',
-        'email_sent_at',
-        'email_message_id',
         'email_metadata',
+        'metadata'
     ];
 
     protected $casts = [
         'is_internal' => 'boolean',
         'is_via_email' => 'boolean',
-        'email_sent' => 'boolean',
         'email_headers' => 'array',
         'email_metadata' => 'array',
-        'email_received_at' => 'datetime',
-        'email_sent_at' => 'datetime',
+        'metadata' => 'array',
+        'email_received_at' => 'datetime'
     ];
 
     protected static function boot()
@@ -58,15 +57,15 @@ class SupportTicketReply extends Model
      */
     public function ticket()
     {
-        return $this->belongsTo(SupportTicket::class, 'ticket_id');
+        return $this->belongsTo(SupportTicket::class);
     }
 
     /**
-     * Get the user who wrote this reply
+     * Get the user who created this reply
      */
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**
@@ -78,7 +77,7 @@ class SupportTicketReply extends Model
     }
 
     /**
-     * Scope to get public replies (visible to customers)
+     * Scope for public replies
      */
     public function scopePublic(Builder $query): Builder
     {
@@ -86,7 +85,7 @@ class SupportTicketReply extends Model
     }
 
     /**
-     * Scope to get internal notes (staff only)
+     * Scope for internal notes
      */
     public function scopeInternal(Builder $query): Builder
     {

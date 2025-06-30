@@ -329,6 +329,61 @@ class NotificationService
 
         $user->notify(new GenericTicketNotification($message));
     }
+
+    /**
+     * Notify agents of internal note
+     */
+    private function notifyAgentsOfInternalNote(SupportTicketReply $reply): void
+    {
+        $ticket = $reply->ticket;
+        
+        // Get all agents who should be notified (assigned agent and managers)
+        $agents = $this->getAgentsToNotify($ticket);
+        
+        foreach ($agents as $agent) {
+            // Don't notify the agent who wrote the note
+            if ($agent->id === $reply->created_by) {
+                continue;
+            }
+
+            $message = (new MailMessage)
+                ->subject("Internal Note Added - {$ticket->ticket_number}")
+                ->greeting("Hello {$agent->name}!")
+                ->line("An internal note has been added to a support ticket.")
+                ->line("**Ticket Number:** {$ticket->ticket_number}")
+                ->line("**Subject:** {$ticket->subject}")
+                ->line("**Note from:** {$reply->author_name}")
+                ->line("**Note:**")
+                ->line($reply->content)
+                ->action('View Ticket', $this->getTicketUrl($ticket))
+                ->line('This note is only visible to support staff.');
+
+            $agent->notify(new GenericTicketNotification($message));
+        }
+    }
+
+    /**
+     * Get agents who should be notified about a ticket
+     */
+    private function getAgentsToNotify(SupportTicket $ticket): \Illuminate\Support\Collection
+    {
+        $query = User::where('tenant_id', $ticket->tenant_id)
+            ->where(function ($q) {
+                $q->whereHas('roles', function ($query) {
+                    $query->where(function ($q) {
+                        $q->whereJsonContains('permissions', 'manage_support_tickets')
+                          ->orWhereJsonContains('permissions', 'view_support_tickets');
+                    });
+                });
+            });
+
+        // Include assigned agent if there is one
+        if ($ticket->assigned_to) {
+            $query->orWhere('id', $ticket->assigned_to);
+        }
+
+        return $query->get();
+    }
 }
 
 /**

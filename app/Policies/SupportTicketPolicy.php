@@ -70,6 +70,15 @@ class SupportTicketPolicy
     }
 
     /**
+     * Determine whether the user can assign the support ticket.
+     */
+    public function assign(User $user, SupportTicket $ticket): bool
+    {
+        return $user->hasPermission('assign_support_tickets')
+            && $ticket->tenant_id === $user->tenant_id;
+    }
+
+    /**
      * Determine whether the user can reply to the support ticket.
      */
     public function reply(User $user, SupportTicket $ticket): bool

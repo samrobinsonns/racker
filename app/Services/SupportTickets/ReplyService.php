@@ -18,7 +18,7 @@ class ReplyService
         // Set author information
         if ($userId) {
             $user = User::find($userId);
-            $data['user_id'] = $userId;
+            $data['created_by'] = $userId;
             $data['author_email'] = $user->email;
             $data['author_name'] = $user->name;
             $data['reply_type'] = $data['reply_type'] ?? 'agent';
@@ -30,6 +30,7 @@ class ReplyService
         // Set defaults
         $data['is_internal'] = $data['is_internal'] ?? false;
         $data['is_via_email'] = $data['is_via_email'] ?? false;
+        $data['tenant_id'] = $ticket->tenant_id;
 
         $reply = $ticket->replies()->create($data);
 
@@ -51,12 +52,13 @@ class ReplyService
         
         $data = [
             'content' => $content,
-            'user_id' => $userId,
+            'created_by' => $userId,
             'author_email' => $user->email,
             'author_name' => $user->name,
             'reply_type' => 'agent',
             'is_internal' => true,
             'is_via_email' => false,
+            'tenant_id' => $ticket->tenant_id,
         ];
 
         return $this->createReply($ticket, $data, $userId);
@@ -270,7 +272,7 @@ class ReplyService
         }
 
         // User can edit their own replies
-        if ($reply->user_id === $user->id) {
+        if ($reply->created_by === $user->id) {
             return true;
         }
 

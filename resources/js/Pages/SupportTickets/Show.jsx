@@ -23,6 +23,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
+import ContactSelector from '@/Components/ContactSelector';
 
 export default function Show({ 
     ticket, 
@@ -123,6 +124,54 @@ export default function Show({
         const diffInDays = Math.floor(diffInHours / 24);
         if (diffInDays < 7) return `${diffInDays}d ago`;
         return created.toLocaleDateString();
+    };
+
+    const updateTicketField = (field, value) => {
+        // Map frontend field names to database field names
+        const fieldMapping = {
+            assignee_id: 'assigned_to'
+        };
+
+        // Use the mapped field name if it exists, otherwise use the original
+        const dbField = fieldMapping[field] || field;
+        
+        // Prepare the base data with required fields
+        const data = {
+            subject: ticket.subject,
+            description: ticket.description,
+            priority_id: ticket.priority_id,
+            status_id: ticket.status_id,
+            category_id: ticket.category_id,
+            [dbField]: value
+        };
+
+        // If we're updating priority, use the new value
+        if (field === 'priority_id') {
+            data.priority_id = value;
+        }
+
+        // Special handling for assignee updates
+        if (field === 'assignee_id') {
+            // Use the special assign endpoint for assignee changes
+            router.post(route('support-tickets.assign', ticket.id), {
+                assignee_id: value
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                onError: (errors) => {
+                    console.error('Error assigning ticket:', errors);
+                }
+            });
+            return;
+        }
+
+        router.put(route('support-tickets.update', ticket.id), data, {
+            preserveScroll: true,
+            preserveState: true,
+            onError: (errors) => {
+                console.error('Error updating ticket:', errors);
+            }
+        });
     };
 
     return (
@@ -437,35 +486,163 @@ export default function Show({
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Ticket Details</h3>
                                 
                                 <dl className="space-y-3">
+                                    {/* Contact Information */}
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500">Contact</dt>
+                                        <dd className="mt-1">
+                                            {ticket.contact ? (
+                                                <div className="flex items-center space-x-2">
+                                                    <div className="flex-shrink-0">
+                                                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                            <span className="text-sm font-medium text-gray-600">
+                                                                {ticket.contact.first_name?.charAt(0) || '?'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {`${ticket.contact.first_name} ${ticket.contact.last_name}`}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            {ticket.contact.email}
+                                                        </div>
+                                                        {ticket.contact.phone && (
+                                                            <div className="text-sm text-gray-500">
+                                                                {ticket.contact.phone}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm text-gray-500">
+                                                    {ticket.requester_name && ticket.requester_email ? (
+                                                        <>
+                                                            <div className="font-medium">{ticket.requester_name}</div>
+                                                            <div>{ticket.requester_email}</div>
+                                                        </>
+                                                    ) : (
+                                                        <span>No contact information</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </dd>
+                                    </div>
+
+                                    {/* Status */}
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500">Status</dt>
                                         <dd className="mt-1">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${getStatusColor(ticket.status)}`}>
-                                                {ticket.status.name}
-                                            </span>
+                                            {permissions.update ? (
+                                                <select
+                                                    value={ticket.status_id || ''}
+                                                    onChange={(e) => updateTicketField('status_id', e.target.value)}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                                >
+                                                    <option value="">Select Status</option>
+                                                    {statuses.map((status) => (
+                                                        <option key={status.id} value={status.id}>
+                                                            {status.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${getStatusColor(ticket.status)}`}>
+                                                    {ticket.status.name}
+                                                </span>
+                                            )}
                                         </dd>
                                     </div>
 
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500">Priority</dt>
                                         <dd className="mt-1">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${getPriorityColor(ticket.priority)}`}>
-                                                {ticket.priority.name}
-                                            </span>
+                                            {permissions.update ? (
+                                                <select
+                                                    value={ticket.priority_id || ''}
+                                                    onChange={(e) => updateTicketField('priority_id', e.target.value)}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                                >
+                                                    <option value="">Select Priority</option>
+                                                    {priorities.map((priority) => (
+                                                        <option key={priority.id} value={priority.id}>
+                                                            {priority.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${getPriorityColor(ticket.priority)}`}>
+                                                    {ticket.priority.name}
+                                                </span>
+                                            )}
                                         </dd>
                                     </div>
 
-                                    {ticket.category && (
-                                        <div>
-                                            <dt className="text-sm font-medium text-gray-500">Category</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">{ticket.category.name}</dd>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500">Category</dt>
+                                        <dd className="mt-1">
+                                            {permissions.update ? (
+                                                <select
+                                                    value={ticket.category_id || ''}
+                                                    onChange={(e) => updateTicketField('category_id', e.target.value)}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                                >
+                                                    <option value="">Select Category</option>
+                                                    {categories.map((category) => (
+                                                        <option key={category.id} value={category.id}>
+                                                            {category.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className="text-sm text-gray-900">
+                                                    {ticket.category ? ticket.category.name : 'Uncategorized'}
+                                                </span>
+                                            )}
+                                        </dd>
+                                    </div>
 
+                                    {/* Assignee */}
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500">Assignee</dt>
-                                        <dd className="mt-1 text-sm text-gray-900">
-                                            {ticket.assignee ? ticket.assignee.name : 'Unassigned'}
+                                        <dd className="mt-1">
+                                            {permissions.assign ? (
+                                                <select
+                                                    value={ticket.assigned_to || ''}
+                                                    onChange={(e) => updateTicketField('assignee_id', e.target.value)}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                                >
+                                                    <option value="">Unassigned</option>
+                                                    {users.map((user) => (
+                                                        <option key={user.id} value={user.id}>
+                                                            {user.name} ({user.email})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="flex items-center space-x-2">
+                                                    {ticket.assignee ? (
+                                                        <>
+                                                            <div className="flex-shrink-0">
+                                                                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                                    <span className="text-sm font-medium text-gray-600">
+                                                                        {ticket.assignee.name.charAt(0)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    {ticket.assignee.name}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {ticket.assignee.email}
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-sm text-gray-500">Unassigned</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </dd>
                                     </div>
 
