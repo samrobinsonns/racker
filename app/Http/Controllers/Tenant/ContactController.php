@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class ContactController extends Controller
 {
@@ -144,19 +145,44 @@ class ContactController extends Controller
      */
     public function search(Request $request)
     {
-        $query = $request->get('query');
+        $query = $request->input('query');
+        
+        if (empty($query)) {
+            if ($request->wantsJson()) {
+                return response()->json(['contacts' => []]);
+            }
+            return back();
+        }
 
-        $contacts = Contact::where(function($q) use ($query) {
-            $q->where('first_name', 'like', "%{$query}%")
-              ->orWhere('last_name', 'like', "%{$query}%")
-              ->orWhere('email', 'like', "%{$query}%")
-              ->orWhere('company', 'like', "%{$query}%");
-        })
-        ->with(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority'])
-        ->select('id', 'first_name', 'last_name', 'email', 'company')
-        ->limit(10)
-        ->get();
+        $contacts = Contact::query()
+            ->where('tenant_id', Auth::user()->tenant_id)
+            ->where(function($q) use ($query) {
+                $q->where('first_name', 'like', "%{$query}%")
+                  ->orWhere('last_name', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%")
+                  ->orWhere('company', 'like', "%{$query}%");
+            })
+            ->select(['id', 'first_name', 'last_name', 'email', 'company'])
+            ->orderBy('first_name')
+            ->limit(10)
+            ->get()
+            ->map(function ($contact) {
+                return [
+                    'id' => $contact->id,
+                    'first_name' => $contact->first_name,
+                    'last_name' => $contact->last_name,
+                    'email' => $contact->email,
+                    'company' => $contact->company,
+                    'display_name' => trim("{$contact->first_name} {$contact->last_name}"),
+                ];
+            });
 
-        return response()->json(['contacts' => $contacts]);
+        if ($request->wantsJson()) {
+            return response()->json(['contacts' => $contacts]);
+        }
+
+        return Inertia::render('SupportTickets/Create', [
+            'contacts' => $contacts
+        ]);
     }
 } 

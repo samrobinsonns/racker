@@ -17,9 +17,19 @@ export default function ContactSelector({ selectedContact, onSelect, className =
 
         setIsLoading(true);
         try {
-            const response = await fetch(`/tenant/contacts/search?query=${encodeURIComponent(searchQuery)}`);
+            const response = await fetch(route('tenant.contacts.search', { query: searchQuery }), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
-            setContacts(data.contacts);
+            setContacts(Array.isArray(data) ? data : data.contacts || []);
         } catch (error) {
             console.error('Error searching contacts:', error);
             setContacts([]);
@@ -38,7 +48,7 @@ export default function ContactSelector({ selectedContact, onSelect, className =
                 <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-300 sm:text-sm">
                     <Combobox.Input
                         className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
-                        displayValue={(contact) => contact?.email || ''}
+                        displayValue={(contact) => contact ? `${contact.first_name} ${contact.last_name} (${contact.email})` : ''}
                         onChange={(event) => setQuery(event.target.value)}
                         placeholder="Search contacts..."
                     />

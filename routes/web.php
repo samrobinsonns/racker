@@ -23,6 +23,7 @@ use App\Http\Controllers\ContactNoteController;
 use App\Http\Controllers\ContactAddressController;
 use App\Http\Controllers\ContactPreferenceController;
 use App\Http\Controllers\ContactImportExportController;
+use App\Http\Controllers\Api\ContactSearchController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -216,7 +217,7 @@ Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')-
 });
 
 // Tenant User Routes - for regular tenant users
-Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function () {
+Route::prefix('tenant')->name('tenant.')->middleware(['auth', 'tenant'])->group(function () {
     Route::get('/reports', function () {
         $user = auth()->user();
         $tenant = $user->tenant;
@@ -261,11 +262,11 @@ Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function (
         Route::get('/', [App\Http\Controllers\Tenant\ContactController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\Tenant\ContactController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\Tenant\ContactController::class, 'store'])->name('store');
+        Route::get('/search', [App\Http\Controllers\Tenant\ContactController::class, 'search'])->name('search');
         Route::get('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'show'])->name('show');
         Route::get('/{contact}/edit', [App\Http\Controllers\Tenant\ContactController::class, 'edit'])->name('edit');
         Route::put('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'update'])->name('update');
         Route::delete('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'destroy'])->name('destroy');
-        Route::get('/search', [App\Http\Controllers\Tenant\ContactController::class, 'search'])->name('search');
     });
 });
 

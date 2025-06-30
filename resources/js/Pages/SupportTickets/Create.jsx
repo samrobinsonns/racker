@@ -6,7 +6,7 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
-import ContactSelector from '@/Components/ContactSelector';
+import ContactSearch from '@/Components/ContactSearch';
 import {
     ExclamationTriangleIcon,
     PaperClipIcon,
@@ -35,31 +35,8 @@ export default function Create({ priorities, categories, statuses, users, auth }
         contact_id: ''
     });
 
-    const handleContactSelect = (contact) => {
-        console.log('Contact selected:', contact);
-        setSelectedContact(contact);
-        const updatedData = {
-            ...data,
-            requester_email: contact.email,
-            requester_name: `${contact.first_name} ${contact.last_name}`,
-            contact_id: contact.id
-        };
-        setData(updatedData);
-        console.log('Updated form data after contact selection:', updatedData);
-    };
-
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Ensure contact data is properly set
-        if (selectedContact) {
-            setData(prevData => ({
-                ...prevData,
-                contact_id: selectedContact.id,
-                requester_email: selectedContact.email,
-                requester_name: `${selectedContact.first_name} ${selectedContact.last_name}`
-            }));
-        }
         
         const formData = new FormData();
         
@@ -74,21 +51,9 @@ export default function Create({ priorities, categories, statuses, users, auth }
                     formData.append('tags[]', tag);
                 });
             } else if (data[key] !== null && data[key] !== '') {
-                // Ensure contact_id is properly set in form data
-                if (key === 'contact_id' && selectedContact) {
-                    formData.append(key, selectedContact.id);
-                } else {
-                    formData.append(key, data[key]);
-                }
+                formData.append(key, data[key]);
             }
         });
-
-        // Double check contact data is in form data
-        if (selectedContact && !formData.get('contact_id')) {
-            formData.append('contact_id', selectedContact.id);
-            formData.append('requester_email', selectedContact.email);
-            formData.append('requester_name', `${selectedContact.first_name} ${selectedContact.last_name}`);
-        }
 
         console.log('Form data before submission:', {
             subject: formData.get('subject'),
@@ -106,9 +71,9 @@ export default function Create({ priorities, categories, statuses, users, auth }
             data: formData,
             forceFormData: true,
             onSuccess: () => {
-                console.log('Ticket created successfully with contact:', selectedContact);
                 reset();
                 setSelectedContact(null);
+                setAttachments([]);
             },
             onError: (errors) => {
                 console.error('Errors creating ticket:', errors);
@@ -181,6 +146,28 @@ export default function Create({ priorities, categories, statuses, users, auth }
             5: 'text-gray-700 bg-gray-50 ring-gray-600/20',
         };
         return colors[level] || colors[3];
+    };
+
+    const handleContactSelect = (contact) => {
+        setSelectedContact(contact);
+        if (contact) {
+            setData({
+                ...data,
+                contact_id: contact.id,
+                requester_email: contact.email,
+                requester_name: contact.display_name
+            });
+        }
+    };
+
+    const handleContactClear = () => {
+        setSelectedContact(null);
+        setData({
+            ...data,
+            contact_id: '',
+            requester_email: '',
+            requester_name: ''
+        });
     };
 
     return (
@@ -324,7 +311,7 @@ export default function Create({ priorities, categories, statuses, users, auth }
                                 </div>
                             </div>
 
-                            {/* External Requester Info */}
+                            {/* Contact Selection Section */}
                             <div className="mt-6 pt-6 border-t border-gray-200">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                                     Requester Information
@@ -333,45 +320,74 @@ export default function Create({ priorities, categories, statuses, users, auth }
                                     Search for an existing contact or fill in the details manually
                                 </p>
                                 
-                                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                    {/* Contact Selector */}
-                                    <div className="sm:col-span-2">
+                                <div className="space-y-6">
+                                    {/* Contact Search */}
+                                    <div>
                                         <InputLabel value="Search Contact" />
-                                        <ContactSelector
+                                        <ContactSearch
                                             selectedContact={selectedContact}
                                             onSelect={handleContactSelect}
+                                            onClear={handleContactClear}
                                             className="mt-1"
+                                            error={errors.contact_id}
                                         />
+                                        <p className="mt-2 text-sm text-gray-500">
+                                            Search by name or email to find existing contacts
+                                        </p>
                                     </div>
 
-                                    {/* Manual Input Fields */}
-                                    <div>
-                                        <InputLabel htmlFor="requester_name" value="Requester Name" />
-                                        <TextInput
-                                            id="requester_name"
-                                            type="text"
-                                            name="requester_name"
-                                            value={data.requester_name}
-                                            className="mt-1 block w-full"
-                                            onChange={(e) => setData('requester_name', e.target.value)}
-                                            placeholder="Full name of person requesting support"
-                                        />
-                                        <InputError message={errors.requester_name} className="mt-2" />
-                                    </div>
+                                    {/* Manual Input Fields - shown only if no contact is selected */}
+                                    {!selectedContact && (
+                                        <>
+                                            <div>
+                                                <InputLabel htmlFor="requester_name" value="Requester Name" />
+                                                <TextInput
+                                                    id="requester_name"
+                                                    type="text"
+                                                    name="requester_name"
+                                                    value={data.requester_name}
+                                                    className="mt-1 block w-full"
+                                                    onChange={(e) => setData('requester_name', e.target.value)}
+                                                    placeholder="Full name of person requesting support"
+                                                />
+                                                <InputError message={errors.requester_name} className="mt-2" />
+                                            </div>
 
-                                    <div>
-                                        <InputLabel htmlFor="requester_email" value="Requester Email" />
-                                        <TextInput
-                                            id="requester_email"
-                                            type="email"
-                                            name="requester_email"
-                                            value={data.requester_email}
-                                            className="mt-1 block w-full"
-                                            onChange={(e) => setData('requester_email', e.target.value)}
-                                            placeholder="email@example.com"
-                                        />
-                                        <InputError message={errors.requester_email} className="mt-2" />
-                                    </div>
+                                            <div>
+                                                <InputLabel htmlFor="requester_email" value="Requester Email" />
+                                                <TextInput
+                                                    id="requester_email"
+                                                    type="email"
+                                                    name="requester_email"
+                                                    value={data.requester_email}
+                                                    className="mt-1 block w-full"
+                                                    onChange={(e) => setData('requester_email', e.target.value)}
+                                                    placeholder="email@example.com"
+                                                />
+                                                <InputError message={errors.requester_email} className="mt-2" />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Selected Contact Preview */}
+                                    {selectedContact && (
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-gray-900">
+                                                        Selected Contact
+                                                    </h4>
+                                                    <div className="mt-1 text-sm text-gray-600">
+                                                        <p>{selectedContact.display_name}</p>
+                                                        <p>{selectedContact.email}</p>
+                                                        {selectedContact.company && (
+                                                            <p className="text-gray-500">{selectedContact.company}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

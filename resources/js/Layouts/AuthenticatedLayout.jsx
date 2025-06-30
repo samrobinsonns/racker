@@ -720,6 +720,13 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                 </nav>
 
+                {/* Page Header */}
+                {header && (
+                    <header className="pt-6">
+                        {header}
+                    </header>
+                )}
+
                 {/* Main content area - Clean for page content */}
                 <main>
                     <div className="p-4">
