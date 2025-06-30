@@ -11,6 +11,7 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "*",
         "laravel/tinker": "^2.10.1",
+        "league/csv": "^9.24",
         "league/oauth2-client": "^2.8",
         "microsoft/microsoft-graph": "^2.38",
         "pusher/pusher-php-server": "^7.2",

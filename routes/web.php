@@ -16,6 +16,13 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
 use Inertia\Inertia;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ContactCustomFieldController;
+use App\Http\Controllers\ContactTagController;
+use App\Http\Controllers\ContactNoteController;
+use App\Http\Controllers\ContactAddressController;
+use App\Http\Controllers\ContactPreferenceController;
+use App\Http\Controllers\ContactImportExportController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -248,6 +255,17 @@ Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function (
             ],
         ]);
     })->middleware('permission:' . Permission::VIEW_TENANT_ANALYTICS)->name('analytics');
+
+    // Contacts Routes
+    Route::prefix('contacts')->name('contacts.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Tenant\ContactController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Tenant\ContactController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Tenant\ContactController::class, 'store'])->name('store');
+        Route::get('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'show'])->name('show');
+        Route::get('/{contact}/edit', [App\Http\Controllers\Tenant\ContactController::class, 'edit'])->name('edit');
+        Route::put('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'update'])->name('update');
+        Route::delete('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'destroy'])->name('destroy');
+    });
 });
 
 // Support Tickets Routes
@@ -356,3 +374,42 @@ Broadcast::routes(['middleware' => ['auth']]);
 if (file_exists(__DIR__ . '/dynamic.php')) {
     require __DIR__ . '/dynamic.php';
 }
+
+// Contact Management Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Main contact routes
+    Route::resource('contacts', ContactController::class);
+    Route::post('/contacts/import', [ContactImportExportController::class, 'import'])
+        ->name('contact.import');
+    Route::get('/contacts/export', [ContactImportExportController::class, 'export'])
+        ->name('contact.export');
+    Route::get('/contacts/import/template', [ContactImportExportController::class, 'template'])
+        ->name('contact.import.template');
+
+    // Custom fields routes
+    Route::resource('contact-custom-fields', ContactCustomFieldController::class)->except(['create', 'edit', 'show']);
+    Route::post('contact-custom-fields/reorder', [ContactCustomFieldController::class, 'reorder'])->name('contact-custom-fields.reorder');
+
+    // Tags routes
+    Route::resource('contact-tags', ContactTagController::class)->except(['create', 'edit', 'show']);
+    Route::get('contact-tags/search', [ContactTagController::class, 'search'])->name('contact-tags.search');
+    Route::get('contact-tags/popular', [ContactTagController::class, 'popular'])->name('contact-tags.popular');
+
+    // Contact Notes
+    Route::post('/contacts/{contact}/notes', [ContactNoteController::class, 'store'])->name('contact.notes.store');
+    Route::patch('/contacts/notes/{note}', [ContactNoteController::class, 'update'])->name('contact.notes.update');
+    Route::delete('/contacts/notes/{note}', [ContactNoteController::class, 'destroy'])->name('contact.notes.destroy');
+
+    // Contact Addresses
+    Route::post('/contacts/{contact}/addresses', [ContactAddressController::class, 'store'])->name('contact.addresses.store');
+    Route::patch('/contacts/addresses/{address}', [ContactAddressController::class, 'update'])->name('contact.addresses.update');
+    Route::delete('/contacts/addresses/{address}', [ContactAddressController::class, 'destroy'])->name('contact.addresses.destroy');
+
+    // Contact Communication Preferences
+    Route::patch('/contacts/{contact}/preferences', [ContactPreferenceController::class, 'update'])
+        ->name('contact.preferences.update');
+    Route::get('/contacts/{contact}/preferences/history', [ContactPreferenceController::class, 'history'])
+        ->name('contact.preferences.history');
+    Route::post('/contacts/{contact}/preferences/opt-out', [ContactPreferenceController::class, 'optOut'])
+        ->name('contact.preferences.opt-out');
+});
