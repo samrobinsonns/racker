@@ -60,23 +60,6 @@ export default function Dashboard() {
                     </PermissionGate>
                 </div>
             );
-        } else if (isTenantAdmin || isTenantUser) {
-            return (
-                <div>
-                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                        Welcome back, {user.name}!
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                        {stats?.tenant_name || 'Your Organization'}
-                    </p>
-                </div>
-            );
-        } else {
-            return (
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Dashboard
-                </h2>
-            );
         }
     };
 

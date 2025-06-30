@@ -135,7 +135,7 @@ function NavigationItem({ item, isCurrentRoute, isDesktop = false }) {
     );
 }
 
-export default function TenantAdminLayout({ header, children }) {
+export default function TenantAdminLayout({ children }) {
     const user = usePage().props.auth.user;
     const { tenantId, stats } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -282,8 +282,8 @@ export default function TenantAdminLayout({ header, children }) {
             {/* Main content */}
             <div className="lg:pl-64">
                 {/* Top navigation */}
-                <div className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200">
-                    <div className="flex h-16 justify-between items-center px-4 sm:px-6 lg:px-8">
+                <div className="sticky top-0 z-40 bg-gray-50">
+                    <div className="flex h-12 justify-end items-center px-5">
                         <button
                             type="button"
                             className="text-gray-500 lg:hidden"
@@ -292,16 +292,16 @@ export default function TenantAdminLayout({ header, children }) {
                             <Bars3Icon className="h-6 w-6" />
                         </button>
 
-                        <div className="flex items-center space-x-4">
-                            <div className="text-sm text-gray-500">
+                        <div className="flex items-center space-x-4 pt-5">
+                            <div className="text-sm leading-none text-gray-500">
                                 Tenant Administrator
                             </div>
                             <Dropdown>
                                 <Dropdown.Trigger>
-                                    <span className="inline-flex rounded-md">
+                                    <span className="inline-flex">
                                         <button
                                             type="button"
-                                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                            className="inline-flex items-center text-sm leading-none font-medium text-gray-500 hover:text-gray-700 transition ease-in-out duration-150"
                                         >
                                             {user.name}
                                             <ChevronDownIcon className="ml-2 -mr-0.5 h-4 w-4" />
@@ -324,15 +324,6 @@ export default function TenantAdminLayout({ header, children }) {
                         </div>
                     </div>
                 </div>
-
-                {/* Page header */}
-                {header && (
-                    <header className="bg-white shadow-sm">
-                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                            {header}
-                        </div>
-                    </header>
-                )}
 
                 {/* Main content */}
                 <main className="py-6">

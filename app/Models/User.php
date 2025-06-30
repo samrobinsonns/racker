@@ -24,6 +24,13 @@ class User extends Authenticatable
         'password',
         'tenant_id',
         'is_central_admin',
+        'avatar_url',
+        'title',
+        'company',
+        'location',
+        'bio',
+        'website',
+        'background_image_url',
     ];
 
     /**
@@ -37,6 +44,13 @@ class User extends Authenticatable
     ];
 
     /**
+     * The attributes that should be appended to arrays.
+     *
+     * @var array
+     */
+    protected $appends = ['avatar_url'];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -47,7 +61,36 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_central_admin' => 'boolean',
+            'navigation_branding' => 'json',
+            'title' => 'string',
+            'company' => 'string',
+            'location' => 'string',
+            'bio' => 'string',
+            'website' => 'string',
         ];
+    }
+
+    /**
+     * Get the user's avatar URL.
+     */
+    public function getAvatarUrlAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        // If it's already a full URL, return it as is
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        // If it starts with /storage, it's a local path
+        if (str_starts_with($value, '/storage')) {
+            return $value;
+        }
+
+        // If we have a relative path, append it to the current host
+        return request()->getSchemeAndHttpHost() . $value;
     }
 
     // Relationship to tenant

@@ -59,6 +59,13 @@ class HandleInertiaRequests extends Middleware
                     'layout_type' => $layoutType ?? null,
                     'navigation_items' => $navigationItems ?? [],
                     'navigation_branding' => $navigationBranding ?? null,
+                    'avatar_url' => $user->avatar_url,
+                    'title' => $user->title,
+                    'company' => $user->company,
+                    'location' => $user->location,
+                    'bio' => $user->bio,
+                    'website' => $user->website,
+                    'background_image_url' => $user->background_image_url,
                 ] : null,
             ],
             'flash' => [

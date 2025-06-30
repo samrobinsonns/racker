@@ -24,6 +24,8 @@ use App\Http\Controllers\ContactAddressController;
 use App\Http\Controllers\ContactPreferenceController;
 use App\Http\Controllers\ContactImportExportController;
 use App\Http\Controllers\Api\ContactSearchController;
+use App\Http\Controllers\Profile\AvatarController;
+use App\Http\Controllers\Profile\BackgroundImageController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -356,15 +358,17 @@ Route::get('/messages', function () {
 
 // Regular authenticated user routes
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->middleware('permission:' . Permission::MANAGE_OWN_PROFILE)
-        ->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])
-        ->middleware('permission:' . Permission::MANAGE_OWN_PROFILE)
-        ->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->middleware('permission:' . Permission::MANAGE_OWN_PROFILE)
-        ->name('profile.destroy');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Avatar routes
+    Route::post('/profile/avatar', [AvatarController::class, 'store'])->name('profile.avatar.store');
+    Route::delete('/profile/avatar', [AvatarController::class, 'destroy'])->name('profile.avatar.destroy');
+
+    // Background image routes
+    Route::post('/profile/background', [BackgroundImageController::class, 'store'])->name('profile.background.store');
+    Route::delete('/profile/background', [BackgroundImageController::class, 'destroy'])->name('profile.background.destroy');
 });
 
 require __DIR__.'/auth.php';
