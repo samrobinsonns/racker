@@ -227,17 +227,44 @@ export default function Builder({
 
     // Add item from library
     const addItemFromLibrary = (libraryItem) => {
-        const newItem = {
-            id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: 'link',
-            label: libraryItem.label,
-            icon: libraryItem.icon,
-            route: libraryItem.route_name,
-            permission: libraryItem.permission_required,
-            order: currentConfig.items.length,
-            visible: true,
-            children: []
-        };
+        let newItem;
+
+        // Handle special cases based on the item key
+        if (libraryItem.key === 'external_link') {
+            newItem = {
+                id: `external-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: 'external',
+                label: 'External Link',
+                icon: 'ArrowTopRightOnSquareIcon',
+                url: 'https://example.com',
+                order: currentConfig.items.length,
+                visible: true,
+                children: []
+            };
+        } else if (libraryItem.key === 'divider') {
+            newItem = {
+                id: `divider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: 'divider',
+                label: 'Divider',
+                icon: 'MinusIcon',
+                order: currentConfig.items.length,
+                visible: true,
+                children: []
+            };
+        } else {
+            // Default case for regular navigation items
+            newItem = {
+                id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: 'link',
+                label: libraryItem.label,
+                icon: libraryItem.icon,
+                route: libraryItem.route_name,
+                permission: libraryItem.permission_required,
+                order: currentConfig.items.length,
+                visible: true,
+                children: []
+            };
+        }
 
         setCurrentConfig(prev => ({
             ...prev,
@@ -709,22 +736,6 @@ export default function Builder({
                                         </button>
                                         
                                         <button
-                                            onClick={addExternalLink}
-                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all duration-200"
-                                        >
-                                            <HeroIcons.ArrowTopRightOnSquareIcon className="h-5 w-5 mr-2" />
-                                            Add External Link
-                                        </button>
-                                        
-                                        <button
-                                            onClick={addDivider}
-                                            className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200"
-                                        >
-                                            <HeroIcons.MinusIcon className="h-5 w-5 mr-2" />
-                                            Add Divider
-                                        </button>
-                                        
-                                                                <button
                             onClick={() => setShowCustomPagesModal(true)}
                             className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-dashed border-emerald-300 rounded-lg text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
                         >
