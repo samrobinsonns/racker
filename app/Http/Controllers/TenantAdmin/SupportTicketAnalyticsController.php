@@ -19,6 +19,7 @@ class SupportTicketAnalyticsController extends Controller
         Gate::authorize('viewAny', 'App\Models\SupportTicketSettings');
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
         $period = $request->get('period', 'month'); // day, week, month, year
 
         $tickets = SupportTicket::forTenant($tenantId)
@@ -54,6 +55,12 @@ class SupportTicketAnalyticsController extends Controller
         ];
 
         return Inertia::render('TenantAdmin/SupportTickets/Analytics/Index', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'analytics' => $analytics,
             'period' => $period,
         ]);

@@ -17,9 +17,17 @@ class SupportTicketSettingsController extends Controller
     {
         Gate::authorize('viewAny', 'App\Models\SupportTicketSettings');
 
+        $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
         $settings = config('support-tickets');
 
         return Inertia::render('TenantAdmin/SupportTickets/Settings/Index', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'settings' => $settings,
             'permissions' => [
                 'update' => auth()->user()->can('update', 'App\Models\SupportTicketSettings'),

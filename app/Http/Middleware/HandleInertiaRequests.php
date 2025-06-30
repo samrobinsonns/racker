@@ -31,28 +31,47 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $userWithPermissions = null;
+        $tenant = $user?->tenant;
         
         if ($user) {
-            $userWithPermissions = $user->load('roles');
+            $user->load('roles');
             // Add user permissions to the frontend
             $permissionService = app(PermissionService::class);
-            $userWithPermissions->permissions = $permissionService->getUserPermissions($user);
-            $userWithPermissions->layout_type = $user->getLayoutType();
-            $userWithPermissions->admin_level = $user->getAdminLevel();
+            $userPermissions = $permissionService->getUserPermissions($user);
+            $layoutType = $user->getLayoutType();
+            $adminLevel = $user->getAdminLevel();
             // Add navigation items to the frontend
-            $userWithPermissions->navigation_items = $user->getNavigationItems();
+            $navigationItems = $user->getNavigationItems();
             // Add navigation branding for tenant users
-            if (!$user->is_central_admin && $user->tenant_id) {
-                $userWithPermissions->navigation_branding = $user->getNavigationBranding();
-            }
+            $navigationBranding = !$user->is_central_admin && $user->tenant_id ? $user->getNavigationBranding() : null;
         }
-
-        return [
-            ...parent::share($request),
+        
+        return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $userWithPermissions,
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'tenant_id' => $user->tenant_id,
+                    'is_central_admin' => $user->is_central_admin,
+                    'admin_level' => $adminLevel ?? null,
+                    'permissions' => $userPermissions ?? [],
+                    'layout_type' => $layoutType ?? null,
+                    'navigation_items' => $navigationItems ?? [],
+                    'navigation_branding' => $navigationBranding ?? null,
+                ] : null,
             ],
-        ];
+            'flash' => [
+                'message' => fn () => $request->session()->get('message'),
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
+            'tenantId' => $user?->tenant_id ?? session('impersonated_tenant_id'),
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $user?->tenant_id ?? session('impersonated_tenant_id'),
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
+        ]);
     }
 }

@@ -321,7 +321,17 @@ Route::get('/api/users', [\App\Http\Controllers\UsersApiController::class, 'inde
 
 // Messages Route - accessible to all authenticated users
 Route::get('/messages', function () {
-    return Inertia::render('Messages');
+    $user = auth()->user();
+    $tenant = $user->tenant;
+    
+    return Inertia::render('Messages', [
+        'tenantId' => $user->tenant_id,
+        'tenant' => $tenant,
+        'stats' => [
+            'tenant_id' => $user->tenant_id,
+            'tenant_name' => $tenant?->name ?? 'Your Organization',
+        ],
+    ]);
 })->middleware(['auth', 'verified'])->name('messages');
 
 // Regular authenticated user routes

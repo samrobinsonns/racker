@@ -19,12 +19,19 @@ class SupportTicketCategoriesController extends Controller
         Gate::authorize('viewAny', 'App\Models\SupportTicketSettings');
         
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
         
         $categories = SupportTicketCategory::forTenant($tenantId)
             ->orderBy('sort_order')
             ->get();
 
         return Inertia::render('TenantAdmin/SupportTickets/Categories/Index', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'categories' => $categories,
         ]);
     }
@@ -36,7 +43,17 @@ class SupportTicketCategoriesController extends Controller
     {
         Gate::authorize('update', 'App\Models\SupportTicketSettings');
 
-        return Inertia::render('TenantAdmin/SupportTickets/Categories/Create');
+        $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
+
+        return Inertia::render('TenantAdmin/SupportTickets/Categories/Create', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
+        ]);
     }
 
     /**
@@ -71,7 +88,16 @@ class SupportTicketCategoriesController extends Controller
     {
         Gate::authorize('update', 'App\Models\SupportTicketSettings');
 
+        $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
+
         return Inertia::render('TenantAdmin/SupportTickets/Categories/Edit', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'category' => $category,
         ]);
     }

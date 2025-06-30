@@ -36,6 +36,7 @@ class SupportTicketsController extends Controller
         Gate::authorize('viewAny', SupportTicket::class);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
         
         $filters = $request->only([
             'status_id', 'priority_id', 'category_id', 'assignee_id',
@@ -65,10 +66,15 @@ class SupportTicketsController extends Controller
         $stats = $this->ticketService->getTicketStats($tenantId);
 
         return Inertia::render('SupportTickets/Index', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
             'tickets' => $tickets,
             'filters' => $filters,
             'filterOptions' => $filterOptions,
-            'stats' => $stats,
+            'stats' => array_merge($stats, [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ]),
             'permissions' => [
                 'create' => auth()->user()->can('create', SupportTicket::class),
                 'manage' => auth()->user()->hasPermission('manage_support_tickets'),
@@ -85,8 +91,15 @@ class SupportTicketsController extends Controller
         Gate::authorize('create', SupportTicket::class);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
 
         return Inertia::render('SupportTickets/Create', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'priorities' => SupportTicketPriority::forTenant($tenantId)->active()->orderBy('level')->get(),
             'categories' => SupportTicketCategory::forTenant($tenantId)->active()->orderBy('name')->get(),
             'statuses' => SupportTicketStatus::forTenant($tenantId)->active()->orderBy('sort_order')->get(),
@@ -156,8 +169,15 @@ class SupportTicketsController extends Controller
         ]);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
 
         return Inertia::render('SupportTickets/Show', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'ticket' => $supportTicket,
             'replies' => $this->replyService->getTicketReplies(
                 $supportTicket,
@@ -186,8 +206,15 @@ class SupportTicketsController extends Controller
         Gate::authorize('update', $supportTicket);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $tenant = auth()->user()->tenant;
 
         return Inertia::render('SupportTickets/Edit', [
+            'tenantId' => $tenantId,
+            'tenant' => $tenant,
+            'stats' => [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ],
             'ticket' => $supportTicket->load(['requester', 'assignee', 'category', 'priority', 'status']),
             'priorities' => SupportTicketPriority::forTenant($tenantId)->active()->orderBy('level')->get(),
             'categories' => SupportTicketCategory::forTenant($tenantId)->active()->orderBy('name')->get(),
