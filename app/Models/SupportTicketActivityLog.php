@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use App\Traits\HasTenant;
 
 class SupportTicketActivityLog extends Model
 {
-    use HasFactory;
+    use HasFactory, HasTenant;
 
     protected $fillable = [
+        'tenant_id',
         'ticket_id',
         'user_id',
         'action_type',
@@ -217,6 +219,7 @@ class SupportTicketActivityLog extends Model
     public static function logTicketCreated(SupportTicket $ticket, ?int $userId = null): void
     {
         static::create([
+            'tenant_id' => $ticket->tenant_id,
             'ticket_id' => $ticket->id,
             'user_id' => $userId,
             'action_type' => 'created',

@@ -25,6 +25,7 @@ class Contact extends Model
         'type',
         'source',
         'owner_id',
+        'notes',
     ];
 
     protected $casts = [
@@ -43,10 +44,7 @@ class Contact extends Model
         return $this->hasMany(ContactAddress::class);
     }
 
-    public function notes()
-    {
-        return $this->hasMany(ContactNote::class);
-    }
+
 
     public function tags()
     {

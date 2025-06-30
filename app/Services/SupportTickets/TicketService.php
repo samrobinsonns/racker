@@ -19,6 +19,15 @@ class TicketService
      */
     public function createTicket(array $data, string $tenantId, ?int $userId = null): SupportTicket
     {
+        \Log::info('Creating ticket with data:', [
+            'contact_id' => $data['contact_id'] ?? null,
+            'requester_email' => $data['requester_email'] ?? null,
+            'requester_name' => $data['requester_name'] ?? null,
+            'subject' => $data['subject'] ?? null,
+            'tenant_id' => $tenantId,
+            'user_id' => $userId,
+        ]);
+
         // Set default status if not provided
         if (!isset($data['status_id'])) {
             $defaultStatus = SupportTicketStatus::forTenant($tenantId)
@@ -54,7 +63,24 @@ class TicketService
         // Set source if not provided
         $data['source'] = $data['source'] ?? 'web';
 
+        \Log::info('Creating ticket in database with final data:', [
+            'contact_id' => $data['contact_id'] ?? null,
+            'requester_email' => $data['requester_email'] ?? null,
+            'requester_name' => $data['requester_name'] ?? null,
+            'subject' => $data['subject'] ?? null,
+            'tenant_id' => $data['tenant_id'],
+            'created_by' => $data['created_by'],
+            'status_id' => $data['status_id'],
+            'priority_id' => $data['priority_id'],
+        ]);
+
         $ticket = SupportTicket::create($data);
+
+        \Log::info('Ticket created:', [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+            'contact_id' => $ticket->contact_id,
+        ]);
 
         // Log ticket creation
         SupportTicketActivityLog::logTicketCreated($ticket, $userId);

@@ -12,7 +12,7 @@ class ContactController extends Controller
     public function index()
     {
         return Inertia::render('Tenant/Contacts/Index', [
-            'contacts' => Contact::with(['tags', 'customFields'])
+            'contacts' => Contact::with(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority'])
                 ->latest()
                 ->paginate(10),
         ]);
@@ -34,6 +34,7 @@ class ContactController extends Controller
             'job_title' => 'nullable|string|max:255',
             'company' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
         ]);
 
         $contact = Contact::create($validated);
@@ -44,7 +45,7 @@ class ContactController extends Controller
 
     public function show(Contact $contact)
     {
-        $contact->load(['tags', 'customFields', 'addresses', 'notes']);
+        $contact->load(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority']);
         
         return Inertia::render('Tenant/Contacts/Show', [
             'contact' => $contact
@@ -71,12 +72,34 @@ class ContactController extends Controller
             'job_title' => 'nullable|string|max:255',
             'company' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
+            'addresses' => 'nullable|array',
+            'addresses.*.type' => 'required_with:addresses|in:billing,shipping,other',
+            'addresses.*.street_1' => 'required_with:addresses|string|max:255',
+            'addresses.*.street_2' => 'nullable|string|max:255',
+            'addresses.*.city' => 'required_with:addresses|string|max:255',
+            'addresses.*.state' => 'nullable|string|max:255',
+            'addresses.*.postal_code' => 'nullable|string|max:20',
+            'addresses.*.country' => 'nullable|string|max:255',
+            'addresses.*.is_primary' => 'nullable|boolean',
         ]);
 
-        $contact->update($validated);
+        // Update basic contact info
+        $contact->update(collect($validated)->except(['addresses'])->toArray());
+
+        // Handle addresses if provided
+        if (isset($validated['addresses'])) {
+            // Delete existing addresses
+            $contact->addresses()->delete();
+            
+            // Create new addresses
+            foreach ($validated['addresses'] as $addressData) {
+                $contact->addresses()->create($addressData);
+            }
+        }
 
         return response()->json([
-            'contact' => $contact->fresh(),
+            'contact' => $contact->fresh(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority']),
             'message' => 'Contact updated successfully'
         ]);
     }
@@ -87,5 +110,26 @@ class ContactController extends Controller
 
         return redirect()->route('tenant.contacts.index')
             ->with('success', 'Contact deleted successfully.');
+    }
+
+    /**
+     * Search contacts by query.
+     */
+    public function search(Request $request)
+    {
+        $query = $request->get('query');
+
+        $contacts = Contact::where(function($q) use ($query) {
+            $q->where('first_name', 'like', "%{$query}%")
+              ->orWhere('last_name', 'like', "%{$query}%")
+              ->orWhere('email', 'like', "%{$query}%")
+              ->orWhere('company', 'like', "%{$query}%");
+        })
+        ->with(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority'])
+        ->select('id', 'first_name', 'last_name', 'email', 'company')
+        ->limit(10)
+        ->get();
+
+        return response()->json(['contacts' => $contacts]);
     }
 } 

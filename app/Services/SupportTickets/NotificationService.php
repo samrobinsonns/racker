@@ -255,8 +255,11 @@ class NotificationService
     private function getAvailableAgents(string $tenantId): \Illuminate\Support\Collection
     {
         return User::where('tenant_id', $tenantId)
-            ->whereHas('roles.permissions', function ($query) {
-                $query->whereIn('name', ['view_support_tickets', 'manage_support_tickets']);
+            ->whereHas('roles', function ($query) {
+                $query->where(function ($q) {
+                    $q->whereJsonContains('permissions', 'view_support_tickets')
+                      ->orWhereJsonContains('permissions', 'manage_support_tickets');
+                });
             })
             ->get();
     }
@@ -365,8 +368,19 @@ class TicketNotificationMail extends \Illuminate\Mail\Mailable
 
     public function build()
     {
+        $viewData = [
+            'greeting' => $this->mailMessage->greeting ?? 'Hello!',
+            'introLines' => $this->mailMessage->introLines ?? [],
+            'outroLines' => $this->mailMessage->outroLines ?? [],
+            'actionText' => $this->mailMessage->actionText ?? null,
+            'actionUrl' => $this->mailMessage->actionUrl ?? null,
+            'displayableActionUrl' => $this->mailMessage->actionUrl ?? null,
+            'salutation' => $this->mailMessage->salutation ?? 'Regards,',
+            'level' => $this->mailMessage->level ?? 'info',
+        ];
+
         return $this->subject($this->mailMessage->subject)
                     ->markdown('emails.ticket-notification')
-                    ->with('mailMessage', $this->mailMessage);
+                    ->with('mailMessage', (object) $viewData);
     }
 } 

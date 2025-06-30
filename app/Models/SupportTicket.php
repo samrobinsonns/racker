@@ -44,6 +44,7 @@ class SupportTicket extends Model
         'microsoft365_thread_id',
         'email_headers',
         'created_by',
+        'contact_id',
     ];
 
     protected $casts = [
@@ -151,6 +152,14 @@ class SupportTicket extends Model
     public function activityLogs()
     {
         return $this->hasMany(SupportTicketActivityLog::class, 'ticket_id');
+    }
+
+    /**
+     * Get the associated contact
+     */
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class);
     }
 
     /**

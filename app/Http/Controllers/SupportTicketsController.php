@@ -123,6 +123,7 @@ class SupportTicketsController extends Controller
             'assignee_id' => 'nullable|exists:users,id',
             'requester_email' => 'nullable|email',
             'requester_name' => 'nullable|string|max:255',
+            'contact_id' => 'nullable|exists:contacts,id',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
             'attachments' => 'nullable|array',
@@ -131,6 +132,11 @@ class SupportTicketsController extends Controller
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
+
+        // Add contact_id to the ticket data
+        if (!empty($validated['contact_id'])) {
+            $validated['contact_id'] = (int) $validated['contact_id'];
+        }
 
         $ticket = $this->ticketService->createTicket($validated, $tenantId, $userId);
 

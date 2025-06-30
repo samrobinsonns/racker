@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register custom middleware aliases
         $middleware->alias([
+            'tenant' => \App\Http\Middleware\EnsureTenant::class,
             'central.admin' => \App\Http\Middleware\EnsureCentralAdmin::class,
             'tenant.admin' => \App\Http\Middleware\EnsureTenantAdmin::class,
             'permission' => \App\Http\Middleware\RequiresPermission::class,

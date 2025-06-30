@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
+import ContactSelector from '@/Components/ContactSelector';
 import {
     ExclamationTriangleIcon,
     PaperClipIcon,
@@ -18,6 +19,7 @@ import {
 export default function Create({ priorities, categories, statuses, users, auth }) {
     const [attachments, setAttachments] = useState([]);
     const [dragActive, setDragActive] = useState(false);
+    const [selectedContact, setSelectedContact] = useState(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         subject: '',
@@ -29,11 +31,35 @@ export default function Create({ priorities, categories, statuses, users, auth }
         requester_email: '',
         requester_name: '',
         tags: [],
-        attachments: []
+        attachments: [],
+        contact_id: ''
     });
+
+    const handleContactSelect = (contact) => {
+        console.log('Contact selected:', contact);
+        setSelectedContact(contact);
+        const updatedData = {
+            ...data,
+            requester_email: contact.email,
+            requester_name: `${contact.first_name} ${contact.last_name}`,
+            contact_id: contact.id
+        };
+        setData(updatedData);
+        console.log('Updated form data after contact selection:', updatedData);
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        // Ensure contact data is properly set
+        if (selectedContact) {
+            setData(prevData => ({
+                ...prevData,
+                contact_id: selectedContact.id,
+                requester_email: selectedContact.email,
+                requester_name: `${selectedContact.first_name} ${selectedContact.last_name}`
+            }));
+        }
         
         const formData = new FormData();
         
@@ -48,14 +74,45 @@ export default function Create({ priorities, categories, statuses, users, auth }
                     formData.append('tags[]', tag);
                 });
             } else if (data[key] !== null && data[key] !== '') {
-                formData.append(key, data[key]);
+                // Ensure contact_id is properly set in form data
+                if (key === 'contact_id' && selectedContact) {
+                    formData.append(key, selectedContact.id);
+                } else {
+                    formData.append(key, data[key]);
+                }
             }
+        });
+
+        // Double check contact data is in form data
+        if (selectedContact && !formData.get('contact_id')) {
+            formData.append('contact_id', selectedContact.id);
+            formData.append('requester_email', selectedContact.email);
+            formData.append('requester_name', `${selectedContact.first_name} ${selectedContact.last_name}`);
+        }
+
+        console.log('Form data before submission:', {
+            subject: formData.get('subject'),
+            priority_id: formData.get('priority_id'),
+            category_id: formData.get('category_id'),
+            status_id: formData.get('status_id'),
+            assignee_id: formData.get('assignee_id'),
+            requester_email: formData.get('requester_email'),
+            requester_name: formData.get('requester_name'),
+            contact_id: formData.get('contact_id'),
+            description: formData.get('description')?.substring(0, 100) + '...' // Truncate for logging
         });
 
         post(route('support-tickets.store'), {
             data: formData,
             forceFormData: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                console.log('Ticket created successfully with contact:', selectedContact);
+                reset();
+                setSelectedContact(null);
+            },
+            onError: (errors) => {
+                console.error('Errors creating ticket:', errors);
+            }
         });
     };
 
@@ -270,14 +327,24 @@ export default function Create({ priorities, categories, statuses, users, auth }
                             {/* External Requester Info */}
                             <div className="mt-6 pt-6 border-t border-gray-200">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                    Requester Information (Optional)
+                                    Requester Information
                                 </h3>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Fill this out if creating a ticket on behalf of someone else
+                                    Search for an existing contact or fill in the details manually
                                 </p>
                                 
                                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                    {/* Requester Name */}
+                                    {/* Contact Selector */}
+                                    <div className="sm:col-span-2">
+                                        <InputLabel value="Search Contact" />
+                                        <ContactSelector
+                                            selectedContact={selectedContact}
+                                            onSelect={handleContactSelect}
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    {/* Manual Input Fields */}
                                     <div>
                                         <InputLabel htmlFor="requester_name" value="Requester Name" />
                                         <TextInput
@@ -292,7 +359,6 @@ export default function Create({ priorities, categories, statuses, users, auth }
                                         <InputError message={errors.requester_name} className="mt-2" />
                                     </div>
 
-                                    {/* Requester Email */}
                                     <div>
                                         <InputLabel htmlFor="requester_email" value="Requester Email" />
                                         <TextInput

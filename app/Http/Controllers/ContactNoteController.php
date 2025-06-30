@@ -17,7 +17,7 @@ class ContactNoteController extends Controller
     public function store(StoreContactNoteRequest $request, Contact $contact)
     {
         $note = $contact->notes()->create([
-            'content' => $request->content,
+            'note' => $request->content,
             'user_id' => Auth::id(),
             'tenant_id' => Auth::user()->tenant_id,
         ]);
@@ -36,7 +36,7 @@ class ContactNoteController extends Controller
     public function update(UpdateContactNoteRequest $request, ContactNote $note)
     {
         $note->update([
-            'content' => $request->content,
+            'note' => $request->content,
         ]);
 
         $note->load('user');

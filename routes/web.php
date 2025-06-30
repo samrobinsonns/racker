@@ -265,6 +265,7 @@ Route::prefix('tenant')->name('tenant.')->middleware(['auth'])->group(function (
         Route::get('/{contact}/edit', [App\Http\Controllers\Tenant\ContactController::class, 'edit'])->name('edit');
         Route::put('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'update'])->name('update');
         Route::delete('/{contact}', [App\Http\Controllers\Tenant\ContactController::class, 'destroy'])->name('destroy');
+        Route::get('/search', [App\Http\Controllers\Tenant\ContactController::class, 'search'])->name('search');
     });
 });
 
