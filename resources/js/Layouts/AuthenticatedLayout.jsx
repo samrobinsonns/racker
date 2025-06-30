@@ -508,10 +508,10 @@ export default function AuthenticatedLayout({ header, children }) {
             )}
 
             {/* Main content */}
-            <div className={isAdmin ? "lg:pl-64" : ""}>
+            <div className={isAdmin ? "lg:pl-[260px]" : ""}>
                 {/* Top navigation */}
                 <nav className={`border-b border-gray-100 bg-white ${isAdmin ? 'sticky top-0 z-40 shadow-sm' : ''}`}>
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="mx-auto max-w-7xl px-2 sm:px-3 lg:px-4">
                         <div className="flex h-16 justify-between">
                             <div className="flex">
                                 {/* Mobile menu button for admins */}
@@ -720,18 +720,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     )}
                 </nav>
 
-                {/* Page header */}
-                {header && (
-                    <header className="bg-white shadow-sm">
-                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                            {header}
-                        </div>
-                    </header>
-                )}
-
                 {/* Main content area - Clean for page content */}
-                <main className={isAdmin ? "py-6" : ""}>
-                    <div className={isAdmin ? "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" : ""}>
+                <main>
+                    <div className="p-4">
                         {children}
                     </div>
                 </main>
