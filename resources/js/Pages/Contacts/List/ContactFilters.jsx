@@ -31,14 +31,18 @@ export default function ContactFilters({ filters, onChange }) {
     };
 
     return (
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
             <Select value={filters.type} onValueChange={handleTypeChange}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Type" />
+                <SelectTrigger className="w-full sm:w-[160px] bg-white">
+                    <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
                 <SelectContent>
                     {CONTACT_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
+                        <SelectItem 
+                            key={type.value} 
+                            value={type.value}
+                            className="cursor-pointer"
+                        >
                             {type.label}
                         </SelectItem>
                     ))}
@@ -46,12 +50,16 @@ export default function ContactFilters({ filters, onChange }) {
             </Select>
 
             <Select value={filters.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Status" />
+                <SelectTrigger className="w-full sm:w-[160px] bg-white">
+                    <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                     {CONTACT_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
+                        <SelectItem 
+                            key={status.value} 
+                            value={status.value}
+                            className="cursor-pointer"
+                        >
                             {status.label}
                         </SelectItem>
                     ))}

@@ -9,12 +9,39 @@ use Inertia\Inertia;
 
 class ContactController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $query = Contact::query()
+            ->with(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority']);
+
+        // Handle search
+        if ($request->has('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('first_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%")
+                  ->orWhere('company', 'like', "%{$searchTerm}%")
+                  ->orWhere('job_title', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Handle filters
+        if ($request->has('type') && $request->type !== '') {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->has('status') && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
         return Inertia::render('Tenant/Contacts/Index', [
-            'contacts' => Contact::with(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority'])
-                ->latest()
-                ->paginate(10),
+            'contacts' => $query->latest()->paginate(10),
+            'filters' => [
+                'search' => $request->search ?? '',
+                'type' => $request->type ?? '',
+                'status' => $request->status ?? '',
+            ],
         ]);
     }
 

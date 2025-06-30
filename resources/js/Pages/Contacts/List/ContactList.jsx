@@ -26,24 +26,35 @@ const STATUS_COLORS = {
 };
 
 export default function ContactList({ contacts }) {
+    if (!contacts.data?.length) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-gray-500">No contacts found</p>
+            </div>
+        );
+    }
+
     return (
-        <div>
+        <div className="bg-white rounded-lg border">
             <div className="overflow-x-auto">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Company</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Tickets</TableHead>
-                            <TableHead>Notes</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                        <TableRow className="bg-gray-50">
+                            <TableHead className="font-semibold">Name</TableHead>
+                            <TableHead className="font-semibold">Company</TableHead>
+                            <TableHead className="font-semibold">Type</TableHead>
+                            <TableHead className="font-semibold">Status</TableHead>
+                            <TableHead className="font-semibold">Tickets</TableHead>
+                            <TableHead className="font-semibold">Notes</TableHead>
+                            <TableHead className="text-right font-semibold">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {contacts.data.map((contact) => (
-                            <TableRow key={contact.id}>
+                            <TableRow 
+                                key={contact.id}
+                                className="hover:bg-gray-50 transition-colors"
+                            >
                                 <TableCell>
                                     <div>
                                         <div className="font-medium">
@@ -85,20 +96,24 @@ export default function ContactList({ contacts }) {
                                 <TableCell>
                                     <Link
                                         href={route('contacts.show', contact.id)}
-                                        className="text-gray-900 hover:text-gray-700"
+                                        className="text-gray-900 hover:text-blue-600 transition-colors"
                                     >
                                         {contact.tickets_count} tickets
                                     </Link>
                                 </TableCell>
-                                <TableCell>{contact.notes_count} notes</TableCell>
+                                <TableCell>
+                                    <span className="text-gray-600">{contact.notes_count} notes</span>
+                                </TableCell>
                                 <TableCell className="text-right space-x-2">
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         asChild
+                                        className="hover:bg-gray-100"
                                     >
                                         <Link
                                             href={route('contacts.show', contact.id)}
+                                            className="text-gray-600 hover:text-gray-900"
                                         >
                                             <EyeIcon className="h-4 w-4" />
                                         </Link>
@@ -107,9 +122,11 @@ export default function ContactList({ contacts }) {
                                         variant="ghost"
                                         size="icon"
                                         asChild
+                                        className="hover:bg-gray-100"
                                     >
                                         <Link
                                             href={route('contacts.edit', contact.id)}
+                                            className="text-gray-600 hover:text-gray-900"
                                         >
                                             <PencilIcon className="h-4 w-4" />
                                         </Link>
@@ -121,7 +138,7 @@ export default function ContactList({ contacts }) {
                 </Table>
             </div>
 
-            <div className="py-4 px-6">
+            <div className="py-4 px-6 border-t">
                 <Pagination links={contacts.links} />
             </div>
         </div>

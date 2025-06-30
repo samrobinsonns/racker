@@ -35,15 +35,55 @@ export default function Index({ contacts, filters }) {
     };
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout
+            header={
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-bold leading-tight text-gray-900">
+                            Contact Management
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                            Manage your contacts, import/export data, and more.
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => router.visit(route('contacts.create'))}
+                        className="inline-flex items-center"
+                    >
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add Contact
+                    </Button>
+                </div>
+            }
+        >
             <Head title="Contacts" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    {/* Import/Export Section */}
-                    <div className="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+            <div className="py-6">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    <div className="bg-white shadow-sm rounded-lg mb-6">
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div className="flex-1">
+                                    <ContactSearch
+                                        value={searchParams.search}
+                                        onChange={handleSearch}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <ContactFilters
+                                        filters={searchParams}
+                                        onChange={handleFilterChange}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <ContactList contacts={contacts} />
+                    </div>
+
+                    <div className="bg-white shadow-sm rounded-lg p-4">
                         <section>
-                            <header className="mb-6">
+                            <header className="mb-4">
                                 <h2 className="text-lg font-medium text-gray-900">
                                     Import & Export
                                 </h2>
@@ -54,41 +94,6 @@ export default function Index({ contacts, filters }) {
 
                             <ImportExportManager />
                         </section>
-                    </div>
-
-                    {/* Existing Contacts List Section */}
-                    <div className="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                        <div className="px-4 sm:px-0 mb-6 flex items-center justify-between">
-                            <h1 className="text-2xl font-semibold text-gray-900">Contacts</h1>
-                            <Button
-                                onClick={() => router.visit(route('contacts.create'))}
-                                className="inline-flex items-center"
-                            >
-                                <PlusIcon className="h-5 w-5 mr-2" />
-                                Add Contact
-                            </Button>
-                        </div>
-
-                        <div className="bg-white shadow rounded-lg">
-                            <div className="p-6 border-b border-gray-200">
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <div className="flex-1">
-                                        <ContactSearch
-                                            value={searchParams.search}
-                                            onChange={handleSearch}
-                                        />
-                                    </div>
-                                    <div className="flex-shrink-0">
-                                        <ContactFilters
-                                            filters={searchParams}
-                                            onChange={handleFilterChange}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <ContactList contacts={contacts} />
-                        </div>
                     </div>
                 </div>
             </div>
