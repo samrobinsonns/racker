@@ -272,6 +272,7 @@ class SupportTicketActivityLog extends Model
     public static function logReply(SupportTicket $ticket, SupportTicketReply $reply, ?int $userId = null): void
     {
         static::create([
+            'tenant_id' => $ticket->tenant_id,
             'ticket_id' => $ticket->id,
             'user_id' => $userId,
             'action_type' => $reply->is_internal ? 'internal_note' : 'replied',

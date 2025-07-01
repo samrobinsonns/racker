@@ -132,6 +132,18 @@ class NavigationItemsSeeder extends Seeder
                 'description' => 'View support ticket analytics and insights',
             ],
 
+            // Email Settings
+            [
+                'key' => 'email_settings',
+                'label' => 'Email Settings',
+                'icon' => 'EnvelopeIcon',
+                'route_name' => 'tenant-admin.email-settings.index',
+                'permission_required' => Permission::MANAGE_EMAIL_PROVIDERS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 17,
+                'description' => 'Configure SMTP settings and email notifications',
+            ],
+
             // Content Management Items
             [
                 'key' => 'reports',

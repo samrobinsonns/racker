@@ -196,238 +196,149 @@ The system automatically redirects users to appropriate dashboards:
   - Responsive navigation layouts
   - Error handling and validation display
 
-### ✅ Recently Completed
-- **Unified AuthenticatedLayout System**
-  - **Context-Aware Layout**: Single layout that adapts based on user type
-  - **Dynamic Admin Sidebars**: Conditional admin features appear for admin users
-  - **Consistent Navigation**: Persistent admin sidebars across Dashboard → Profile → Users → Settings
-  - **Progressive Enhancement**: Regular users get clean interface, admins get rich features
-  - **Role-Based Theming**: Indigo theme for central admin, emerald for tenant admin
-  - **Mobile Responsive**: All user types supported across screen sizes
-  - **Smart Route Detection**: Automatic highlighting of current pages
-  - **Unified Dashboard**: Single `/dashboard` endpoint serving all user types with appropriate data
+### 🆕 Email Configuration & Reply System
 
-- **Complete Roles & Permissions Management System**
-  - **Visual Permission Management**: Organized permissions by category with descriptions
-  - **Comprehensive Role CRUD**: Create, edit, delete roles with full validation
-  - **Permission Categories**: System Management, User Management, Tenant Operations, Content Management
-  - **Role Type System**: Distinguish between Central (system-wide) and Tenant (tenant-specific) roles
-  - **Permission Preview**: See assigned permissions at a glance with counters
-  - **User Count Display**: Shows how many users have each role
-  - **Safety Protections**: Core roles protected, user assignments checked before deletion
-  - **Modern Modal UI**: Compact, user-friendly modals with proper sizing and responsive design
-  - **Real-time Validation**: Form validation with immediate feedback
-  - **Loading States**: Animated loading indicators for better UX
-  - **Error Handling**: Comprehensive validation and user feedback
-  - **Security Features**: Protected routes, permission checking, role assignment validation
+#### **System Overview**
+The Email Configuration & Reply System provides a complete email management solution for the Support Ticket system, enabling:
+- Tenant-specific SMTP configuration
+- Outbound email processing
+- Inbound email processing
+- Email threading and ticket updates
+- Attachment handling
 
-- **Enhanced Modal System**
-  - **Optimal Sizing**: Roles modal (2xl), delete confirmation (sm) for better UX
-  - **Improved Layout**: Sectioned forms with clear visual hierarchy
-  - **Close Controls**: Multiple ways to close (X button, cancel, overlay click)
-  - **Loading Animations**: Spinning indicators during form submission
-  - **Responsive Design**: Works perfectly on all screen sizes
-  - **Keyboard Navigation**: Proper focus management and accessibility
+#### **Architecture Components**
 
-- **🆕 Custom Navigation Builder System**
-  - **Complete Drag-and-Drop Builder**: Visual interface for creating custom navigation layouts
-  - **Multi-Level Priority System**: User-specific > Role-specific > Tenant default navigation
-  - **Permission-Based Filtering**: Navigation items automatically filtered by user permissions
-  - **Real-Time Integration**: Custom navigation immediately reflected in user layouts
-  - **Navigation Item Library**: Pre-built navigation components organized by categories
-  - **Live Preview**: Real-time preview of navigation as it's being built
-  - **Current Navigation Loading**: Automatically loads existing navigation when selecting targets
-  - **Configuration Management**: Save as draft or activate immediately with version control
-  - **Comprehensive API**: Full RESTful API for navigation configuration management
+##### **1. Email Configuration System**
+- **Database Structure**:
+  ```sql
+  email_settings:
+    - tenant_id
+    - smtp_host
+    - smtp_port
+    - smtp_username
+    - smtp_password (encrypted)
+    - from_email
+    - from_name
+    - use_ssl
+    - created_at
+    - updated_at
+  ```
 
-### 🔄 Current System Architecture
+- **Configuration Management**:
+  - `EmailSettingsService`: Handles SMTP configuration
+  - Dynamic config switching per tenant
+  - Encryption for sensitive data
+  - Configuration validation system
 
-#### **Unified Layout System**
-The application now uses a single `AuthenticatedLayout` that dynamically adapts:
+##### **2. Email Processing System**
 
-```jsx
-// User Type Detection
-const isCentralAdmin = user?.is_central_admin;
-const isTenantAdmin = user?.roles?.some(role => role.name === 'tenant_admin');
+###### **Outbound Email**
+- **Core Components**:
+  - `EmailService`: Handles email sending
+  - Template system for formatting
+  - Attachment processing
+  - Tenant-specific configuration loading
 
-// Theme Configuration
-const themeConfig = {
-  central_admin: { 
-    sidebarBg: 'bg-indigo-900', 
-    accent: 'indigo',
-    textColor: 'text-indigo-100' 
-  },
-  tenant_admin: { 
-    sidebarBg: 'bg-emerald-900', 
-    accent: 'emerald',
-    textColor: 'text-emerald-100' 
-  }
-};
-```
+###### **Inbound Email**
+- **Processing Components**:
+  - Email pipe system
+  - Email parsing service
+  - Thread ID tracking
+  - Attachment extraction
 
-#### **Permission System Architecture**
-Granular permissions organized by functional areas:
+##### **3. Integration Points**
 
-- **System Management**: `manage_tenants`, `manage_system_settings`, `view_system_analytics`, `impersonate_users`, `view_all_data`
-- **User Management**: `manage_central_users`, `manage_tenant_users`, `invite_users`, `manage_some_users`
-- **Tenant Operations**: `create_tenants`, `delete_tenants`, `manage_tenant_settings`, `manage_tenant_roles`, `view_tenant_analytics`, `view_tenant_data`, `export_tenant_data`
-- **Content Management**: `view_dashboard`, `manage_own_profile`, `create_content`, `edit_content`, `edit_own_content`, `delete_content`, `view_reports`
+###### **Ticket System Integration**
+- Email-to-ticket threading
+- Status updates on reply
+- Notification system
+- Activity logging
 
-#### **Role Management Backend**
-New controller methods in `CentralAdminController`:
-- `storeRole()`: Create roles with comprehensive validation
-- `updateRole()`: Edit existing roles with permission updates
-- `destroyRole()`: Safe deletion with user assignment checks
+###### **User Interface**
+- Email preview
+- Reply tracking
+- Delivery confirmation
+- Failure handling
 
-Routes added:
-```php
-Route::post('/roles', [CentralAdminController::class, 'storeRole'])->name('roles.store');
-Route::patch('/roles/{role}', [CentralAdminController::class, 'updateRole'])->name('roles.update');
-Route::delete('/roles/{role}', [CentralAdminController::class, 'destroyRole'])->name('roles.destroy');
-```
+#### **Implementation Phases**
 
-#### **Navigation Builder Architecture**
-Complete custom navigation system with database-driven configurations:
+##### **Phase 1: Email Configuration**
+- Database migrations
+- Settings UI
+- SMTP configuration
+- Test connection
+- Credential encryption
 
-**Database Schema:**
-- **navigation_items_library**: Available navigation components with categories and permissions
-- **navigation_configurations**: Custom navigation layouts with priority system and versioning
+##### **Phase 2: Outbound Email**
+- EmailService creation
+- Template system
+- Attachment handling
+- Configuration loading
+- Email queuing
 
-**Backend Components:**
-- **NavigationService**: Core business logic for configuration management and permission filtering
-- **NavigationController**: RESTful API with 9 endpoints for complete CRUD operations
-- **NavigationItem & NavigationConfiguration Models**: Eloquent models with proper relationships
+##### **Phase 3: Inbound Processing**
+- Email receiving
+- Parsing service
+- Thread matching
+- Attachment handling
+- Ticket updates
 
-**Frontend Components:**
-- **Navigation Builder Interface**: Three-panel layout (settings, builder, preview)
-- **DraggableNavigationItem**: Built with @dnd-kit library for drag-and-drop functionality
-- **Dynamic Layout Integration**: AuthenticatedLayout and TenantAdminLayout use custom navigation
+##### **Phase 4: Testing & Integration**
+- Unit testing
+- Integration testing
+- Security testing
+- Performance testing
+- User acceptance
 
-**Navigation Priority System:**
-```php
-// Priority order (highest to lowest):
-1. User-specific configuration (navigation_configurations.user_id)
-2. Role-specific configuration (navigation_configurations.role_id) 
-3. Tenant default configuration (navigation_configurations.tenant_id only)
-4. System fallback navigation (hardcoded defaults)
-```
+#### **Technical Considerations**
 
-**API Endpoints:**
-```php
-// Navigation Builder Routes
-Route::get('/navigation', 'index');                    // List configurations by tenant
-Route::get('/navigation/builder', 'builder');          // Builder interface with data
-Route::post('/navigation', 'store');                   // Create new configuration
-Route::get('/navigation/{config}', 'show');            // View configuration details
-Route::put('/navigation/{config}', 'update');          // Update configuration
-Route::delete('/navigation/{config}', 'destroy');      // Delete configuration
-Route::post('/navigation/{config}/activate', 'activate'); // Activate configuration
-Route::post('/navigation/{config}/duplicate', 'duplicate'); // Duplicate configuration
-Route::post('/navigation/preview', 'preview');         // Preview configuration
-Route::post('/navigation/current', 'getCurrent');      // Get current navigation for target
-```
+##### **Security**
+- SMTP credential encryption
+- Email header validation
+- Attachment scanning
+- Rate limiting
+- Access control
 
-**Real-Time Integration:**
-- Navigation items passed to frontend via `HandleInertiaRequests` middleware
-- Automatic permission filtering using existing permission system
-- Caching with 1-hour TTL for performance optimization
-- Icon component mapping from string names to React components
+##### **Performance**
+- Email queuing
+- Attachment limits
+- Concurrent processing
+- Database optimization
 
-### ✅ Navigation Builder Workflow
+##### **Scalability**
+- Queue workers
+- Storage management
+- Database indexing
+- Caching strategy
 
-**Central Admin Usage:**
-1. **Access Builder**: Navigate to "Navigation Builder" from central admin sidebar
-2. **Select Tenant**: Choose tenant from searchable list with overview cards
-3. **Choose Configuration Type**: Default (all users), Role-specific, or User-specific
-4. **Select Target**: Choose specific role or user (auto-loads current navigation)
-5. **Build Navigation**: Add items from organized library, drag to reorder
-6. **Live Preview**: See real-time preview with configuration details
-7. **Save Options**: Save as draft or save and activate immediately
-8. **Instant Effect**: Changes immediately reflected in targeted users' layouts
+#### **Required Packages**
+- `symfony/mailer`: Email handling
+- `league/flysystem`: Attachment storage
+- `laravel-queue`: Background processing
+- `intervention/image`: Image processing
 
-**Navigation Item Library Categories:**
-- **Core**: Dashboard, Profile (essential navigation items)
-- **Admin**: User Management, Settings, System Configuration
-- **Content**: Reports, Analytics, Content Management
-- **Custom**: Placeholder items for future custom features
+#### **Development Guidelines**
 
-**Builder Features:**
-- **Auto-load Current Navigation**: When selecting role/user, automatically loads their existing navigation
-- **Manual Load Button**: "Load Current Navigation" button for manual reload
-- **Drag-and-Drop Reordering**: Visual reordering of navigation items
-- **Permission Filtering**: Only shows items user has permission to access
-- **Configuration Persistence**: Saves configuration name, type, target, and layout settings
-- **Version Control**: Tracks creation and update timestamps with user attribution
+##### **Email Configuration**
+- Always use tenant-specific settings
+- Validate SMTP credentials
+- Encrypt sensitive data
+- Implement connection testing
+- Handle configuration updates
 
-**Integration Points:**
-- **HasPermissions Trait**: Enhanced `getNavigationItems()` method using NavigationService
-- **AuthenticatedLayout**: Uses `user.navigation_items` for dynamic navigation
-- **TenantAdminLayout**: Renders custom navigation with proper icon mapping
-- **HandleInertiaRequests**: Passes navigation data to frontend automatically
+##### **Email Processing**
+- Use queued processing
+- Implement retry logic
+- Handle bounces
+- Track delivery status
+- Manage attachments properly
 
-### 🔄 Recent Updates (Latest)
-
-#### **✅ Navigation Builder Enhancements (Latest Session)**
-
-**🆕 Custom Item Types Implemented:**
-- **ExternalLink Items**: 
-  - Dual editing interface (label + URL input fields)
-  - Opens in new tab with `target="_blank"` and `rel="noopener noreferrer"`
-  - Shows external link icon indicator (`ArrowTopRightOnSquareIcon`)
-  - Displays URL preview in builder and edit mode
-  - Works as both main navigation items and dropdown children
-  - Proper URL field processing through backend to frontend
-
-- **Divider Items**:
-  - Renders as horizontal rules (`<hr>`) in navigation
-  - Non-interactive (no icon editing, simplified interface)
-  - Clean visual break between navigation sections
-  - Proper handling in both AuthenticatedLayout and TenantAdminLayout
-
-**🔧 Builder Interface Improvements:**
-- **Easy Creation Buttons**: Added "Add External Link" (blue theme) and "Add Divider" (gray theme) buttons
-- **Type-Aware Editing**: Different editing interfaces based on item type
-- **Enhanced Preview**: Live preview shows actual appearance of external links and dividers
-- **Icon System**: Updated `getDefaultIcon()` function to handle new item types
-- **Drag-and-Drop Support**: Full drag-and-drop support for all item types
-
-**🔧 Backend Data Processing:**
-- **URL Field Support**: Updated `transformNavigationItems()` in `HasPermissions` trait to process URL fields
-- **Configuration Management**: Enhanced save/update logic to handle external link URLs
-- **Duplicate Prevention**: Fixed duplicate configuration creation - now updates existing configurations with same name/role instead of creating new ones
-
-**🔧 Layout Integration:**
-- **AuthenticatedLayout**: Updated NavigationItem component with external link and divider support
-- **TenantAdminLayout**: Same enhancements for consistency across all layouts
-- **Proper URL Handling**: Fixed URL field processing from database through backend to frontend rendering
-- **Icon Consistency**: Both layouts use same external link indicators and divider styling
-
-**Key Technical Details:**
-```php
-// Backend: URL field processing in HasPermissions trait
-$navItem = [
-    'name' => $item['label'] ?? $item['name'] ?? 'Unknown',
-    'route' => $item['route'] ?? '#',
-    'url' => $item['url'], // ✅ Added URL field support
-    'icon' => $item['icon'] ?? 'QuestionMarkCircleIcon',
-    'type' => $item['type'] ?? 'link',
-];
-```
-
-```jsx
-// Frontend: External link rendering
-{item.type === 'external' && (
-    <a href={item.url || item.href || '#'} target="_blank" rel="noopener noreferrer">
-        {/* Link content with external icon */}
-    </a>
-)}
-```
-
-**🔧 Configuration Deduplication Fix:**
-- **Problem**: Builder created new configuration every time "Save & Activate" was clicked
-- **Solution**: Added check for existing configurations with same name/role combination
-- **Behavior**: Now updates existing configuration instead of creating duplicates
-- **Scope**: Configurations scoped by tenant + name + target (role/user)
+##### **Security Best Practices**
+- Validate email addresses
+- Scan attachments
+- Rate limit sending
+- Monitor for abuse
+- Log all activities
 
 ### 🔄 Current System Status
 **System is now stable** - Major architectural improvements completed:

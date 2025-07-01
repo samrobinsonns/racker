@@ -488,41 +488,56 @@ export default function Show({
                                 <dl className="space-y-3">
                                     {/* Contact Information */}
                                     <div>
-                                        <dt className="text-sm font-medium text-gray-500">Contact</dt>
-                                        <dd className="mt-1">
+                                        <dt className="text-sm font-medium text-gray-500 flex items-center space-x-2">
+                                            <UserIcon className="h-4 w-4" />
+                                            <span>Contact Information</span>
+                                        </dt>
+                                        <dd className="mt-2">
                                             {ticket.contact ? (
-                                                <div className="flex items-center space-x-2">
+                                                <div className="flex items-start space-x-3">
                                                     <div className="flex-shrink-0">
-                                                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
                                                             <span className="text-sm font-medium text-gray-600">
-                                                                {ticket.contact.first_name?.charAt(0) || '?'}
+                                                                {ticket.contact.first_name?.[0]}{ticket.contact.last_name?.[0]}
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div>
+                                                    <div className="flex-1 min-w-0">
                                                         <div className="text-sm font-medium text-gray-900">
-                                                            {`${ticket.contact.first_name} ${ticket.contact.last_name}`}
+                                                            {ticket.contact.first_name} {ticket.contact.last_name}
                                                         </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            {ticket.contact.email}
+                                                        <div className="text-sm text-gray-500 mt-1">
+                                                            <div className="flex items-center space-x-2">
+                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                                </svg>
+                                                                <span>{ticket.contact.email}</span>
                                                         </div>
                                                         {ticket.contact.phone && (
-                                                            <div className="text-sm text-gray-500">
-                                                                {ticket.contact.phone}
+                                                                <div className="flex items-center space-x-2 mt-1">
+                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                                    </svg>
+                                                                    <span>{ticket.contact.phone}</span>
+                                                                </div>
+                                                            )}
+                                                            {ticket.contact.company && (
+                                                                <div className="flex items-center space-x-2 mt-1">
+                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                                    </svg>
+                                                                    <span>{ticket.contact.company}</span>
                                                             </div>
                                                         )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="text-sm text-gray-500">
-                                                    {ticket.requester_name && ticket.requester_email ? (
-                                                        <>
-                                                            <div className="font-medium">{ticket.requester_name}</div>
-                                                            <div>{ticket.requester_email}</div>
-                                                        </>
-                                                    ) : (
-                                                        <span>No contact information</span>
-                                                    )}
+                                                <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
+                                                        <span>No contact assigned to this ticket</span>
+                                                    </div>
                                                 </div>
                                             )}
                                         </dd>

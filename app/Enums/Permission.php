@@ -61,6 +61,12 @@ class Permission
     const VIEW_SUPPORT_ANALYTICS = 'view_support_analytics';
     const MANAGE_MICROSOFT365_INTEGRATION = 'manage_microsoft365_integration';
 
+    // Email Management
+    const MANAGE_EMAIL_PROVIDERS = 'manage_email_providers';
+    const MANAGE_EMAIL_TEMPLATES = 'manage_email_templates';
+    const VIEW_EMAIL_ANALYTICS = 'view_email_analytics';
+    const SEND_EMAIL_CAMPAIGNS = 'send_email_campaigns';
+
     /**
      * Get all permissions organized by category (including custom permissions)
      */
@@ -263,6 +269,24 @@ class Permission
                 self::MANAGE_MICROSOFT365_INTEGRATION => [
                     'label' => 'Manage Microsoft 365 Integration',
                     'description' => 'Configure Microsoft 365 email integration'
+                ],
+            ],
+            'Email Management' => [
+                self::MANAGE_EMAIL_PROVIDERS => [
+                    'label' => 'Manage Email Providers',
+                    'description' => 'Manage email provider integrations'
+                ],
+                self::MANAGE_EMAIL_TEMPLATES => [
+                    'label' => 'Manage Email Templates',
+                    'description' => 'Manage email template designs'
+                ],
+                self::VIEW_EMAIL_ANALYTICS => [
+                    'label' => 'View Email Analytics',
+                    'description' => 'Access email analytics and reporting'
+                ],
+                self::SEND_EMAIL_CAMPAIGNS => [
+                    'label' => 'Send Email Campaigns',
+                    'description' => 'Send email campaigns to users'
                 ],
             ],
         ];

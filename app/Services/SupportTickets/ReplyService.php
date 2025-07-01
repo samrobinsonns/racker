@@ -21,10 +21,10 @@ class ReplyService
             $data['created_by'] = $userId;
             $data['author_email'] = $user->email;
             $data['author_name'] = $user->name;
-            $data['reply_type'] = $data['reply_type'] ?? 'agent';
+            $data['reply_type'] = 'agent'; // Always set as agent when created by a user
         } else {
             // External reply (e.g., from email)
-            $data['reply_type'] = $data['reply_type'] ?? 'customer';
+            $data['reply_type'] = 'customer';
         }
 
         // Set defaults
@@ -34,8 +34,10 @@ class ReplyService
 
         $reply = $ticket->replies()->create($data);
 
-        // Log the reply
-        SupportTicketActivityLog::logReply($ticket, $reply, $userId);
+        // Log the reply with tenant_id
+        SupportTicketActivityLog::logReply($ticket, $reply, $userId, [
+            'tenant_id' => $ticket->tenant_id
+        ]);
 
         // Update ticket response times
         $this->updateTicketResponseTimes($ticket, $reply);

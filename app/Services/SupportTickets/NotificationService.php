@@ -5,6 +5,7 @@ namespace App\Services\SupportTickets;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketReply;
 use App\Models\User;
+use App\Mail\TicketReplyMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -65,12 +66,12 @@ class NotificationService
             $this->notifyAgentsOfInternalNote($reply);
         } else {
             // Public replies notify appropriate parties
-            if ($reply->isFromAgent()) {
-                // Agent reply - notify requester
-                if ($ticket->requester) {
-                    $this->sendAgentReplyNotification($reply, $ticket->requester);
+            if ($reply->reply_type === 'agent') {
+                // Agent reply - notify contact
+                if ($ticket->contact) {
+                    $this->sendAgentReplyNotification($reply, $ticket->contact->email, $ticket->contact->full_name);
                 }
-            } elseif ($reply->isFromCustomer()) {
+            } elseif ($reply->reply_type === 'customer') {
                 // Customer reply - notify assignee or available agents
                 if ($ticket->assignee) {
                     $this->sendCustomerReplyNotification($reply, $ticket->assignee);
@@ -185,23 +186,27 @@ class NotificationService
     /**
      * Send agent reply notification to customer
      */
-    private function sendAgentReplyNotification(SupportTicketReply $reply, User $requester): void
+    private function sendAgentReplyNotification(SupportTicketReply $reply, string $recipientEmail, string $recipientName): void
     {
         $ticket = $reply->ticket;
         
-        $message = (new MailMessage)
-            ->subject("New Reply - {$ticket->ticket_number}")
-            ->greeting("Hello {$requester->name}!")
-            ->line("You have received a new reply on your support ticket.")
-            ->line("**Ticket Number:** {$ticket->ticket_number}")
-            ->line("**Subject:** {$ticket->subject}")
-            ->line("**Reply from:** {$reply->author_name}")
-            ->line("**Message:**")
-            ->line($reply->content)
-            ->action('View Ticket', $this->getTicketUrl($ticket))
-            ->line('You can reply directly to this email or use the link above.');
-
-        $requester->notify(new GenericTicketNotification($message));
+        Mail::send(new TicketReplyMail(
+            recipientEmail: $recipientEmail,
+            recipientName: $recipientName,
+            ticket: $ticket,
+            reply: $reply,
+            emailSubject: "New Reply - {$ticket->ticket_number}",
+            message: [
+                "You have received a new reply on your support ticket.",
+                "**Ticket Number:** {$ticket->ticket_number}",
+                "**Subject:** {$ticket->subject}",
+                "**Reply from:** {$reply->author_name}",
+                "**Message:**",
+                $reply->content
+            ],
+            actionText: 'View Ticket',
+            actionUrl: $this->getTicketUrl($ticket)
+        ));
     }
 
     /**

@@ -176,7 +176,8 @@ class SupportTicketsController extends Controller
             'replies.user',
             'replies.attachments',
             'attachments.uploader',
-            'activityLogs.user'
+            'activityLogs.user',
+            'contact'
         ]);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');

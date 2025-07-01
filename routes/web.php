@@ -26,6 +26,7 @@ use App\Http\Controllers\ContactImportExportController;
 use App\Http\Controllers\Api\ContactSearchController;
 use App\Http\Controllers\Profile\AvatarController;
 use App\Http\Controllers\Profile\BackgroundImageController;
+use App\Http\Controllers\TenantAdmin\EmailSettingsController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -175,6 +176,13 @@ Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')-
     Route::delete('/users/{user}', [TenantAdminController::class, 'destroyUser'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('users.destroy');
+
+    // Email Settings Management
+    Route::prefix('email-settings')->name('email-settings.')->middleware('permission:' . Permission::MANAGE_TENANT_SETTINGS)->group(function () {
+        Route::get('/', [EmailSettingsController::class, 'index'])->name('index');
+        Route::post('/', [EmailSettingsController::class, 'store'])->name('store');
+        Route::post('/test', [EmailSettingsController::class, 'test'])->name('test');
+    });
 
     // Support Ticket Management
     Route::prefix('support-tickets')->name('support-tickets.')->group(function () {
