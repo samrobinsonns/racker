@@ -88,6 +88,32 @@ export default function Builder({
         })
     );
 
+    // Load last selected role from localStorage on component mount
+    useEffect(() => {
+        const lastSelectedRole = localStorage.getItem('tenant-admin-last-selected-role');
+        if (lastSelectedRole) {
+            const roleId = parseInt(lastSelectedRole);
+            const role = roles.find(r => r.id === roleId);
+            if (role) {
+                setSelectedRoleId(roleId);
+                setCurrentConfig(prev => ({
+                    ...prev,
+                    name: `${role.name} Navigation`
+                }));
+                loadCurrentNavigation(roleId);
+            }
+        }
+    }, [roles]);
+
+    // Save selected role to localStorage whenever it changes
+    useEffect(() => {
+        if (selectedRoleId) {
+            localStorage.setItem('tenant-admin-last-selected-role', selectedRoleId.toString());
+        } else {
+            localStorage.removeItem('tenant-admin-last-selected-role');
+        }
+    }, [selectedRoleId]);
+
     // Load existing configuration
     const loadConfiguration = (config) => {
         setCurrentConfig({
