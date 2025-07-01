@@ -86,7 +86,7 @@ class SupportTicketsController extends Controller
     /**
      * Show ticket creation form
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         Gate::authorize('create', SupportTicket::class);
 
@@ -104,6 +104,11 @@ class SupportTicketsController extends Controller
             'categories' => SupportTicketCategory::forTenant($tenantId)->active()->orderBy('name')->get(),
             'statuses' => SupportTicketStatus::forTenant($tenantId)->active()->orderBy('sort_order')->get(),
             'users' => $this->getAssignableUsers($tenantId),
+            'contact_id' => $request->input('contact_id'),
+            'contact_name' => $request->input('contact_name'),
+            'contact_email' => $request->input('contact_email'),
+            'contact_phone' => $request->input('contact_phone'),
+            'contact_company' => $request->input('contact_company')
         ]);
     }
 

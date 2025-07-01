@@ -102,16 +102,6 @@ class NavigationItemsSeeder extends Seeder
                 'description' => 'Tenant configuration settings',
             ],
             [
-                'key' => 'admin_support_tickets',
-                'label' => 'Support Tickets',
-                'icon' => 'TicketIcon',
-                'route_name' => 'tenant-admin.support-tickets.index',
-                'permission_required' => Permission::MANAGE_SUPPORT_TICKETS,
-                'category' => NavigationItem::CATEGORY_ADMIN,
-                'sort_order' => 13,
-                'description' => 'Manage all support tickets',
-            ],
-            [
                 'key' => 'ticket_categories',
                 'label' => 'Ticket Categories',
                 'icon' => 'TagIcon',

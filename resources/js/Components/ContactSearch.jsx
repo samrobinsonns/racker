@@ -69,7 +69,7 @@ export default function ContactSearch({
                         <Combobox.Input
                             className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
                             displayValue={(contact) => 
-                                contact ? `${contact.display_name} (${contact.email})` : ''
+                                contact ? `${contact.display_name || contact.name || `${contact.first_name} ${contact.last_name}`} (${contact.email})` : ''
                             }
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder="Search contacts by name or email..."

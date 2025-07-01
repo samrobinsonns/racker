@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -20,6 +20,7 @@ export default function Create({ priorities, categories, statuses, users, auth }
     const [attachments, setAttachments] = useState([]);
     const [dragActive, setDragActive] = useState(false);
     const [selectedContact, setSelectedContact] = useState(null);
+    const { contact_id, contact_name, contact_email, contact_phone, contact_company } = usePage().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         subject: '',
@@ -28,12 +29,39 @@ export default function Create({ priorities, categories, statuses, users, auth }
         category_id: '',
         status_id: '',
         assignee_id: '',
-        requester_email: '',
-        requester_name: '',
+        requester_email: contact_email || '',
+        requester_name: contact_name || '',
         tags: [],
         attachments: [],
-        contact_id: ''
+        contact_id: contact_id || ''
     });
+
+    // Handle contact parameters from URL
+    useEffect(() => {
+        if (contact_id) {
+            // Create a properly formatted contact object
+            const contactData = {
+                id: contact_id,
+                display_name: contact_name, // Add display_name for the search component
+                name: contact_name, // Keep name for backwards compatibility
+                email: contact_email,
+                phone: contact_phone,
+                company: contact_company,
+                // Add first_name and last_name if needed by other components
+                first_name: contact_name?.split(' ')?.[0] || '',
+                last_name: contact_name?.split(' ')?.[1] || ''
+            };
+            
+            setSelectedContact(contactData);
+            
+            setData(prev => ({
+                ...prev,
+                contact_id: contact_id,
+                requester_name: contact_name,
+                requester_email: contact_email
+            }));
+        }
+    }, [contact_id, contact_name, contact_email, contact_phone, contact_company]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
