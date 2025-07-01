@@ -27,14 +27,18 @@ use App\Http\Controllers\Api\ContactSearchController;
 use App\Http\Controllers\Profile\AvatarController;
 use App\Http\Controllers\Profile\BackgroundImageController;
 use App\Http\Controllers\TenantAdmin\EmailSettingsController;
+use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+// Public routes for the central domain
+Route::middleware(['web'])->group(function () {
+    // Serve Homepage at root URL
+    Route::get('/', function () {
+        return Inertia::render('Homepage', [
+            'canLogin' => Route::has('login'),
+            'canRegister' => Route::has('register'),
+        ]);
+    });
 });
 
 Route::get('/dashboard', function () {

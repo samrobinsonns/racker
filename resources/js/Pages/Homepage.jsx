@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
-export default function Welcome({ canLogin, canRegister }) {
+export default function Homepage({ canLogin, canRegister }) {
     return (
         <div className="min-h-screen bg-white">
             {/* Navigation */}
@@ -136,4 +136,4 @@ export default function Welcome({ canLogin, canRegister }) {
             </footer>
         </div>
     );
-}
+} 
