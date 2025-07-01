@@ -367,6 +367,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/profile/activities', [ProfileController::class, 'activities'])->name('profile.activities');
+    Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
     
     // Avatar routes
     Route::post('/profile/avatar', [AvatarController::class, 'store'])->name('profile.avatar.store');

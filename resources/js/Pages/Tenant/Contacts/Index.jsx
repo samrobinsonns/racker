@@ -30,25 +30,6 @@ export default function Index({ auth, contacts }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                            Contacts
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-600">
-                            Manage your contacts, view their details, and keep track of your relationships
-                        </p>
-                    </div>
-                    <Button
-                        onClick={() => router.visit(route('tenant.contacts.create'))}
-                        className="inline-flex items-center"
-                    >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Add Contact
-                    </Button>
-                </div>
-            }
         >
             <Head title="Contacts" />
 
@@ -65,20 +46,30 @@ export default function Index({ auth, contacts }) {
                     {/* Search */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                            <div className="flex gap-4 items-center">
+                                <div className="relative flex-1">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search contacts..."
+                                        value={searchTerm}
+                                        onChange={(e) => {
+                                            setSearchTerm(e.target.value);
+                                            handleSearch(e.target.value);
+                                        }}
+                                        className="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    />
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search contacts..."
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        setSearchTerm(e.target.value);
-                                        handleSearch(e.target.value);
-                                    }}
-                                    className="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                />
+                                <Button
+                                    onClick={() => router.visit(route('tenant.contacts.create'))}
+                                    size="sm"
+                                    className="shrink-0"
+                                >
+                                    <PlusIcon className="h-4 w-4 mr-2" />
+                                    Add Contact
+                                </Button>
                             </div>
                         </div>
                     </div>

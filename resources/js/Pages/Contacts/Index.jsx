@@ -37,22 +37,13 @@ export default function Index({ contacts, filters }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                            Contact Management
-                        </h2>
-                        <p className="text-sm text-gray-600">
-                            Manage your contacts, import/export data, and more.
-                        </p>
-                    </div>
-                    <Button
-                        onClick={() => router.visit(route('contacts.create'))}
-                        className="inline-flex items-center"
-                    >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Add Contact
-                    </Button>
+                <div>
+                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
+                        Contact Management
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                        Manage your contacts, import/export data, and more.
+                    </p>
                 </div>
             }
         >
@@ -63,11 +54,21 @@ export default function Index({ contacts, filters }) {
                     <div className="bg-white shadow-sm rounded-lg mb-6">
                         <div className="p-4 border-b border-gray-200">
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                <div className="flex-1">
-                                    <ContactSearch
-                                        value={searchParams.search}
-                                        onChange={handleSearch}
-                                    />
+                                <div className="flex-1 flex items-center gap-2">
+                                    <div className="flex-1">
+                                        <ContactSearch
+                                            value={searchParams.search}
+                                            onChange={handleSearch}
+                                        />
+                                    </div>
+                                    <Button
+                                        onClick={() => router.visit(route('contacts.create'))}
+                                        size="icon"
+                                        className="shrink-0"
+                                        title="Add Contact"
+                                    >
+                                        <PlusIcon className="h-4 w-4" />
+                                    </Button>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <ContactFilters

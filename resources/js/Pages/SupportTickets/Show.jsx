@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -699,11 +699,18 @@ export default function Show({
                                                             </div>
                                                             <div className="min-w-0 flex-1">
                                                                 <div>
-                                                                    <div className="text-sm">
-                                                                        <span className="font-medium text-gray-900">
-                                                                            {log.user?.name || 'System'}
-                                                                        </span>
-                                                                    </div>
+                                                                                                                        <div className="text-sm">
+                                                        {log.user ? (
+                                                            <Link
+                                                                href={route('profile.show', { user: log.user.id })}
+                                                                className="font-medium text-gray-900 hover:text-violet-600"
+                                                            >
+                                                                {log.user.name}
+                                                            </Link>
+                                                        ) : (
+                                                            <span className="font-medium text-gray-900">System</span>
+                                                        )}
+                                                    </div>
                                                                     <p className="mt-0.5 text-sm text-gray-500">
                                                                         {formatTimeAgo(log.created_at)}
                                                                     </p>

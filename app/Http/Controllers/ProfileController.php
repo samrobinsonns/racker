@@ -148,4 +148,24 @@ class ProfileController extends Controller
             'activities' => $activities
         ]);
     }
+
+    /**
+     * Display the user's public profile.
+     */
+    public function show(User $user): Response
+    {
+        // Load necessary relationships and additional data
+        $user->load(['tenant', 'roles']);
+
+        return Inertia::render('Profile/Show', [
+            'profileUser' => array_merge($user->toArray(), [
+                'title' => $user->title,
+                'company' => $user->company,
+                'location' => $user->location,
+                'bio' => $user->bio,
+                'website' => $user->website,
+                'created_at_formatted' => $user->created_at->format('F j, Y'),
+            ]),
+        ]);
+    }
 }

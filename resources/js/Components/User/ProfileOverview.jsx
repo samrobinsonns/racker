@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export default function ProfileOverview({ user }) {
+export default function ProfileOverview({ user, readOnly = false }) {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchActivities();
-    }, []);
+        if (!readOnly) {
+            fetchActivities();
+        } else {
+            setLoading(false);
+        }
+    }, [readOnly]);
 
     const fetchActivities = async () => {
         try {
@@ -79,39 +83,41 @@ export default function ProfileOverview({ user }) {
                     </p>
                 </div>
 
-                {/* Recent Activity */}
-                <div className="bg-white rounded-2xl p-6 mt-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
-                    {loading ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="animate-pulse flex items-start space-x-3">
-                                    <div className="rounded-full bg-gray-200 h-5 w-5" />
-                                    <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-3/4" />
-                                        <div className="mt-2 h-3 bg-gray-200 rounded w-1/4" />
+                {/* Recent Activity - Only show for own profile */}
+                {!readOnly && (
+                    <div className="bg-white rounded-2xl p-6 mt-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+                        {loading ? (
+                            <div className="space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="animate-pulse flex items-start space-x-3">
+                                        <div className="rounded-full bg-gray-200 h-5 w-5" />
+                                        <div className="flex-1">
+                                            <div className="h-4 bg-gray-200 rounded w-3/4" />
+                                            <div className="mt-2 h-3 bg-gray-200 rounded w-1/4" />
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : activities.length > 0 ? (
-                        <div className="space-y-4">
-                            {activities.map((activity) => (
-                                <div key={activity.id} className="flex items-start space-x-3">
-                                    <div className="flex-shrink-0">
-                                        {getActivityIcon(activity.type)}
+                                ))}
+                            </div>
+                        ) : activities.length > 0 ? (
+                            <div className="space-y-4">
+                                {activities.map((activity) => (
+                                    <div key={activity.id} className="flex items-start space-x-3">
+                                        <div className="flex-shrink-0">
+                                            {getActivityIcon(activity.type)}
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-600">{activity.description}</p>
+                                            <p className="text-sm text-gray-500">{formatTimeAgo(activity.created_at)}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-gray-600">{activity.description}</p>
-                                        <p className="text-sm text-gray-500">{formatTimeAgo(activity.created_at)}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-gray-500 text-center py-4">No recent activity</p>
-                    )}
-                </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-gray-500 text-center py-4">No recent activity</p>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Side Content */}
@@ -161,26 +167,28 @@ export default function ProfileOverview({ user }) {
                     </div>
                 </div>
 
-                {/* Projects Section */}
-                <div className="bg-white rounded-2xl p-6 mt-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Projects</h3>
-                    <div className="space-y-4">
-                        {projects.map((project) => (
-                            <div key={project.id} className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-900 font-medium">{project.name}</span>
-                                    <span className="text-sm text-gray-500">{project.status}</span>
+                {/* Projects Section - Only show for own profile */}
+                {!readOnly && (
+                    <div className="bg-white rounded-2xl p-6 mt-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Projects</h3>
+                        <div className="space-y-4">
+                            {projects.map((project) => (
+                                <div key={project.id} className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-900 font-medium">{project.name}</span>
+                                        <span className="text-sm text-gray-500">{project.status}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className="bg-violet-600 h-2 rounded-full"
+                                            style={{ width: `${project.progress}%` }}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div
-                                        className="bg-violet-600 h-2 rounded-full"
-                                        style={{ width: `${project.progress}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
