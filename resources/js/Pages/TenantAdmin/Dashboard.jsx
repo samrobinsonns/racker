@@ -71,29 +71,7 @@ export default function TenantAdminDashboard() {
     ];
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                            Admin Dashboard
-                        </h2>
-                        <p className="text-sm text-gray-600">
-                            Administrative overview for {stats?.tenant_name || 'your organization'}
-                        </p>
-                    </div>
-                    <PermissionGate permission="manage_tenant_users">
-                        <Link
-                            href={route('tenant-admin.users.create')}
-                            className="inline-flex items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
-                        >
-                            <PlusIcon className="h-4 w-4 mr-2" />
-                            Add User
-                        </Link>
-                    </PermissionGate>
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Admin Dashboard" />
 
             {/* Stats Overview */}
