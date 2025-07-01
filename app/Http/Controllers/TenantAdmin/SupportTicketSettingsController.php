@@ -21,6 +21,15 @@ class SupportTicketSettingsController extends Controller
         $tenant = auth()->user()->tenant;
         $settings = config('support-tickets');
 
+        // Get categories with ticket counts
+        $categories = \App\Models\SupportTicketCategory::forTenant($tenantId)
+            ->withCount('tickets')
+            ->orderBy('sort_order')
+            ->get();
+
+        // Get email settings
+        $emailSettings = \App\Models\EmailSetting::where('tenant_id', $tenantId)->first();
+
         return Inertia::render('TenantAdmin/SupportTickets/Settings/Index', [
             'tenantId' => $tenantId,
             'tenant' => $tenant,
@@ -29,6 +38,20 @@ class SupportTicketSettingsController extends Controller
                 'tenant_name' => $tenant?->name ?? 'Your Organization',
             ],
             'settings' => $settings,
+            'categories' => $categories,
+            'emailSettings' => $emailSettings ? [
+                'id' => $emailSettings->id,
+                'smtp_host' => $emailSettings->smtp_host,
+                'smtp_port' => $emailSettings->smtp_port,
+                'smtp_username' => $emailSettings->smtp_username,
+                'from_email' => $emailSettings->from_email,
+                'from_name' => $emailSettings->from_name,
+                'use_ssl' => $emailSettings->use_ssl,
+                'is_active' => $emailSettings->is_active,
+                'last_tested_at' => $emailSettings->last_tested_at,
+                'last_test_successful' => $emailSettings->last_test_successful,
+                'last_test_error' => $emailSettings->last_test_error,
+            ] : null,
             'permissions' => [
                 'update' => auth()->user()->can('update', 'App\Models\SupportTicketSettings'),
             ],

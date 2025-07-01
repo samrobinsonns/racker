@@ -77,7 +77,7 @@ class SupportTicketCategoriesController extends Controller
         SupportTicketCategory::create($validated);
 
         return redirect()
-            ->route('tenant-admin.support-tickets.categories')
+            ->route('tenant-admin.support-tickets.settings')
             ->with('success', 'Category created successfully.');
     }
 
@@ -120,7 +120,7 @@ class SupportTicketCategoriesController extends Controller
         $category->update($validated);
 
         return redirect()
-            ->route('tenant-admin.support-tickets.categories')
+            ->route('tenant-admin.support-tickets.settings')
             ->with('success', 'Category updated successfully.');
     }
 
@@ -141,7 +141,7 @@ class SupportTicketCategoriesController extends Controller
         $category->delete();
 
         return redirect()
-            ->route('tenant-admin.support-tickets.categories')
+            ->route('tenant-admin.support-tickets.settings')
             ->with('success', 'Category deleted successfully.');
     }
 } 

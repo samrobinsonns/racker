@@ -59,16 +59,6 @@ class NavigationItemsSeeder extends Seeder
                 'sort_order' => 4,
                 'description' => 'View and manage support tickets',
             ],
-            [
-                'key' => 'create_ticket',
-                'label' => 'Create Ticket',
-                'icon' => 'PlusCircleIcon',
-                'route_name' => 'support-tickets.create',
-                'permission_required' => Permission::CREATE_SUPPORT_TICKETS,
-                'category' => NavigationItem::CATEGORY_CORE,
-                'sort_order' => 5,
-                'description' => 'Create a new support ticket',
-            ],
 
             // Administrative Items
             [
@@ -102,16 +92,6 @@ class NavigationItemsSeeder extends Seeder
                 'description' => 'Tenant configuration settings',
             ],
             [
-                'key' => 'ticket_categories',
-                'label' => 'Ticket Categories',
-                'icon' => 'TagIcon',
-                'route_name' => 'tenant-admin.support-tickets.categories',
-                'permission_required' => Permission::MANAGE_TICKET_CATEGORIES,
-                'category' => NavigationItem::CATEGORY_ADMIN,
-                'sort_order' => 14,
-                'description' => 'Manage support ticket categories',
-            ],
-            [
                 'key' => 'ticket_settings',
                 'label' => 'Ticket Settings',
                 'icon' => 'Cog6ToothIcon',
@@ -130,18 +110,6 @@ class NavigationItemsSeeder extends Seeder
                 'category' => NavigationItem::CATEGORY_ADMIN,
                 'sort_order' => 16,
                 'description' => 'View support ticket analytics and insights',
-            ],
-
-            // Email Settings
-            [
-                'key' => 'email_settings',
-                'label' => 'Email Settings',
-                'icon' => 'EnvelopeIcon',
-                'route_name' => 'tenant-admin.email-settings.index',
-                'permission_required' => Permission::MANAGE_EMAIL_PROVIDERS,
-                'category' => NavigationItem::CATEGORY_ADMIN,
-                'sort_order' => 17,
-                'description' => 'Configure SMTP settings and email notifications',
             ],
 
             // Content Management Items
