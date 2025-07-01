@@ -1,28 +1,65 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
 export default function ProfileOverview({ user }) {
-    const activities = [
-        {
-            id: 1,
-            type: 'comment',
-            content: 'Commented on PR #123: "Add new authentication features"',
-            date: '2 hours ago',
-            icon: (
-                <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-            ),
-        },
-        {
-            id: 2,
-            type: 'commit',
-            content: 'Pushed 3 commits to feature/user-settings',
-            date: '5 hours ago',
-            icon: (
-                <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-            ),
-        },
-    ];
+    const [activities, setActivities] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchActivities();
+    }, []);
+
+    const fetchActivities = async () => {
+        try {
+            const response = await axios.get(route('profile.activities'));
+            setActivities(response.data.activities);
+        } catch (error) {
+            console.error('Error fetching activities:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getActivityIcon = (type) => {
+        switch (type) {
+            case 'ticket_assigned':
+                return (
+                    <svg className="h-5 w-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                    </svg>
+                );
+            case 'ticket_updated':
+                return (
+                    <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                );
+            case 'ticket_resolved':
+                return (
+                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                );
+            default:
+                return (
+                    <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                );
+        }
+    };
+
+    const formatTimeAgo = (date) => {
+        const now = new Date();
+        const past = new Date(date);
+        const diffInHours = Math.floor((now - past) / (1000 * 60 * 60));
+        
+        if (diffInHours < 1) return 'Just now';
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        const diffInDays = Math.floor(diffInHours / 24);
+        if (diffInDays < 7) return `${diffInDays}d ago`;
+        return past.toLocaleDateString();
+    };
 
     const projects = [
         { id: 1, name: 'Project Alpha', status: 'In Progress', progress: 75 },
@@ -45,17 +82,35 @@ export default function ProfileOverview({ user }) {
                 {/* Recent Activity */}
                 <div className="bg-white rounded-2xl p-6 mt-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
-                    <div className="space-y-4">
-                        {activities.map((activity) => (
-                            <div key={activity.id} className="flex items-start space-x-3">
-                                <div className="flex-shrink-0">{activity.icon}</div>
-                                <div>
-                                    <p className="text-gray-600">{activity.content}</p>
-                                    <p className="text-sm text-gray-500">{activity.date}</p>
+                    {loading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="animate-pulse flex items-start space-x-3">
+                                    <div className="rounded-full bg-gray-200 h-5 w-5" />
+                                    <div className="flex-1">
+                                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                                        <div className="mt-2 h-3 bg-gray-200 rounded w-1/4" />
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : activities.length > 0 ? (
+                        <div className="space-y-4">
+                            {activities.map((activity) => (
+                                <div key={activity.id} className="flex items-start space-x-3">
+                                    <div className="flex-shrink-0">
+                                        {getActivityIcon(activity.type)}
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-600">{activity.description}</p>
+                                        <p className="text-sm text-gray-500">{formatTimeAgo(activity.created_at)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500 text-center py-4">No recent activity</p>
+                    )}
                 </div>
             </div>
 

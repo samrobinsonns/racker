@@ -112,4 +112,40 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    /**
+     * Get the user's recent activities.
+     */
+    public function activities(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get currently assigned tickets that are not closed/resolved
+        $activities = $user->assignedTickets()
+            ->with(['status', 'priority'])
+            ->whereHas('status', function($query) {
+                $query->where('is_closed', false);
+            })
+            ->whereNull('resolved_at')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => 'ticket_' . $ticket->id,
+                    'type' => 'assigned_ticket',
+                    'description' => "Ticket #{$ticket->ticket_number}: {$ticket->subject}",
+                    'created_at' => $ticket->created_at,
+                    'metadata' => [
+                        'ticket_id' => $ticket->id,
+                        'ticket_number' => $ticket->ticket_number,
+                        'status' => $ticket->status->name,
+                        'priority' => $ticket->priority->name,
+                    ]
+                ];
+            });
+
+        return response()->json([
+            'activities' => $activities
+        ]);
+    }
 }

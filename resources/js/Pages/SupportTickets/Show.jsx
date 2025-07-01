@@ -154,7 +154,8 @@ export default function Show({
         if (field === 'assignee_id') {
             // Use the special assign endpoint for assignee changes
             router.post(route('support-tickets.assign', ticket.id), {
-                assignee_id: value
+                assignee_id: value,
+                log_activity: true // Add this flag to indicate we should log the activity
             }, {
                 preserveScroll: true,
                 preserveState: true,
@@ -178,103 +179,99 @@ export default function Show({
         <AuthenticatedLayout
             user={auth.user}
             header={
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <Link
-                            href={route('support-tickets.index')}
-                            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
-                        >
-                            <ArrowLeftIcon className="h-4 w-4 mr-1" />
-                            Back to Tickets
-                        </Link>
-                        <div>
-                            <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                                #{ticket.ticket_number}
-                            </h2>
-                            <p className="text-sm text-gray-600">{ticket.subject}</p>
-                        </div>
-                    </div>
-
-                    {/* Actions Menu */}
-                    <div className="flex items-center space-x-3">
-                        {permissions.update && (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
                             <Link
-                                href={route('support-tickets.edit', ticket.id)}
-                                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                href={route('support-tickets.index')}
+                                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
                             >
-                                <PencilIcon className="h-4 w-4 mr-2" />
-                                Edit
+                                <ArrowLeftIcon className="h-4 w-4 mr-1" />
+                                Back to Tickets
                             </Link>
-                        )}
+                        </div>
 
-                        <Menu as="div" className="relative inline-block text-left">
-                            <Menu.Button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                Actions
-                                <EllipsisVerticalIcon className="h-4 w-4 ml-2" />
-                            </Menu.Button>
+                        {/* Actions Menu */}
+                        <div className="flex items-center space-x-3">
+                            {permissions.update && (
+                                <Link
+                                    href={route('support-tickets.edit', ticket.id)}
+                                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                >
+                                    <PencilIcon className="h-4 w-4 mr-2" />
+                                    Edit
+                                </Link>
+                            )}
 
-                            <Transition
-                                as={Fragment}
-                                enter="transition ease-out duration-100"
-                                enterFrom="transform opacity-0 scale-95"
-                                enterTo="transform opacity-100 scale-100"
-                                leave="transition ease-in duration-75"
-                                leaveFrom="transform opacity-100 scale-100"
-                                leaveTo="transform opacity-0 scale-95"
-                            >
-                                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                    <div className="py-1">
-                                        {permissions.assign && (
-                                            <Menu.Item>
-                                                {({ active }) => (
-                                                    <button
-                                                        onClick={() => setShowAssignModal(true)}
-                                                        className={`${
-                                                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                                                        } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                    >
-                                                        <UserIcon className="mr-3 h-4 w-4" />
-                                                        Assign/Reassign
-                                                    </button>
-                                                )}
-                                            </Menu.Item>
-                                        )}
-                                        
-                                        {permissions.update && (
-                                            <Menu.Item>
-                                                {({ active }) => (
-                                                    <button
-                                                        onClick={() => setShowStatusModal(true)}
-                                                        className={`${
-                                                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                                                        } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                    >
-                                                        <TagIcon className="mr-3 h-4 w-4" />
-                                                        Change Status
-                                                    </button>
-                                                )}
-                                            </Menu.Item>
-                                        )}
+                            <Menu as="div" className="relative inline-block text-left">
+                                <Menu.Button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Actions
+                                    <EllipsisVerticalIcon className="h-4 w-4 ml-2" />
+                                </Menu.Button>
 
-                                        {permissions.manage && !ticket.is_escalated && (
-                                            <Menu.Item>
-                                                {({ active }) => (
-                                                    <button
-                                                        onClick={escalateTicket}
-                                                        className={`${
-                                                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                                                        } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                    >
-                                                        <ArrowTrendingUpIcon className="mr-3 h-4 w-4" />
-                                                        Escalate Ticket
-                                                    </button>
-                                                )}
-                                            </Menu.Item>
-                                        )}
-                                    </div>
-                                </Menu.Items>
-                            </Transition>
-                        </Menu>
+                                <Transition
+                                    as={Fragment}
+                                    enter="transition ease-out duration-100"
+                                    enterFrom="transform opacity-0 scale-95"
+                                    enterTo="transform opacity-100 scale-100"
+                                    leave="transition ease-in duration-75"
+                                    leaveFrom="transform opacity-100 scale-100"
+                                    leaveTo="transform opacity-0 scale-95"
+                                >
+                                    <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                        <div className="py-1">
+                                            {permissions.assign && (
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button
+                                                            onClick={() => setShowAssignModal(true)}
+                                                            className={`${
+                                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
+                                                        >
+                                                            <UserIcon className="mr-3 h-4 w-4" />
+                                                            Assign/Reassign
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            )}
+                                            
+                                            {permissions.update && (
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button
+                                                            onClick={() => setShowStatusModal(true)}
+                                                            className={`${
+                                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
+                                                        >
+                                                            <TagIcon className="mr-3 h-4 w-4" />
+                                                            Change Status
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            )}
+
+                                            {permissions.manage && !ticket.is_escalated && (
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button
+                                                            onClick={escalateTicket}
+                                                            className={`${
+                                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
+                                                        >
+                                                            <ArrowTrendingUpIcon className="mr-3 h-4 w-4" />
+                                                            Escalate Ticket
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            )}
+                                        </div>
+                                    </Menu.Items>
+                                </Transition>
+                            </Menu>
+                        </div>
                     </div>
                 </div>
             }

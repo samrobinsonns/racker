@@ -199,6 +199,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get tickets assigned to this user
+     */
+    public function assignedTickets()
+    {
+        return $this->hasMany(SupportTicket::class, 'assigned_to');
+    }
+
+    /**
      * Get the user's data for frontend serialization
      * Includes navigation items and branding
      */
