@@ -24,7 +24,6 @@ class User extends Authenticatable
         'password',
         'tenant_id',
         'is_central_admin',
-        'avatar_url',
         'title',
         'company',
         'location',
@@ -73,24 +72,29 @@ class User extends Authenticatable
     /**
      * Get the user's avatar URL.
      */
-    public function getAvatarUrlAttribute($value)
+    public function getAvatarUrlAttribute()
     {
-        if (!$value) {
-            return null;
+        $storedValue = $this->attributes['avatar_url'] ?? null;
+
+        // If we have a stored avatar URL, process it
+        if ($storedValue) {
+            // If it's already a full URL, return it as is
+            if (filter_var($storedValue, FILTER_VALIDATE_URL)) {
+                return $storedValue;
+            }
+
+            // If it starts with /storage, it's a local path
+            if (str_starts_with($storedValue, '/storage')) {
+                return $storedValue;
+            }
+
+            // If we have a relative path, append it to the current host
+            return request()->getSchemeAndHttpHost() . $storedValue;
         }
 
-        // If it's already a full URL, return it as is
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
-            return $value;
-        }
-
-        // If it starts with /storage, it's a local path
-        if (str_starts_with($value, '/storage')) {
-            return $value;
-        }
-
-        // If we have a relative path, append it to the current host
-        return request()->getSchemeAndHttpHost() . $value;
+        // If no avatar is set, generate one using UI Avatars
+        $name = urlencode($this->name);
+        return "https://ui-avatars.com/api/?name={$name}&background=random";
     }
 
     // Relationship to tenant

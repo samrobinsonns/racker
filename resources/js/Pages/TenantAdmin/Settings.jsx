@@ -86,16 +86,7 @@ export default function Settings({ tenant, roles, tenantId }) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center space-x-4">
-                    <CogIcon className="h-6 w-6 text-emerald-600" />
-                    <h2 className="text-2xl font-bold leading-tight text-gray-900">
-                        Settings
-                    </h2>
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Settings" />
 
             <div className="space-y-6">

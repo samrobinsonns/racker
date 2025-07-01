@@ -167,9 +167,6 @@ Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')-
     Route::post('/users', [TenantAdminController::class, 'storeUser'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('users.store');
-    Route::get('/users/{user}/edit', [TenantAdminController::class, 'editUser'])
-        ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
-        ->name('users.edit');
     Route::put('/users/{user}', [TenantAdminController::class, 'updateUser'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('users.update');

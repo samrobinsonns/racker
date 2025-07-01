@@ -165,6 +165,7 @@ class TenantAdminController extends Controller
             ->with(['roles' => function($query) use ($tenantId) {
                 $query->where('user_roles.tenant_id', $tenantId);
             }])
+            ->select(['id', 'name', 'email', 'email_verified_at', 'created_at', 'avatar_url'])
             ->latest()
             ->paginate(15);
 
@@ -238,33 +239,6 @@ class TenantAdminController extends Controller
 
         return redirect()->route('tenant-admin.users.index', ['tenant_id' => $tenantId])
             ->with('success', 'User created successfully!');
-    }
-
-    public function editUser(User $user)
-    {
-        $currentUser = auth()->user();
-        $tenantId = $currentUser->is_central_admin ? request('tenant_id') : $currentUser->tenant_id;
-
-        // Ensure user belongs to the current tenant context
-        if ($user->tenant_id !== $tenantId) {
-            abort(403, 'User does not belong to this tenant.');
-        }
-
-        $user->load(['roles' => function($query) use ($tenantId) {
-            $query->where('user_roles.tenant_id', $tenantId);
-        }]);
-
-        $availableRoles = Role::forTenant($tenantId)->get();
-
-        return Inertia::render('TenantAdmin/Users/Edit', [
-            'user' => $user,
-            'availableRoles' => $availableRoles,
-            'tenantId' => $tenantId,
-            'stats' => [
-                'tenant_name' => optional($currentUser->tenant)->name ?? 'Unknown Tenant',
-                'tenant_id' => $tenantId,
-            ],
-        ]);
     }
 
     public function updateUser(Request $request, User $user)
