@@ -2,6 +2,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PermissionGate from '@/Components/PermissionGate';
 import { usePermissions } from '@/Hooks/usePermissions';
+import CreateUserModal from './Users/Create';
+import { useState } from 'react';
 import {
     UsersIcon,
     UserGroupIcon,
@@ -17,11 +19,12 @@ import {
     ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 
-export default function TenantAdminDashboard() {
+export default function TenantAdminDashboard({ availableRoles }) {
     const { props } = usePage();
     const { auth, stats } = props;
     const { user } = auth;
     const { hasPermission } = usePermissions();
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     // Helper function for stat colors
     const getStatColor = (color) => {
@@ -252,13 +255,13 @@ export default function TenantAdminDashboard() {
                             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Administrative Actions</h3>
                             <div className="space-y-3">
                                 <PermissionGate permission="manage_tenant_users">
-                                    <Link
-                                        href={route('tenant-admin.users.create')}
+                                    <button
+                                        onClick={() => setShowCreateModal(true)}
                                         className="w-full inline-flex items-center justify-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
                                     >
                                         <PlusIcon className="h-4 w-4 mr-2" />
                                         Add User
-                                    </Link>
+                                    </button>
                                 </PermissionGate>
                                 
                                 <PermissionGate permission="manage_tenant_users">
@@ -307,6 +310,14 @@ export default function TenantAdminDashboard() {
                     )}
                 </div>
             </div>
+
+            {/* Create User Modal */}
+            <CreateUserModal 
+                show={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                availableRoles={availableRoles}
+            />
+
         </AuthenticatedLayout>
     );
 } 

@@ -13,20 +13,40 @@ class TenantAdminController extends Controller
 {
     public function dashboard()
     {
-        $stats = $this->getDashboardStats();
-
-        return Inertia::render('TenantAdmin/Dashboard', [
-            'stats' => $stats,
-        ]);
-    }
-
-    public function getDashboardStats()
-    {
         $user = auth()->user();
-        $tenantId = $user->is_central_admin ? request('tenant_id') : $user->tenant_id;
+        $tenantId = $user->is_central_admin ? request()->get('tenant_id', null) : $user->tenant_id;
 
         if (!$tenantId) {
             abort(400, 'No tenant context available.');
+        }
+
+        $stats = $this->getDashboardStats($tenantId);
+        $availableRoles = Role::forTenant($tenantId)->get();
+
+        return Inertia::render('TenantAdmin/Dashboard', [
+            'stats' => $stats,
+            'availableRoles' => $availableRoles,
+        ]);
+    }
+
+    public function getDashboardStats($tenantId = null)
+    {
+        $user = auth()->user();
+        $tenantId = $tenantId ?? ($user->is_central_admin ? request('tenant_id') : $user->tenant_id);
+
+        if (!$tenantId) {
+            return [
+                'tenant_name' => 'Unknown Tenant',
+                'total_users' => 0,
+                'active_users' => 0,
+                'user_growth' => [
+                    'this_month' => 0,
+                    'growth_percentage' => 0,
+                    'trend' => 'neutral'
+                ],
+                'role_distribution' => [],
+                'recent_activity' => []
+            ];
         }
 
         return [
