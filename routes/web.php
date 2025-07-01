@@ -29,6 +29,7 @@ use App\Http\Controllers\Profile\BackgroundImageController;
 use App\Http\Controllers\TenantAdmin\EmailSettingsController;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
+use App\Http\Controllers\TenantAdmin\TenantNavigationController;
 
 // Public routes for the central domain
 Route::middleware(['web'])->group(function () {
@@ -157,6 +158,14 @@ Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')-
         ->middleware('permission:' . Permission::MANAGE_TENANT_USERS)
         ->name('dashboard');
         
+    // Navigation Builder Routes
+    Route::prefix('navigation')->name('navigation.')->middleware('permission:' . Permission::MANAGE_TENANT_SETTINGS)->group(function () {
+        Route::get('/builder', [TenantNavigationController::class, 'builder'])->name('builder');
+        Route::post('/', [TenantNavigationController::class, 'store'])->name('store');
+        Route::post('/current', [TenantNavigationController::class, 'getCurrent'])->name('current');
+        Route::delete('/{configuration}', [TenantNavigationController::class, 'destroy'])->name('destroy');
+    });
+
     Route::get('/settings', [TenantAdminController::class, 'settings'])
         ->middleware('permission:' . Permission::MANAGE_TENANT_SETTINGS)
         ->name('settings');

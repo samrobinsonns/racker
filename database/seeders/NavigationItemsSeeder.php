@@ -112,6 +112,18 @@ class NavigationItemsSeeder extends Seeder
                 'description' => 'View support ticket analytics and insights',
             ],
 
+            // Add new tenant navigation builder item
+            [
+                'key' => 'tenant_navigation',
+                'label' => 'Navigation Builder',
+                'icon' => 'Squares2X2Icon',
+                'route_name' => 'tenant-admin.navigation.builder',
+                'permission_required' => Permission::MANAGE_TENANT_SETTINGS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 17,
+                'description' => 'Customize tenant navigation layout',
+            ],
+
             // Content Management Items
             [
                 'key' => 'reports',

@@ -31,7 +31,7 @@ export default function ConfigurationsModal({
     };
 
     const getTargetLabel = (config) => {
-        if (config.role_id) {
+        if (config.role_id && Array.isArray(roles)) {
             const role = roles.find(r => r.id === config.role_id);
             return role ? role.name : 'Unknown Role';
         }

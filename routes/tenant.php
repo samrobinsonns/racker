@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
+use App\Http\Controllers\Tenant\TenantNavigationController;
+use App\Enums\Permission;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,5 +33,15 @@ Route::middleware([
                 'name' => tenant()->name ?? 'Your Organization'
             ]
         ]);
+    });
+
+    // Tenant Navigation Builder Routes
+    Route::middleware(['auth', 'permission:' . Permission::MANAGE_TENANT_SETTINGS])->group(function () {
+        Route::get('/navigation/builder', [TenantNavigationController::class, 'builder'])
+            ->name('navigation.builder');
+        Route::post('/navigation', [TenantNavigationController::class, 'store'])
+            ->name('navigation.store');
+        Route::delete('/navigation/{configuration}', [TenantNavigationController::class, 'destroy'])
+            ->name('navigation.destroy');
     });
 });
