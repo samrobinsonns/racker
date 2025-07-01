@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Arr;
 
 class SupportTicketsController extends Controller
 {
@@ -48,7 +49,7 @@ class SupportTicketsController extends Controller
             $tickets = $this->ticketService->searchTickets(
                 $tenantId,
                 $filters['search'],
-                array_except($filters, ['search']),
+                Arr::except($filters, ['search']),
                 $request->get('per_page', 15)
             );
         } else {
