@@ -121,47 +121,6 @@ class RolesAndPermissionsSeeder extends Seeder
             ]
         );
 
-        // Content Manager Role Template
-        Role::firstOrCreate(
-            ['name' => 'content_manager', 'type' => 'tenant'],
-            [
-                'display_name' => 'Content Manager',
-                'description' => 'Can manage all content within tenant',
-                'tenant_id' => null,
-                'permissions' => [
-                    Permission::VIEW_DASHBOARD,
-                    Permission::MANAGE_OWN_PROFILE,
-                    Permission::VIEW_TENANT_DATA,
-                    Permission::CREATE_CONTENT,
-                    Permission::EDIT_CONTENT,
-                    Permission::DELETE_CONTENT,
-                    Permission::PUBLISH_CONTENT,
-                    Permission::MODERATE_CONTENT,
-                    Permission::VIEW_REPORTS,
-                    Permission::MANAGE_CATEGORIES,
-                    Permission::VIEW_SUPPORT_TICKETS,
-                    Permission::CREATE_SUPPORT_TICKETS,
-                ]
-            ]
-        );
-
-        // Viewer Role Template
-        Role::firstOrCreate(
-            ['name' => 'viewer', 'type' => 'tenant'],
-            [
-                'display_name' => 'Viewer',
-                'description' => 'Read-only access to tenant data',
-                'tenant_id' => null,
-                'permissions' => [
-                    Permission::VIEW_DASHBOARD,
-                    Permission::MANAGE_OWN_PROFILE,
-                    Permission::VIEW_TENANT_DATA,
-                    Permission::VIEW_REPORTS,
-                    Permission::VIEW_SUPPORT_TICKETS,
-                ]
-            ]
-        );
-
         $this->command->info('Default roles and permissions created successfully!');
     }
 }
