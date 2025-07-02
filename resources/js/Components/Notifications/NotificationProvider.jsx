@@ -202,16 +202,6 @@ export default function NotificationProvider({ children }) {
                     created_at: notification.created_at,
                     read_at: notification.read_at,
                 });
-
-                // Also show a toast for immediate feedback
-                addToast({
-                    type: notification.type,
-                    title: notification.title,
-                    message: notification.message,
-                    action_url: notification.action_url,
-                    action_text: notification.action_text,
-                    duration: 8000, // Show for 8 seconds for important notifications
-                });
             });
 
             // Also listen for the event without the dot prefix
@@ -238,16 +228,6 @@ export default function NotificationProvider({ children }) {
                     metadata: notification.metadata,
                     created_at: notification.created_at,
                     read_at: notification.read_at,
-                });
-
-                // Also show a toast for immediate feedback
-                addToast({
-                    type: notification.type,
-                    title: notification.title,
-                    message: notification.message,
-                    action_url: notification.action_url,
-                    action_text: notification.action_text,
-                    duration: 8000, // Show for 8 seconds for important notifications
                 });
             });
 
