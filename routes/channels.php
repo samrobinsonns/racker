@@ -100,6 +100,20 @@ Broadcast::channel('tenant.{tenantId}.user.{userId}', function ($user, $tenantId
     ];
 });
 
+/*
+|--------------------------------------------------------------------------
+| Notification Channels
+|--------------------------------------------------------------------------
+|
+| These channels are for user-specific notifications.
+|
+*/
+
+Broadcast::channel('notifications.{userId}', function ($user, $userId) {
+    // Users can only listen to their own notification channel
+    return (int) $user->id === (int) $userId;
+});
+
 // Conversation channel
 Broadcast::channel('tenant.{tenantId}.conversation.{conversationId}', function (User $user, $tenantId, $conversationId) {
     Log::info('Authorizing conversation channel', [

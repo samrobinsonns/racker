@@ -2,8 +2,10 @@ import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Avatar from '@/Components/User/Avatar';
+import NotificationCenter from '@/Components/Notifications/NotificationCenter';
+import { useNotifications } from '@/Components/Notifications/NotificationProvider';
 import {
     HomeIcon,
     UsersIcon,
@@ -179,6 +181,16 @@ export default function AuthenticatedLayout({ header, children }) {
     const { tenantId, stats } = usePage().props;
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+    const { 
+        addToast, 
+        notifications, 
+        unreadCount, 
+        markAsRead, 
+        markAllAsRead, 
+        deleteNotification,
+        loadNotifications: loadNotificationsFromProvider 
+    } = useNotifications();
 
     // Determine user type and context
     const isCentralAdmin = user.is_central_admin;
@@ -385,6 +397,94 @@ export default function AuthenticatedLayout({ header, children }) {
         return 'User';
     };
 
+    // Load notifications
+    const loadNotifications = async () => {
+        try {
+            setIsLoadingNotifications(true);
+            const response = await fetch('/api/notifications');
+            const data = await response.json();
+            
+            // Update the NotificationProvider's state with the loaded notifications
+            if (loadNotificationsFromProvider) {
+                loadNotificationsFromProvider(data.notifications, data.unread_count);
+            }
+        } catch (error) {
+            console.error('Failed to load notifications:', error);
+            addToast({
+                type: 'error',
+                message: 'Failed to load notifications',
+                duration: 3000,
+            });
+        } finally {
+            setIsLoadingNotifications(false);
+        }
+    };
+
+    // Mark notification as read
+    const handleMarkAsRead = async (notificationId) => {
+        try {
+            const response = await fetch(`/api/notifications/${notificationId}/read`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
+            });
+            
+            if (response.ok) {
+                // Use the NotificationProvider's markAsRead function
+                markAsRead(notificationId);
+            }
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    };
+
+    // Mark all notifications as read
+    const handleMarkAllAsRead = async () => {
+        try {
+            const response = await fetch('/api/notifications/mark-all-read', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
+            });
+            
+            if (response.ok) {
+                // Use the NotificationProvider's markAllAsRead function
+                markAllAsRead();
+            }
+        } catch (error) {
+            console.error('Failed to mark all notifications as read:', error);
+        }
+    };
+
+    // Delete notification
+    const handleDeleteNotification = async (notificationId) => {
+        try {
+            const response = await fetch(`/api/notifications/${notificationId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
+            });
+            
+            if (response.ok) {
+                // Use the NotificationProvider's deleteNotification function
+                deleteNotification(notificationId);
+            }
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+        }
+    };
+
+    // Load notifications on component mount
+    useEffect(() => {
+        loadNotifications();
+    }, []);
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Custom Navigation Sidebar - Show for users with custom navigation or admins */}
@@ -564,6 +664,22 @@ export default function AuthenticatedLayout({ header, children }) {
                                         {getUserTypeLabel()}
                                     </div>
                                 )}
+
+                                {/* Notification Center */}
+                                <div className="mr-4">
+                                    <NotificationCenter
+                                        notifications={notifications}
+                                        unreadCount={unreadCount}
+                                        onMarkAsRead={handleMarkAsRead}
+                                        onMarkAllAsRead={handleMarkAllAsRead}
+                                        onDelete={handleDeleteNotification}
+                                        onRefresh={loadNotifications}
+                                        maxNotifications={10}
+                                        showBadge={true}
+                                        position="top-right"
+                                        theme={themeConfig?.primary === 'indigo' ? 'primary' : 'default'}
+                                    />
+                                </div>
 
                                 <div className="relative ms-3">
                                     <Dropdown>

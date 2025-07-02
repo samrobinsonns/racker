@@ -18,13 +18,14 @@ class NotificationService
      */
     public function notifyTicketCreated(SupportTicket $ticket): void
     {
-        // Notify assigned agent (if any)
+        // Only notify assigned agent (if any)
         if ($ticket->assignee) {
             $this->sendTicketAssignedNotification($ticket, $ticket->assignee);
-        } else {
-            // Notify all agents in the tenant who can view tickets
-            $this->notifyAvailableAgents($ticket);
+            // Also send in-app notification for initial assignment
+            $this->sendInAppTicketAssignedNotification($ticket, $ticket->assignee);
         }
+        // Note: We don't notify all agents for unassigned tickets anymore
+        // Only send notifications when tickets are specifically assigned
 
         // Send confirmation to requester
         $this->sendTicketCreatedConfirmation($ticket);
@@ -35,7 +36,11 @@ class NotificationService
      */
     public function notifyTicketAssigned(SupportTicket $ticket, User $assignee, ?User $assignedBy = null): void
     {
+        // Send email notification
         $this->sendTicketAssignedNotification($ticket, $assignee, $assignedBy);
+        
+        // Send in-app notification
+        $this->sendInAppTicketAssignedNotification($ticket, $assignee, $assignedBy);
     }
 
     /**
@@ -166,6 +171,33 @@ class NotificationService
     }
 
     /**
+     * Send in-app notification for ticket assignment
+     */
+    private function sendInAppTicketAssignedNotification(SupportTicket $ticket, User $assignee, ?User $assignedBy = null): void
+    {
+        $assignedByText = $assignedBy ? " by {$assignedBy->name}" : '';
+        $message = "You have been assigned ticket #{$ticket->ticket_number}{$assignedByText}.";
+        
+        app(\App\Services\NotificationService::class)->createForUser(
+            user: $assignee,
+            type: 'info',
+            message: $message,
+            title: 'New Ticket Assignment',
+            actionUrl: route('support-tickets.show', $ticket),
+            actionText: 'View Ticket',
+            metadata: [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'subject' => $ticket->subject,
+                'priority' => $ticket->priority->name,
+                'assigned_by' => $assignedBy?->id,
+                'assigned_by_name' => $assignedBy?->name,
+                'is_new_assignment' => true,
+            ]
+        );
+    }
+
+    /**
      * Send status change notification
      */
     private function sendStatusChangeNotification(SupportTicket $ticket, User $user, string $oldStatus, string $newStatus): void
@@ -239,6 +271,7 @@ class NotificationService
         $agents = $this->getAvailableAgents($ticket->tenant_id);
         
         foreach ($agents as $agent) {
+            // Send email notification
             $message = (new MailMessage)
                 ->subject("New Support Ticket - {$ticket->ticket_number}")
                 ->greeting("Hello {$agent->name}!")
@@ -251,6 +284,24 @@ class NotificationService
                 ->line('Please review and assign this ticket if appropriate.');
 
             $agent->notify(new GenericTicketNotification($message));
+            
+            // Send in-app notification
+            app(\App\Services\NotificationService::class)->createForUser(
+                user: $agent,
+                type: 'info',
+                message: "New unassigned ticket #{$ticket->ticket_number} requires attention.",
+                title: 'New Support Ticket',
+                actionUrl: route('support-tickets.show', $ticket),
+                actionText: 'View Ticket',
+                metadata: [
+                    'ticket_id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'subject' => $ticket->subject,
+                    'priority' => $ticket->priority->name,
+                    'requester_name' => $ticket->requester_name,
+                    'requester_email' => $ticket->requester_email,
+                ]
+            );
         }
     }
 

@@ -154,11 +154,14 @@ export default function Show({
         if (field === 'assignee_id') {
             // Use the special assign endpoint for assignee changes
             router.post(route('support-tickets.assign', ticket.id), {
-                assignee_id: value,
-                log_activity: true // Add this flag to indicate we should log the activity
+                assignee_id: value
             }, {
                 preserveScroll: true,
                 preserveState: true,
+                onSuccess: () => {
+                    // Refresh the page to get updated data
+                    router.reload();
+                },
                 onError: (errors) => {
                     console.error('Error assigning ticket:', errors);
                 }

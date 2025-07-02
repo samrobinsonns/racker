@@ -16,6 +16,19 @@
         @viteReactRefresh
         @vite(['resources/js/app.jsx', "resources/js/Pages/{$page['component']}.jsx"])
         @inertiaHead
+        
+        <!-- Global user data for notifications -->
+        @if(auth()->check())
+        <script>
+            window.auth = {
+                user: {
+                    id: {{ auth()->id() }},
+                    name: '{{ auth()->user()->name }}',
+                    email: '{{ auth()->user()->email }}'
+                }
+            };
+        </script>
+        @endif
     </head>
     <body class="font-sans antialiased">
         @inertia
