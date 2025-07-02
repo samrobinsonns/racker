@@ -183,7 +183,12 @@ export default function AuthenticatedLayout({ header, children }) {
     // Determine user type and context
     const isCentralAdmin = user.is_central_admin;
     const isTenantAdmin = user?.admin_level === 'tenant_admin';
+    
+    // Show sidebar if user has custom navigation items OR is an admin
+    // This allows the Navigation Builder to control what all roles see
+    const hasCustomNavigation = user.navigation_items && user.navigation_items.length > 0;
     const isAdmin = isCentralAdmin || isTenantAdmin;
+    const shouldShowSidebar = hasCustomNavigation || isAdmin;
 
     // Helper to get icon component from string name - now supports all HeroIcons
     const getIconComponent = (iconName) => {
@@ -275,7 +280,7 @@ export default function AuthenticatedLayout({ header, children }) {
         return [];
     };
 
-    // Theme configuration based on user type
+    // Theme configuration based on user type and custom navigation
     const getThemeConfig = () => {
         // Get custom branding from user navigation
         const customBranding = user.navigation_branding || {};
@@ -294,7 +299,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 customColor: null,
                 navigation: getAdminNavigation()
             };
-        } else if (isTenantAdmin || user?.tenant_id) {
+        } else if (hasCustomNavigation || isTenantAdmin || user?.tenant_id) {
             // Check if we have a custom hex color
             const hasCustomColor = customBranding.primaryColor && customBranding.primaryColor.startsWith('#');
             
@@ -372,13 +377,18 @@ export default function AuthenticatedLayout({ header, children }) {
             const tenantRole = user.roles?.find(role => role.tenant_id === user.tenant_id);
             return tenantRole?.display_name || 'Tenant Administrator';
         }
+        if (hasCustomNavigation) {
+            // Get the primary role display name for users with custom navigation
+            const primaryRole = user.roles?.find(role => role.tenant_id === user.tenant_id);
+            return primaryRole?.display_name || 'User';
+        }
         return 'User';
     };
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Admin Sidebar - Only show for admin users */}
-            {isAdmin && (
+            {/* Custom Navigation Sidebar - Show for users with custom navigation or admins */}
+            {shouldShowSidebar && (
                 <>
                     {/* Mobile sidebar */}
                     <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
@@ -414,7 +424,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <XMarkIcon className="h-6 w-6" />
                                 </button>
                             </div>
-                            {(isTenantAdmin || user?.tenant_id) && (
+                            {(isTenantAdmin || user?.tenant_id || hasCustomNavigation) && (
                                 <div className="px-4 py-2 border-b">
                                     <p className="text-xs text-gray-500 uppercase tracking-wide">Current Tenant</p>
                                     <p className="text-sm font-medium text-gray-900">{stats?.tenant_name || 'Unknown'}</p>
@@ -484,7 +494,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     )}
                                 </div>
                             </div>
-                            {(isTenantAdmin || user?.tenant_id) && (
+                            {(isTenantAdmin || user?.tenant_id || hasCustomNavigation) && (
                                 <div className="px-4 py-3 border-b bg-gray-50">
                                     <p className="text-xs text-gray-500 uppercase tracking-wide">Current Tenant</p>
                                     <p className="text-sm font-medium text-gray-900">{stats?.tenant_name || 'Unknown'}</p>
@@ -509,14 +519,14 @@ export default function AuthenticatedLayout({ header, children }) {
             )}
 
             {/* Main content */}
-            <div className={isAdmin ? "lg:pl-[260px]" : ""}>
+            <div className={shouldShowSidebar ? "lg:pl-[260px]" : ""}>
                 {/* Top navigation */}
-                <nav className={`bg-gray-50 ${isAdmin ? 'sticky top-0 z-40' : ''}`}>
+                <nav className={`bg-gray-50 ${shouldShowSidebar ? 'sticky top-0 z-40' : ''}`}>
                     <div className="px-4">
                         <div className="flex h-12 justify-end">
                             <div className="flex">
-                                {/* Mobile menu button for admins */}
-                                {isAdmin && (
+                                {/* Mobile menu button for sidebar users */}
+                                {shouldShowSidebar && (
                                     <button
                                         type="button"
                                         className="text-gray-500 lg:hidden mr-4 flex items-center"
@@ -528,8 +538,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
 
 
-                                {/* Navigation for non-admin users */}
-                                {!isAdmin && (
+                                {/* Navigation for users without custom sidebar */}
+                                {!shouldShowSidebar && (
                                     <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                         <NavLink
                                             href={route('dashboard')}
@@ -548,8 +558,8 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
 
                             <div className="hidden sm:ms-6 sm:flex sm:items-center pt-4">
-                                {/* User type indicator for admins */}
-                                {isAdmin && (
+                                {/* User type indicator for sidebar users */}
+                                {shouldShowSidebar && (
                                     <div className="text-sm leading-none text-gray-500 mr-4">
                                         {getUserTypeLabel()}
                                     </div>
@@ -577,13 +587,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             <Dropdown.Link href={route('profile.edit')}>
                                                 Profile
                                             </Dropdown.Link>
-                                            {/* Dashboard switching for admins */}
-                                            {isCentralAdmin && (
-                                                <Dropdown.Link href={route('dashboard')}>
-                                                    Regular Dashboard
-                                                </Dropdown.Link>
-                                            )}
-                                            {isTenantAdmin && (
+                                            {/* Dashboard switching for users with custom navigation */}
+                                            {(isCentralAdmin || isTenantAdmin || hasCustomNavigation) && (
                                                 <Dropdown.Link href={route('dashboard')}>
                                                     Regular Dashboard
                                                 </Dropdown.Link>
@@ -600,8 +605,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </div>
                             </div>
 
-                            {/* Mobile menu button for non-admin users */}
-                            {!isAdmin && (
+                            {/* Mobile menu button for users without sidebar */}
+                            {!shouldShowSidebar && (
                                 <div className="-me-2 flex items-center sm:hidden">
                                     <button
                                         onClick={() =>
@@ -646,8 +651,8 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                     </div>
 
-                    {/* Mobile navigation for admin users */}
-                    {isAdmin && (
+                    {/* Mobile navigation for sidebar users */}
+                    {shouldShowSidebar && (
                         <div className="sm:hidden">
                             <div className="border-t border-gray-200 pb-1 pt-4">
                                 <div className="px-4">
@@ -676,8 +681,8 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                     )}
 
-                    {/* Mobile navigation menu for non-admin users */}
-                    {!isAdmin && (
+                    {/* Mobile navigation menu for users without sidebar */}
+                    {!shouldShowSidebar && (
                         <div
                             className={
                                 (showingNavigationDropdown ? 'block' : 'hidden') +
