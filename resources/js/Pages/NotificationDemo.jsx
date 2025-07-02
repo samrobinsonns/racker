@@ -46,6 +46,17 @@ export default function NotificationDemo({ auth }) {
         });
     };
 
+    const handleStatusChangeNotification = () => {
+        router.post(route('test-status-change-notification'), {}, {
+            onSuccess: () => {
+                console.log('Status change notification test sent');
+            },
+            onError: (errors) => {
+                console.error('Error sending status change notification:', errors);
+            }
+        });
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -164,6 +175,20 @@ export default function NotificationDemo({ auth }) {
                                     className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
                                 >
                                     Send Real-time Notification
+                                </button>
+                            </div>
+
+                            {/* Status Change Notification Test */}
+                            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mt-4">
+                                <h4 className="font-medium text-orange-900 mb-3">Ticket Status Change Notification Test</h4>
+                                <p className="text-sm text-orange-700 mb-4">
+                                    This will simulate a ticket status change notification for a ticket assigned to you.
+                                </p>
+                                <button
+                                    onClick={handleStatusChangeNotification}
+                                    className="w-full bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                                >
+                                    Send Status Change Notification
                                 </button>
                             </div>
 

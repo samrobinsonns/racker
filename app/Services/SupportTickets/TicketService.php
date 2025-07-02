@@ -95,10 +95,33 @@ class TicketService
     {
         $oldValues = $ticket->only(array_keys($data));
         
+        // Check if status is being changed
+        $statusChanged = isset($data['status_id']) && 
+                        isset($oldValues['status_id']) && 
+                        $data['status_id'] !== $oldValues['status_id'];
+        
+        $oldStatus = null;
+        if ($statusChanged) {
+            $oldStatus = $ticket->status->name;
+        }
+        
         $ticket->update($data);
         
         // Log significant changes
         $this->logSignificantChanges($ticket, $oldValues, $data, $userId);
+
+        // Handle status change notifications
+        if ($statusChanged) {
+            $newStatus = $ticket->fresh()->status->name;
+            $changedBy = $userId ? User::find($userId) : null;
+            
+            app(\App\Services\SupportTickets\NotificationService::class)->notifyStatusChanged(
+                $ticket,
+                $oldStatus,
+                $newStatus,
+                $changedBy
+            );
+        }
 
         return $ticket->fresh();
     }
@@ -277,7 +300,7 @@ class TicketService
      */
     private function logSignificantChanges(SupportTicket $ticket, array $oldValues, array $newValues, ?int $userId): void
     {
-        $significantFields = ['priority_id', 'category_id', 'assignee_id', 'subject'];
+        $significantFields = ['priority_id', 'category_id', 'assignee_id', 'status_id', 'subject'];
 
         foreach ($significantFields as $field) {
             if (isset($oldValues[$field]) && isset($newValues[$field]) && $oldValues[$field] !== $newValues[$field]) {
@@ -295,6 +318,7 @@ class TicketService
             'priority_id' => 'priority_changed',
             'category_id' => 'category_changed',
             'assignee_id' => 'assigned',
+            'status_id' => 'status_changed',
             default => 'updated'
         };
 
@@ -302,6 +326,7 @@ class TicketService
             'priority_id' => 'Priority changed',
             'category_id' => 'Category changed',
             'assignee_id' => 'Assignee changed',
+            'status_id' => 'Status changed',
             'subject' => 'Subject updated',
             default => ucfirst(str_replace('_', ' ', $field)) . ' updated'
         };

@@ -57,6 +57,11 @@ class NotificationService
         if ($ticket->assignee && $ticket->assignee->id !== $changedBy?->id) {
             $this->sendStatusChangeNotification($ticket, $ticket->assignee, $oldStatus, $newStatus);
         }
+
+        // Send in-app notification to assignee (regardless of who made the change)
+        if ($ticket->assignee) {
+            $this->sendInAppStatusChangeNotification($ticket, $ticket->assignee, $oldStatus, $newStatus, $changedBy);
+        }
     }
 
     /**
@@ -195,6 +200,59 @@ class NotificationService
                 'is_new_assignment' => true,
             ]
         );
+    }
+
+    /**
+     * Send in-app notification for ticket status change to assignee
+     */
+    private function sendInAppStatusChangeNotification(SupportTicket $ticket, User $assignee, string $oldStatus, string $newStatus, ?User $changedBy = null): void
+    {
+        $changedByText = $changedBy ? " by {$changedBy->name}" : '';
+        $message = "Ticket #{$ticket->ticket_number} status changed from {$oldStatus} to {$newStatus}{$changedByText}.";
+        
+        // Determine notification type based on status change
+        $notificationType = $this->getStatusChangeNotificationType($newStatus);
+        
+        app(\App\Services\NotificationService::class)->createForUser(
+            user: $assignee,
+            type: $notificationType,
+            message: $message,
+            title: 'Ticket Status Updated',
+            actionUrl: route('support-tickets.show', $ticket),
+            actionText: 'View Ticket',
+            metadata: [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'subject' => $ticket->subject,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'changed_by' => $changedBy?->id,
+                'changed_by_name' => $changedBy?->name,
+                'is_status_change' => true,
+            ]
+        );
+    }
+
+    /**
+     * Determine notification type based on new status
+     */
+    private function getStatusChangeNotificationType(string $newStatus): string
+    {
+        // Map status names to notification types
+        $statusTypeMap = [
+            'closed' => 'success',
+            'resolved' => 'success',
+            'in_progress' => 'info',
+            'open' => 'info',
+            'pending' => 'warning',
+            'escalated' => 'error',
+            'cancelled' => 'error',
+        ];
+
+        // Convert status name to lowercase and check for matches
+        $statusLower = strtolower(str_replace(' ', '_', $newStatus));
+        
+        return $statusTypeMap[$statusLower] ?? 'info';
     }
 
     /**

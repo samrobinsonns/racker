@@ -401,6 +401,28 @@ Route::post('/test-notification', function () {
     return response()->json(['message' => 'Test notification sent']);
 })->middleware(['auth', 'verified'])->name('test-notification');
 
+// Test ticket status change notification
+Route::post('/test-status-change-notification', function () {
+    $user = auth()->user();
+    
+    // Find a ticket assigned to the current user
+    $ticket = \App\Models\SupportTicket::where('assigned_to', $user->id)->first();
+    
+    if (!$ticket) {
+        return response()->json(['error' => 'No tickets assigned to you found'], 404);
+    }
+    
+    // Simulate a status change notification
+    app(\App\Services\SupportTickets\NotificationService::class)->notifyStatusChanged(
+        ticket: $ticket,
+        oldStatus: 'Open',
+        newStatus: 'In Progress',
+        changedBy: $user
+    );
+    
+    return response()->json(['message' => 'Status change notification sent']);
+})->middleware(['auth', 'verified'])->name('test-status-change-notification');
+
 // Regular authenticated user routes
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
