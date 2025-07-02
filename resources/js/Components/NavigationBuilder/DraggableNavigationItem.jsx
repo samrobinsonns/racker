@@ -14,7 +14,10 @@ import {
     EyeIcon,
     EyeSlashIcon,
     SwatchIcon,
-    ArrowDownIcon
+    ArrowDownIcon,
+    ArrowUpIcon,
+    ChevronUpIcon,
+    ChevronDownIcon as ChevronDownIconSolid
 } from '@heroicons/react/24/outline';
 import * as HeroIcons from '@heroicons/react/24/outline';
 import IconPicker from './IconPicker';
@@ -56,7 +59,9 @@ export default function DraggableNavigationItem({
     onAddChild, 
     onDeleteChild, 
     onUpdateChild,
-    onMoveToDropdown 
+    onMoveToDropdown,
+    onMoveChildUp,
+    onMoveChildDown
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [isEditingChild, setIsEditingChild] = useState(null);
@@ -356,99 +361,116 @@ export default function DraggableNavigationItem({
                                 )}
                                 <div className="space-y-3">
                                     {item.children.map((child) => (
-                                    <div
-                                        key={child.id}
-                                        className={`
-                                            flex items-center p-3 bg-white border border-gray-200 rounded-lg
-                                            hover:border-blue-300 hover:shadow-sm transition-all duration-150
-                                            ${!child.visible ? 'opacity-60' : ''}
-                                        `}
-                                    >
-                                        <button
-                                            onClick={() => setShowChildIconPicker(child.id)}
-                                            className="mr-3 flex-shrink-0 p-1 rounded hover:bg-gray-100 transition-colors group/child-icon"
-                                            title="Change icon"
+                                        <div
+                                            key={child.id}
+                                            className={`
+                                                flex items-center p-3 bg-white border border-gray-200 rounded-lg
+                                                hover:border-blue-300 hover:shadow-sm transition-all duration-150
+                                                ${!child.visible ? 'opacity-60' : ''}
+                                            `}
                                         >
-                                            <div className="relative">
-                                                {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon('link', "h-4 w-4") : getDefaultIcon('link', "h-4 w-4")}
-                                                <SwatchIcon className="absolute -bottom-0.5 -right-0.5 h-2 w-2 text-gray-400 opacity-0 group-hover/child-icon:opacity-100 transition-opacity bg-white rounded-full p-0.5" />
-                                            </div>
-                                        </button>
-
-                                        <div className="flex-1">
-                                            {isEditingChild === child.id ? (
-                                                <div className="flex items-center space-x-2">
-                                                    <input
-                                                        type="text"
-                                                        value={childEditValue}
-                                                        onChange={(e) => setChildEditValue(e.target.value)}
-                                                        className="flex-1 px-2 py-1 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') handleSaveChildEdit(child.id);
-                                                            if (e.key === 'Escape') handleCancelChildEdit();
-                                                        }}
-                                                        autoFocus
-                                                    />
-                                                    <button
-                                                        onClick={() => handleSaveChildEdit(child.id)}
-                                                        className="p-1 text-green-600 hover:bg-green-50 rounded"
-                                                    >
-                                                        <CheckIcon className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={handleCancelChildEdit}
-                                                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                    >
-                                                        <XMarkIcon className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center">
-                                                    <span className="text-sm text-gray-700 mr-2">
-                                                        {child.label}
-                                                    </span>
-                                                    {child.permission && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                            {child.permission}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                onClick={() => toggleChildVisibility(child.id, child.visible)}
-                                                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                                                title={child.visible ? 'Hide item' : 'Show item'}
+                                                onClick={() => setShowChildIconPicker(child.id)}
+                                                className="mr-3 flex-shrink-0 p-1 rounded hover:bg-gray-100 transition-colors group/child-icon"
+                                                title="Change icon"
                                             >
-                                                {child.visible ? (
-                                                    <EyeIcon className="h-3 w-3" />
+                                                <div className="relative">
+                                                    {child.icon ? renderIcon(child.icon, "h-4 w-4") || getDefaultIcon('link', "h-4 w-4") : getDefaultIcon('link', "h-4 w-4")}
+                                                    <SwatchIcon className="absolute -bottom-0.5 -right-0.5 h-2 w-2 text-gray-400 opacity-0 group-hover/child-icon:opacity-100 transition-opacity bg-white rounded-full p-0.5" />
+                                                </div>
+                                            </button>
+
+                                            <div className="flex-1">
+                                                {isEditingChild === child.id ? (
+                                                    <div className="flex items-center space-x-2">
+                                                        <input
+                                                            type="text"
+                                                            value={childEditValue}
+                                                            onChange={(e) => setChildEditValue(e.target.value)}
+                                                            className="flex-1 px-2 py-1 border border-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSaveChildEdit(child.id);
+                                                                if (e.key === 'Escape') handleCancelChildEdit();
+                                                            }}
+                                                            autoFocus
+                                                        />
+                                                        <button
+                                                            onClick={() => handleSaveChildEdit(child.id)}
+                                                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                        >
+                                                            <CheckIcon className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={handleCancelChildEdit}
+                                                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                        >
+                                                            <XMarkIcon className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 ) : (
-                                                    <EyeSlashIcon className="h-3 w-3" />
+                                                    <div className="flex items-center">
+                                                        <span className="text-sm text-gray-700 mr-2">
+                                                            {child.label}
+                                                        </span>
+                                                        {child.permission && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                                {child.permission}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 )}
-                                            </button>
+                                            </div>
 
-                                            <button
-                                                onClick={() => startEditingChild(child)}
-                                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                title="Edit child item"
-                                            >
-                                                <PencilIcon className="h-3 w-3" />
-                                            </button>
+                                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => onMoveChildUp(child.id, item.id)}
+                                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                    title="Move up"
+                                                    disabled={item.children.indexOf(child) === 0}
+                                                >
+                                                    <ChevronUpIcon className={`h-3 w-3 ${item.children.indexOf(child) === 0 ? 'opacity-50' : ''}`} />
+                                                </button>
+                                                <button
+                                                    onClick={() => onMoveChildDown(child.id, item.id)}
+                                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                    title="Move down"
+                                                    disabled={item.children.indexOf(child) === item.children.length - 1}
+                                                >
+                                                    <ChevronDownIconSolid className={`h-3 w-3 ${item.children.indexOf(child) === item.children.length - 1 ? 'opacity-50' : ''}`} />
+                                                </button>
 
-                                            <button
-                                                onClick={() => onDeleteChild(child.id, item.id)}
-                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                title="Delete child item"
-                                            >
-                                                <TrashIcon className="h-3 w-3" />
-                                            </button>
+                                                <button
+                                                    onClick={() => toggleChildVisibility(child.id, child.visible)}
+                                                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                                                    title={child.visible ? 'Hide item' : 'Show item'}
+                                                >
+                                                    {child.visible ? (
+                                                        <EyeIcon className="h-3 w-3" />
+                                                    ) : (
+                                                        <EyeSlashIcon className="h-3 w-3" />
+                                                    )}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => startEditingChild(child)}
+                                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                    title="Edit child item"
+                                                >
+                                                    <PencilIcon className="h-3 w-3" />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => onDeleteChild(child.id, item.id)}
+                                                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    title="Delete child item"
+                                                >
+                                                    <TrashIcon className="h-3 w-3" />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
                         </DropdownContentArea>
                     </div>
                 )}

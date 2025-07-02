@@ -461,6 +461,46 @@ export default function Builder({
         }
     }, [notification]);
 
+    // Move child item up in dropdown
+    const moveChildItemUp = (childId, parentId) => {
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: prev.items.map(item => {
+                if (item.id === parentId) {
+                    const children = [...item.children];
+                    const index = children.findIndex(child => child.id === childId);
+                    if (index > 0) {
+                        const temp = children[index];
+                        children[index] = children[index - 1];
+                        children[index - 1] = temp;
+                    }
+                    return { ...item, children };
+                }
+                return item;
+            })
+        }));
+    };
+
+    // Move child item down in dropdown
+    const moveChildItemDown = (childId, parentId) => {
+        setCurrentConfig(prev => ({
+            ...prev,
+            items: prev.items.map(item => {
+                if (item.id === parentId) {
+                    const children = [...item.children];
+                    const index = children.findIndex(child => child.id === childId);
+                    if (index < children.length - 1) {
+                        const temp = children[index];
+                        children[index] = children[index + 1];
+                        children[index + 1] = temp;
+                    }
+                    return { ...item, children };
+                }
+                return item;
+            })
+        }));
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -743,6 +783,8 @@ export default function Builder({
                                                         onDeleteChild={(childId, parentId) => deleteItem(childId, parentId)}
                                                         onUpdateChild={(childId, updates, parentId) => updateItem(childId, updates, parentId)}
                                                         onMoveToDropdown={moveItemToDropdown}
+                                                        onMoveChildUp={moveChildItemUp}
+                                                        onMoveChildDown={moveChildItemDown}
                                                     />
                                                 ))}
                                             </div>
