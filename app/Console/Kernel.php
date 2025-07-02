@@ -8,6 +8,15 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     /**
+     * The Artisan commands provided by your application.
+     *
+     * @var array
+     */
+    protected $commands = [
+        Commands\EnsureTenantRoles::class,
+    ];
+
+    /**
      * Define the application's command schedule.
      *
      * These cron jobs are run in the background.
@@ -29,15 +38,10 @@ class Kernel extends ConsoleKernel
      *
      * @return void
      */
-    protected function commands()
+    protected function commands(): void
     {
         $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }
-
-    protected $commands = [
-        Commands\TestTicketReply::class,
-        // ... existing commands ...
-    ];
 } 

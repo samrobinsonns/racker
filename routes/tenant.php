@@ -8,6 +8,7 @@ use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use App\Http\Controllers\Tenant\TenantNavigationController;
 use App\Enums\Permission;
+use App\Http\Controllers\TenantAdmin\RoleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,5 +44,12 @@ Route::middleware([
             ->name('navigation.store');
         Route::delete('/navigation/{configuration}', [TenantNavigationController::class, 'destroy'])
             ->name('navigation.destroy');
+    });
+
+    // Role Management Routes
+    Route::prefix('tenant-admin')->name('tenant-admin.')->middleware(['auth', 'verified'])->group(function () {
+        Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+        Route::patch('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     });
 });

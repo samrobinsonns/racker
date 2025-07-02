@@ -189,16 +189,25 @@ class TenantAdminController extends Controller
             ->latest()
             ->paginate(15);
 
+        // Get all roles and filter them for this tenant
+        $allRoles = Role::with('tenant')->withCount('users')->get();
+        $roles = $allRoles->filter(function($role) use ($tenantId) {
+            // Only include tenant-specific roles for this tenant (exclude templates)
+            return $role->tenant_id === $tenantId;
+        })->values();
+
         $availableRoles = Role::forTenant($tenantId)->get();
 
         return Inertia::render('TenantAdmin/Users/Index', [
             'users' => $users,
             'availableRoles' => $availableRoles,
+            'roles' => $roles,
             'tenantId' => $tenantId,
             'stats' => [
                 'tenant_name' => optional($user->tenant)->name ?? 'Unknown Tenant',
                 'tenant_id' => $tenantId,
             ],
+            'permissions' => $this->getAvailablePermissions(),
         ]);
     }
 
@@ -341,5 +350,53 @@ class TenantAdminController extends Controller
                 'tenant_id' => $tenantId,
             ],
         ]);
+    }
+
+    private function getAvailablePermissions()
+    {
+        return [
+            'User Management' => [
+                ['key' => 'manage_central_users', 'label' => 'Manage Central Users', 'description' => 'Manage system administrators'],
+                ['key' => 'manage_tenant_users', 'label' => 'Manage Tenant Users', 'description' => 'Manage users within tenants'],
+                ['key' => 'invite_users', 'label' => 'Invite Users', 'description' => 'Send user invitations'],
+                ['key' => 'view_user_profiles', 'label' => 'View User Profiles', 'description' => 'Access user profile information'],
+                ['key' => 'reset_user_passwords', 'label' => 'Reset User Passwords', 'description' => 'Reset passwords for other users'],
+                ['key' => 'deactivate_users', 'label' => 'Deactivate Users', 'description' => 'Suspend or deactivate user accounts'],
+                ['key' => 'manage_user_roles', 'label' => 'Manage User Roles', 'description' => 'Assign and remove user roles'],
+            ],
+            'Tenant Operations' => [
+                ['key' => 'manage_tenant_settings', 'label' => 'Manage Tenant Settings', 'description' => 'Configure tenant settings'],
+                ['key' => 'manage_tenant_roles', 'label' => 'Manage Tenant Roles', 'description' => 'Manage roles within tenant'],
+                ['key' => 'view_tenant_analytics', 'label' => 'View Tenant Analytics', 'description' => 'Access tenant analytics'],
+                ['key' => 'view_tenant_data', 'label' => 'View Tenant Data', 'description' => 'Access tenant information'],
+                ['key' => 'export_tenant_data', 'label' => 'Export Tenant Data', 'description' => 'Export tenant data'],
+                ['key' => 'manage_tenant_billing', 'label' => 'Manage Tenant Billing', 'description' => 'Access billing and subscription settings'],
+            ],
+            'Content Management' => [
+                ['key' => 'view_dashboard', 'label' => 'View Dashboard', 'description' => 'Access dashboard interface'],
+                ['key' => 'manage_own_profile', 'label' => 'Manage Own Profile', 'description' => 'Edit personal profile'],
+                ['key' => 'create_content', 'label' => 'Create Content', 'description' => 'Create new content'],
+                ['key' => 'edit_content', 'label' => 'Edit Content', 'description' => 'Edit existing content'],
+                ['key' => 'edit_own_content', 'label' => 'Edit Own Content', 'description' => 'Edit only own content'],
+                ['key' => 'delete_content', 'label' => 'Delete Content', 'description' => 'Remove content'],
+                ['key' => 'publish_content', 'label' => 'Publish Content', 'description' => 'Publish and unpublish content'],
+                ['key' => 'moderate_content', 'label' => 'Moderate Content', 'description' => 'Review and moderate user content'],
+                ['key' => 'view_reports', 'label' => 'View Reports', 'description' => 'Access reporting features'],
+                ['key' => 'manage_categories', 'label' => 'Manage Categories', 'description' => 'Create and manage content categories'],
+            ],
+            'Support Management' => [
+                ['key' => 'view_support_tickets', 'label' => 'View Support Tickets', 'description' => 'Access support ticket system'],
+                ['key' => 'create_support_tickets', 'label' => 'Create Support Tickets', 'description' => 'Create new support tickets'],
+                ['key' => 'manage_support_tickets', 'label' => 'Manage Support Tickets', 'description' => 'Manage support tickets'],
+                ['key' => 'view_all_support_tickets', 'label' => 'View All Support Tickets', 'description' => 'Access all support tickets'],
+                ['key' => 'assign_support_tickets', 'label' => 'Assign Support Tickets', 'description' => 'Assign tickets to team members'],
+                ['key' => 'escalate_support_tickets', 'label' => 'Escalate Support Tickets', 'description' => 'Escalate tickets to higher priority'],
+                ['key' => 'resolve_support_tickets', 'label' => 'Resolve Support Tickets', 'description' => 'Mark tickets as resolved'],
+                ['key' => 'manage_ticket_categories', 'label' => 'Manage Ticket Categories', 'description' => 'Create and manage ticket categories'],
+                ['key' => 'view_ticket_reports', 'label' => 'View Ticket Reports', 'description' => 'Access ticket reporting features'],
+                ['key' => 'configure_support_tickets', 'label' => 'Configure Support Tickets', 'description' => 'Configure support ticket settings'],
+                ['key' => 'view_support_analytics', 'label' => 'View Support Analytics', 'description' => 'Access support analytics'],
+            ],
+        ];
     }
 }

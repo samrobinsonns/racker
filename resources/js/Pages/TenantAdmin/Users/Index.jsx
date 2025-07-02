@@ -13,8 +13,9 @@ import { useState } from 'react';
 import CreateUserModal from './Create';
 import EditUserModal from './Edit';
 import Avatar from '@/Components/User/Avatar';
+import RolesSection from './RolesSection';
 
-export default function Index({ users, availableRoles, tenantId }) {
+export default function Index({ users, availableRoles, tenantId, roles, stats, permissions }) {
     const authUser = usePage().props.auth.user;
     console.log('Auth user data (working avatar):', authUser);
     console.log('All users data:', users);
@@ -328,6 +329,15 @@ export default function Index({ users, availableRoles, tenantId }) {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Roles Section */}
+                <div className="mt-8">
+                    <RolesSection 
+                        roles={roles} 
+                        stats={stats} 
+                        permissions={permissions}
+                    />
                 </div>
             </div>
         </AuthenticatedLayout>

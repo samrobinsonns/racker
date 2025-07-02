@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             EnhancedRoleSeeder::class,
             NavigationItemsSeeder::class,
             SupportTicketSeeder::class,
+            TenantRoleSeeder::class,
         ]);
     }
 }
