@@ -60,10 +60,19 @@ Route::get('/dashboard', function () {
         $tenantId = $user->tenant_id;
         $tenant = $user->tenant;
         $layoutType = 'tenant_user';
+        
+        // Get user's ticket count
+        $userTicketsCount = 0;
+        if (class_exists('App\Models\SupportTicket')) {
+            $userTicketsCount = \App\Models\SupportTicket::forTenant($tenantId)
+                ->where('assigned_to', $user->id)
+                ->count();
+        }
+        
         $stats = [
             'tenant_id' => $tenantId,
             'tenant_name' => $tenant?->name ?? 'Your Organization',
-            'user_activities' => rand(5, 25), // Placeholder for future implementation
+            'user_tickets' => $userTicketsCount,
             'user_messages' => rand(0, 8),   // Placeholder for future implementation
             'user_reports' => rand(2, 12),    // Placeholder for future implementation
         ];

@@ -2,6 +2,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PermissionGate from '@/Components/PermissionGate';
 import { usePermissions } from '@/Hooks/usePermissions';
+import { useNotifications } from '@/Components/Notifications/NotificationProvider';
+import { useState, useEffect } from 'react';
 import {
     BuildingOfficeIcon,
     UsersIcon,
@@ -16,7 +18,14 @@ import {
     EnvelopeIcon,
     UserIcon,
     BuildingOffice2Icon,
-    Cog6ToothIcon
+    Cog6ToothIcon,
+    ArrowPathIcon,
+    CheckIcon,
+    ExclamationCircleIcon,
+    ExclamationTriangleIcon,
+    InformationCircleIcon,
+    TrashIcon,
+    BellIcon
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
@@ -24,6 +33,93 @@ export default function Dashboard() {
     const { auth, stats, layoutType } = props;
     const { user } = auth;
     const { hasPermission, getAdminLevel } = usePermissions();
+    const { notifications: notificationSystem } = useNotifications();
+
+    // Notification state
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Format date helper
+    const formatDate = (date) => {
+        return new Date(date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    // Load notifications
+    const loadNotifications = async (resetPage = true) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`/api/notifications`, {
+                params: {
+                    limit: 4
+                }
+            });
+
+            const newNotifications = response.data.notifications;
+            setNotifications(newNotifications);
+            setHasMore(false); // No pagination needed
+        } catch (error) {
+            console.error('Failed to load notifications:', error);
+            notificationSystem.error('Failed to load notifications');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle mark as read
+    const handleMarkAsRead = async (id) => {
+        try {
+            await axios.patch(`/api/notifications/${id}/read`);
+            setNotifications(notifications.map(n => 
+                n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+            ));
+            notificationSystem.success('Notification marked as read');
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+            notificationSystem.error('Failed to mark notification as read');
+        }
+    };
+
+    // Handle mark all as read
+    const handleMarkAllAsRead = async () => {
+        try {
+            await axios.patch('/api/notifications/mark-all-read');
+            setNotifications(notifications.map(n => ({ 
+                ...n, 
+                read_at: n.read_at || new Date().toISOString() 
+            })));
+            notificationSystem.success('All notifications marked as read');
+        } catch (error) {
+            console.error('Failed to mark all notifications as read:', error);
+            notificationSystem.error('Failed to mark all notifications as read');
+        }
+    };
+
+    // Handle delete
+    const handleDelete = async (id) => {
+        try {
+            await axios.delete(`/api/notifications/${id}`);
+            setNotifications(notifications.filter(n => n.id !== id));
+            notificationSystem.success('Notification deleted');
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+            notificationSystem.error('Failed to delete notification');
+        }
+    };
+
+    // Handle refresh
+    const handleRefreshNotifications = () => {
+        loadNotifications(true);
+    };
+
+    // Load notifications on mount
+    useEffect(() => {
+        loadNotifications(true);
+    }, []);
 
     // Check user type - AuthenticatedLayout will handle the dynamic theming and navigation
     const isCentralAdmin = user?.is_central_admin;
@@ -324,8 +420,8 @@ export default function Dashboard() {
     const renderTenantUserDashboard = () => {
         const statCards = [
             {
-                name: 'My Activities',
-                stat: stats?.user_activities || 0,
+                name: 'My Tickets',
+                stat: stats?.user_tickets || 0,
                 icon: CheckCircleIcon,
                 color: 'emerald',
             },
@@ -386,14 +482,111 @@ export default function Dashboard() {
                     <div className="lg:col-span-2">
                         <div className="bg-white overflow-hidden shadow rounded-lg">
                             <div className="p-6">
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
-                                    <ClockIcon className="h-5 w-5 mr-2 text-emerald-600" />
-                                    Your Recent Activity
-                                </h3>
-                                <div className="text-center py-8">
-                                    <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-500">No recent activity</p>
-                                    <p className="text-sm text-gray-400 mt-1">Your activity will appear here as you use the system</p>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                                        <ClockIcon className="h-5 w-5 mr-2 text-emerald-600" />
+                                        Recent Activity & Notifications
+                                    </h3>
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={() => handleMarkAllAsRead()}
+                                            className="text-sm text-gray-600 hover:text-emerald-600"
+                                        >
+                                            Mark all as read
+                                        </button>
+                                        <button
+                                            onClick={() => handleRefreshNotifications()}
+                                            className="text-gray-600 hover:text-emerald-600"
+                                        >
+                                            <ArrowPathIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Notifications List */}
+                                <div className="space-y-4 max-h-96 overflow-y-auto">
+                                    {loading ? (
+                                        <div className="flex justify-center items-center py-8">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                        </div>
+                                    ) : notifications.length > 0 ? (
+                                        notifications.map((notification) => (
+                                            <div
+                                                key={notification.id}
+                                                className={`relative p-4 rounded-lg border ${
+                                                    notification.read_at ? 'bg-white' : 'bg-emerald-50'
+                                                } ${
+                                                    notification.type === 'success'
+                                                        ? 'border-green-200'
+                                                        : notification.type === 'error'
+                                                        ? 'border-red-200'
+                                                        : notification.type === 'warning'
+                                                        ? 'border-yellow-200'
+                                                        : 'border-blue-200'
+                                                }`}
+                                            >
+                                                <div className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        {notification.type === 'success' && (
+                                                            <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                                                        )}
+                                                        {notification.type === 'error' && (
+                                                            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+                                                        )}
+                                                        {notification.type === 'warning' && (
+                                                            <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
+                                                        )}
+                                                        {notification.type === 'info' && (
+                                                            <InformationCircleIcon className="h-6 w-6 text-blue-500" />
+                                                        )}
+                                                    </div>
+                                                    <div className="ml-3 flex-1">
+                                                        {notification.title && (
+                                                            <h4 className="text-sm font-medium text-gray-900">
+                                                                {notification.title}
+                                                            </h4>
+                                                        )}
+                                                        <p className="text-sm text-gray-600">{notification.message}</p>
+                                                        <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+                                                            <span>{formatDate(notification.created_at)}</span>
+                                                            {notification.action_url && (
+                                                                <Link
+                                                                    href={notification.action_url}
+                                                                    className="text-emerald-600 hover:text-emerald-800"
+                                                                >
+                                                                    {notification.action_text || 'View Details'}
+                                                                </Link>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="ml-4 flex-shrink-0 flex items-start space-x-2">
+                                                        {!notification.read_at && (
+                                                            <button
+                                                                onClick={() => handleMarkAsRead(notification.id)}
+                                                                className="text-gray-400 hover:text-emerald-600"
+                                                            >
+                                                                <CheckIcon className="h-5 w-5" />
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDelete(notification.id)}
+                                                            className="text-gray-400 hover:text-red-600"
+                                                        >
+                                                            <TrashIcon className="h-5 w-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <BellIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                            <p className="text-gray-500">No notifications to display</p>
+                                            <p className="text-sm text-gray-400 mt-1">
+                                                You have no notifications yet
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
