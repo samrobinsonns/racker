@@ -19,7 +19,8 @@ import {
     PencilIcon,
     DocumentArrowDownIcon,
     EyeIcon,
-    EyeSlashIcon
+    EyeSlashIcon,
+    TrashIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -266,6 +267,30 @@ export default function Show({
                                                         >
                                                             <ArrowTrendingUpIcon className="mr-3 h-4 w-4" />
                                                             Escalate Ticket
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            )}
+
+                                            {permissions.delete && (
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
+                                                                    router.delete(route('support-tickets.destroy', ticket.id), {
+                                                                        onSuccess: () => {
+                                                                            router.visit(route('support-tickets.index'));
+                                                                        },
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className={`${
+                                                                active ? 'bg-gray-100 text-red-900' : 'text-red-700'
+                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
+                                                        >
+                                                            <TrashIcon className="mr-3 h-4 w-4" />
+                                                            Delete Ticket
                                                         </button>
                                                     )}
                                                 </Menu.Item>
