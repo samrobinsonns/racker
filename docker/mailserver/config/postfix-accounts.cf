@@ -1,0 +1,12 @@
+# Postfix accounts configuration
+# Format: email@domain.com password
+# Example: support@example.com password123
+
+# Default support account for the system
+support@${MAIL_DOMAIN:-example.com} password123
+
+# Admin account
+admin@${MAIL_DOMAIN:-example.com} admin123
+
+# Postmaster account (required)
+postmaster@${MAIL_DOMAIN:-example.com} postmaster123 

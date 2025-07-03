@@ -36,6 +36,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Docker Mail Server Integration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for Docker mail server integration. This provides
+    | inbound email processing capabilities for the support ticket system.
+    |
+    */
+    'mail_server' => [
+        'enabled' => env('SUPPORT_MAIL_SERVER_ENABLED', true),
+        'type' => env('SUPPORT_MAIL_SERVER_TYPE', 'docker-mailserver'),
+        'imap_host' => env('SUPPORT_MAIL_SERVER_IMAP_HOST', 'mailserver'),
+        'imap_port' => env('SUPPORT_MAIL_SERVER_IMAP_PORT', 143),
+        'smtp_host' => env('SUPPORT_MAIL_SERVER_SMTP_HOST', 'mailserver'),
+        'smtp_port' => env('SUPPORT_MAIL_SERVER_SMTP_PORT', 587),
+        'username' => env('SUPPORT_MAIL_SERVER_USERNAME', 'support'),
+        'password' => env('SUPPORT_MAIL_SERVER_PASSWORD', 'password123'),
+        'domain' => env('SUPPORT_MAIL_SERVER_DOMAIN', 'example.com'),
+        'maildir_path' => env('SUPPORT_MAIL_SERVER_MAILDIR_PATH', '/var/mail'),
+        'archive_path' => env('SUPPORT_MAIL_SERVER_ARCHIVE_PATH', '/var/mail/processed'),
+        'processing_interval' => env('SUPPORT_MAIL_SERVER_PROCESSING_INTERVAL', 300), // 5 minutes
+        'max_emails_per_batch' => env('SUPPORT_MAIL_SERVER_MAX_EMAILS_PER_BATCH', 50),
+        'spam_filtering' => env('SUPPORT_MAIL_SERVER_SPAM_FILTERING', true),
+        'virus_scanning' => env('SUPPORT_MAIL_SERVER_VIRUS_SCANNING', true),
+        'ssl_enabled' => env('SUPPORT_MAIL_SERVER_SSL_ENABLED', false),
+        'ssl_verify' => env('SUPPORT_MAIL_SERVER_SSL_VERIFY', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Email Processing
     |--------------------------------------------------------------------------
     |

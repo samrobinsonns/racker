@@ -1,0 +1,12 @@
+# Postfix virtual aliases configuration
+# Format: alias@domain.com email@domain.com
+# Example: help@example.com support@example.com
+
+# Support aliases
+help@${MAIL_DOMAIN:-example.com} support@${MAIL_DOMAIN:-example.com}
+support@${MAIL_DOMAIN:-example.com} support@${MAIL_DOMAIN:-example.com}
+tickets@${MAIL_DOMAIN:-example.com} support@${MAIL_DOMAIN:-example.com}
+
+# Catch-all for tenant-specific addresses
+# This will be dynamically managed by Laravel
+# Format: tenant-{tenant_id}@${MAIL_DOMAIN:-example.com} support@${MAIL_DOMAIN:-example.com} 

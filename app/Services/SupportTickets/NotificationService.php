@@ -48,10 +48,8 @@ class NotificationService
      */
     public function notifyStatusChanged(SupportTicket $ticket, string $oldStatus, string $newStatus, ?User $changedBy = null): void
     {
-        // Notify requester
-        if ($ticket->requester) {
-            $this->sendStatusChangeNotification($ticket, $ticket->requester, $oldStatus, $newStatus);
-        }
+        // Notify requester (handles both contact and requester email)
+        $this->notifyCustomerOfStatusChange($ticket, $oldStatus, $newStatus);
 
         // Notify assignee if different from the person who made the change
         if ($ticket->assignee && $ticket->assignee->id !== $changedBy?->id) {
@@ -77,10 +75,8 @@ class NotificationService
         } else {
             // Public replies notify appropriate parties
             if ($reply->reply_type === 'agent') {
-                // Agent reply - notify contact
-                if ($ticket->contact) {
-                    $this->sendAgentReplyNotification($reply, $ticket->contact->email, $ticket->contact->full_name);
-                }
+                // Agent reply - notify customer (either via contact or requester email)
+                $this->notifyCustomerOfAgentReply($reply);
             } elseif ($reply->reply_type === 'customer') {
                 // Customer reply - notify assignee or available agents
                 if ($ticket->assignee) {
@@ -271,6 +267,70 @@ class NotificationService
             ->line('Thank you for using our support system!');
 
         $user->notify(new GenericTicketNotification($message));
+    }
+
+    /**
+     * Notify customer of agent reply (handles both contact and requester email)
+     */
+    private function notifyCustomerOfAgentReply(SupportTicketReply $reply): void
+    {
+        $ticket = $reply->ticket;
+        
+        // Determine recipient email and name
+        if ($ticket->contact) {
+            // Use contact information
+            $recipientEmail = $ticket->contact->email;
+            $recipientName = $ticket->contact->full_name;
+        } elseif ($ticket->requester_email) {
+            // Use requester information from ticket
+            $recipientEmail = $ticket->requester_email;
+            $recipientName = $ticket->requester_name ?: $ticket->requester_email;
+        } else {
+            // No email to send to
+            return;
+        }
+        
+        $this->sendAgentReplyNotification($reply, $recipientEmail, $recipientName);
+    }
+
+    /**
+     * Notify customer of status change (handles both contact and requester email)
+     */
+    private function notifyCustomerOfStatusChange(SupportTicket $ticket, string $oldStatus, string $newStatus): void
+    {
+        // Determine recipient email and name
+        if ($ticket->contact) {
+            // Use contact information
+            $recipientEmail = $ticket->contact->email;
+            $recipientName = $ticket->contact->full_name;
+        } elseif ($ticket->requester_email) {
+            // Use requester information from ticket
+            $recipientEmail = $ticket->requester_email;
+            $recipientName = $ticket->requester_name ?: $ticket->requester_email;
+        } else {
+            // No email to send to
+            return;
+        }
+        
+        $this->sendStatusChangeEmailToCustomer($ticket, $recipientEmail, $recipientName, $oldStatus, $newStatus);
+    }
+
+    /**
+     * Send status change email to customer
+     */
+    private function sendStatusChangeEmailToCustomer(SupportTicket $ticket, string $recipientEmail, string $recipientName, string $oldStatus, string $newStatus): void
+    {
+        $message = (new MailMessage)
+            ->subject("Ticket Status Updated - {$ticket->ticket_number}")
+            ->greeting("Hello {$recipientName}!")
+            ->line("The status of your support ticket has been updated.")
+            ->line("**Ticket Number:** {$ticket->ticket_number}")
+            ->line("**Subject:** {$ticket->subject}")
+            ->line("**Status Changed:** {$oldStatus} → {$newStatus}")
+            ->action('View Ticket', $this->getTicketUrl($ticket))
+            ->line('Thank you for using our support system!');
+
+        $this->sendEmailNotification($recipientEmail, $message);
     }
 
     /**

@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Ignore mailserver state directories
+docker-data/dms/mail-state/
+docker-data/dms/mail-data/
+docker-data/dms/mail-logs/

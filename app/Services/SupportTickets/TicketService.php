@@ -8,12 +8,61 @@ use App\Models\SupportTicketStatus;
 use App\Models\SupportTicketCategory;
 use App\Models\SupportTicketActivityLog;
 use App\Models\User;
+use App\Models\Contact;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class TicketService
 {
+    /**
+     * Find or create a contact from email information
+     */
+    public function findOrCreateContactFromEmail(string $email, string $name, string $tenantId): Contact
+    {
+        // First try to find existing contact by email
+        $contact = Contact::where('tenant_id', $tenantId)
+            ->where('email', $email)
+            ->first();
+            
+        if ($contact) {
+            // Update name if it's more complete than what we have
+            if (strlen($name) > strlen($contact->first_name . ' ' . $contact->last_name)) {
+                $nameParts = explode(' ', trim($name), 2);
+                $firstName = $nameParts[0] ?? '';
+                $lastName = $nameParts[1] ?? '';
+                
+                $contact->update([
+                    'first_name' => $firstName ?: $contact->first_name,
+                    'last_name' => $lastName ?: $contact->last_name,
+                ]);
+            }
+            
+            return $contact;
+        }
+        
+        // Create new contact
+        $nameParts = explode(' ', trim($name), 2);
+        $firstName = $nameParts[0] ?? '';
+        $lastName = $nameParts[1] ?? '';
+        
+        // If no name provided, use email prefix as first name
+        if (empty($firstName) && empty($lastName)) {
+            $emailPrefix = explode('@', $email)[0];
+            $firstName = ucfirst(str_replace(['.', '_', '-'], ' ', $emailPrefix));
+        }
+        
+        return Contact::create([
+            'tenant_id' => $tenantId,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'source' => 'email_ticket',
+            'status' => 'active',
+            'type' => 'customer',
+        ]);
+    }
+
     /**
      * Create a new support ticket
      */
@@ -62,6 +111,22 @@ class TicketService
 
         // Set source if not provided
         $data['source'] = $data['source'] ?? 'web';
+
+        // Auto-create or find contact for email-created tickets
+        if ($data['source'] === 'email' && !empty($data['requester_email']) && empty($data['contact_id'])) {
+            $contact = $this->findOrCreateContactFromEmail(
+                $data['requester_email'],
+                $data['requester_name'] ?? '',
+                $tenantId
+            );
+            $data['contact_id'] = $contact->id;
+            
+            \Log::info('Auto-created/found contact for email ticket:', [
+                'contact_id' => $contact->id,
+                'email' => $contact->email,
+                'name' => $contact->first_name . ' ' . $contact->last_name,
+            ]);
+        }
 
         \Log::info('Creating ticket in database with final data:', [
             'contact_id' => $data['contact_id'] ?? null,

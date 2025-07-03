@@ -195,6 +195,12 @@ Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')-
         Route::post('/test', [EmailSettingsController::class, 'test'])->name('test');
     });
 
+    // IMAP Settings Management
+    Route::prefix('imap-settings')->name('imap-settings.')->middleware('permission:' . Permission::MANAGE_TENANT_SETTINGS)->group(function () {
+        Route::post('/', [App\Http\Controllers\TenantAdmin\ImapSettingsController::class, 'store'])->name('store');
+        Route::post('/test/{settings_id?}', [App\Http\Controllers\TenantAdmin\ImapSettingsController::class, 'test'])->name('test');
+    });
+
     // Support Ticket Management
     Route::prefix('support-tickets')->name('support-tickets.')->group(function () {
         // Main Support Tickets Management

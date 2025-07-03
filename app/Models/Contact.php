@@ -13,6 +13,7 @@ class Contact extends Model
     use HasFactory, SoftDeletes, HasTenant;
 
     protected $fillable = [
+        'tenant_id',
         'first_name',
         'last_name',
         'email',

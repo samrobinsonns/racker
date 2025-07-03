@@ -1,0 +1,16 @@
+From: "Test User" <test.user@example.com>
+To: test@example.com
+Subject: Test Ticket - Complex Issue
+
+Hello Support Team,
+
+I am experiencing a complex issue with the system:
+
+1. Login problems
+2. Database connection errors
+3. Performance issues
+
+Please help me resolve these issues.
+
+Best regards,
+Test User

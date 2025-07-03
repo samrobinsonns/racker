@@ -32,6 +32,9 @@ export default function Index({ settings, emailSettings, categories, permissions
     const [editingCategory, setEditingCategory] = useState(null);
     const [testingConnection, setTestingConnection] = useState(false);
     const [testResult, setTestResult] = useState(null);
+    const [imapSettings, setImapSettings] = useState(emailSettings || {});
+    const [imapTestResult, setImapTestResult] = useState(null);
+    const [testingImapConnection, setTestingImapConnection] = useState(false);
     const { flash } = usePage().props;
 
     // Show test result modal if we have a flash message
@@ -66,6 +69,17 @@ export default function Index({ settings, emailSettings, categories, permissions
         is_active: emailSettings?.is_active ?? false,
     });
 
+    // IMAP Settings Form
+    const imapSettingsForm = useForm({
+        imap_host: imapSettings.imap_host || '',
+        imap_port: imapSettings.imap_port || 993,
+        imap_username: imapSettings.imap_username || '',
+        imap_password: imapSettings.imap_password || '',
+        imap_encryption: imapSettings.imap_encryption || 'ssl',
+        imap_folder: imapSettings.imap_folder || 'INBOX',
+        imap_enabled: imapSettings.imap_enabled || false,
+    });
+
     // Category Form
     const categoryForm = useForm({
         name: '',
@@ -96,6 +110,29 @@ export default function Index({ settings, emailSettings, categories, permissions
             preserveScroll: true,
             preserveState: true,
             onFinish: () => setTestingConnection(false)
+        });
+    };
+
+    const handleImapSettingsSubmit = (e) => {
+        e.preventDefault();
+        imapSettingsForm.post(route('tenant-admin.imap-settings.store'), {
+            onSuccess: () => {
+                // Form submission successful
+            },
+            preserveScroll: true
+        });
+    };
+
+    const testImapConnection = () => {
+        setTestingImapConnection(true);
+        setImapTestResult(null);
+        imapSettingsForm.post(route('tenant-admin.imap-settings.test', { settings_id: imapSettings?.id }), {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (response) => {
+                setImapTestResult(response?.props?.test_result || null);
+            },
+            onFinish: () => setTestingImapConnection(false)
         });
     };
 
@@ -176,6 +213,17 @@ export default function Index({ settings, emailSettings, categories, permissions
                                         )
                                     }>
                                         Email Configuration
+                                    </Tab>
+                                    <Tab className={({ selected }) =>
+                                        classNames(
+                                            'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
+                                            'ring-white ring-opacity-60 ring-offset-2 focus:outline-none focus:ring-2',
+                                            selected
+                                                ? 'bg-white text-emerald-700 shadow'
+                                                : 'text-gray-600 hover:bg-white/[0.12] hover:text-emerald-600'
+                                        )
+                                    }>
+                                        IMAP Settings
                                     </Tab>
                                     <Tab className={({ selected }) =>
                                         classNames(
@@ -501,6 +549,170 @@ export default function Index({ settings, emailSettings, categories, permissions
 
                                                 <PrimaryButton disabled={emailSettingsForm.processing}>
                                                     {emailSettingsForm.processing ? 'Saving...' : 'Save Settings'}
+                                                </PrimaryButton>
+                                            </div>
+                                        </form>
+                                    </Tab.Panel>
+
+                                    {/* IMAP Settings Panel */}
+                                    <Tab.Panel>
+                                        <form onSubmit={handleImapSettingsSubmit} className="space-y-6">
+                                            {/* Connection Status */}
+                                            {imapSettings && (
+                                                <div className="bg-gray-50 rounded-lg p-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        {imapSettings.imap_last_check_successful ? (
+                                                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                                                        ) : imapSettings.imap_last_check_at ? (
+                                                            <XCircleIcon className="h-5 w-5 text-red-500" />
+                                                        ) : (
+                                                            <div className="h-5 w-5 rounded-full bg-gray-200" />
+                                                        )}
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900">
+                                                                {imapSettings.imap_last_check_at ? (
+                                                                    imapSettings.imap_last_check_successful ?
+                                                                    'Connection verified' :
+                                                                    'Connection failed'
+                                                                ) : 'Not tested'}
+                                                            </p>
+                                                            {imapSettings.imap_last_check_at && (
+                                                                <p className="text-xs text-gray-500">
+                                                                    Last checked: {new Date(imapSettings.imap_last_check_at).toLocaleString()}
+                                                                </p>
+                                                            )}
+                                                            {imapSettings.imap_last_check_error && !imapSettings.imap_last_check_successful && (
+                                                                <p className="text-xs text-red-500">{imapSettings.imap_last_check_error}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Test Results */}
+                                            {imapTestResult && (
+                                                <div className={`rounded-lg p-4 ${
+                                                    imapTestResult.success ? 'bg-green-50' : 'bg-red-50'
+                                                }`}>
+                                                    <div className="flex items-center space-x-3">
+                                                        {imapTestResult.success ? (
+                                                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                                                        ) : (
+                                                            <XCircleIcon className="h-5 w-5 text-red-500" />
+                                                        )}
+                                                        <p className={`text-sm ${
+                                                            imapTestResult.success ? 'text-green-700' : 'text-red-700'
+                                                        }`}>
+                                                            {imapTestResult.message}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <InputLabel htmlFor="imap_host" value="IMAP Host" />
+                                                    <TextInput
+                                                        id="imap_host"
+                                                        type="text"
+                                                        className="mt-1 block w-full"
+                                                        value={imapSettingsForm.data.imap_host}
+                                                        onChange={e => imapSettingsForm.setData('imap_host', e.target.value)}
+                                                        required
+                                                    />
+                                                    <InputError message={imapSettingsForm.errors.imap_host} className="mt-2" />
+                                                </div>
+                                                <div>
+                                                    <InputLabel htmlFor="imap_port" value="IMAP Port" />
+                                                    <TextInput
+                                                        id="imap_port"
+                                                        type="number"
+                                                        className="mt-1 block w-full"
+                                                        value={imapSettingsForm.data.imap_port}
+                                                        onChange={e => imapSettingsForm.setData('imap_port', e.target.value)}
+                                                        required
+                                                    />
+                                                    <InputError message={imapSettingsForm.errors.imap_port} className="mt-2" />
+                                                </div>
+                                                <div>
+                                                    <InputLabel htmlFor="imap_username" value="IMAP Username" />
+                                                    <TextInput
+                                                        id="imap_username"
+                                                        type="text"
+                                                        className="mt-1 block w-full"
+                                                        value={imapSettingsForm.data.imap_username}
+                                                        onChange={e => imapSettingsForm.setData('imap_username', e.target.value)}
+                                                        required
+                                                    />
+                                                    <InputError message={imapSettingsForm.errors.imap_username} className="mt-2" />
+                                                </div>
+                                                <div>
+                                                    <InputLabel htmlFor="imap_password" value="IMAP Password" />
+                                                    <TextInput
+                                                        id="imap_password"
+                                                        type="password"
+                                                        className="mt-1 block w-full"
+                                                        value={imapSettingsForm.data.imap_password}
+                                                        onChange={e => imapSettingsForm.setData('imap_password', e.target.value)}
+                                                        required
+                                                    />
+                                                    <InputError message={imapSettingsForm.errors.imap_password} className="mt-2" />
+                                                </div>
+                                                <div>
+                                                    <InputLabel htmlFor="imap_encryption" value="Encryption" />
+                                                    <select
+                                                        id="imap_encryption"
+                                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                                        value={imapSettingsForm.data.imap_encryption}
+                                                        onChange={e => imapSettingsForm.setData('imap_encryption', e.target.value)}
+                                                    >
+                                                        <option value="ssl">SSL</option>
+                                                        <option value="tls">TLS</option>
+                                                        <option value="none">None</option>
+                                                    </select>
+                                                    <InputError message={imapSettingsForm.errors.imap_encryption} className="mt-2" />
+                                                </div>
+                                                <div>
+                                                    <InputLabel htmlFor="imap_folder" value="IMAP Folder" />
+                                                    <TextInput
+                                                        id="imap_folder"
+                                                        type="text"
+                                                        className="mt-1 block w-full"
+                                                        value={imapSettingsForm.data.imap_folder}
+                                                        onChange={e => imapSettingsForm.setData('imap_folder', e.target.value)}
+                                                        required
+                                                    />
+                                                    <InputError message={imapSettingsForm.errors.imap_folder} className="mt-2" />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                                                            checked={imapSettingsForm.data.imap_enabled}
+                                                            onChange={e => imapSettingsForm.setData('imap_enabled', e.target.checked)}
+                                                        />
+                                                        <span className="ml-2 text-sm text-gray-600">
+                                                            Enable IMAP Processing
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-end space-x-3">
+                                                <SecondaryButton
+                                                    type="button"
+                                                    onClick={testImapConnection}
+                                                    disabled={testingImapConnection || imapSettingsForm.processing}
+                                                >
+                                                    {testingImapConnection ? (
+                                                        <>
+                                                            <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                                                            Testing...
+                                                        </>
+                                                    ) : (
+                                                        'Test Connection'
+                                                    )}
+                                                </SecondaryButton>
+                                                <PrimaryButton disabled={imapSettingsForm.processing}>
+                                                    {imapSettingsForm.processing ? 'Saving...' : 'Save Settings'}
                                                 </PrimaryButton>
                                             </div>
                                         </form>

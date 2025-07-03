@@ -27,7 +27,17 @@ class EmailSetting extends Model
         'is_active',
         'last_tested_at',
         'last_test_successful',
-        'last_test_error'
+        'last_test_error',
+        'imap_host',
+        'imap_port',
+        'imap_username',
+        'imap_password',
+        'imap_encryption',
+        'imap_folder',
+        'imap_enabled',
+        'imap_last_check_at',
+        'imap_last_check_successful',
+        'imap_last_check_error'
     ];
 
     /**
@@ -40,6 +50,9 @@ class EmailSetting extends Model
         'is_active' => 'boolean',
         'last_tested_at' => 'datetime',
         'last_test_successful' => 'boolean',
+        'imap_enabled' => 'boolean',
+        'imap_last_check_at' => 'datetime',
+        'imap_last_check_successful' => 'boolean',
     ];
 
     /**
@@ -68,6 +81,32 @@ class EmailSetting extends Model
      * @return string
      */
     public function getSmtpPasswordAttribute($value)
+    {
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    /**
+     * Set the IMAP password with encryption.
+     *
+     * @param string $value
+     * @return void
+     */
+    public function setImapPasswordAttribute($value)
+    {
+        $this->attributes['imap_password'] = Crypt::encryptString($value);
+    }
+
+    /**
+     * Get the decrypted IMAP password.
+     *
+     * @param string $value
+     * @return string
+     */
+    public function getImapPasswordAttribute($value)
     {
         try {
             return Crypt::decryptString($value);

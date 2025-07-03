@@ -6,16 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketReply;
 use App\Services\SupportTickets\ReplyService;
+use App\Services\SupportTickets\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SupportTicketReplyController extends Controller
 {
     protected ReplyService $replyService;
+    protected NotificationService $notificationService;
 
-    public function __construct(ReplyService $replyService)
+    public function __construct(ReplyService $replyService, NotificationService $notificationService)
     {
         $this->replyService = $replyService;
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -59,6 +62,9 @@ class SupportTicketReplyController extends Controller
                 $validatedData,
                 Auth::id()
             );
+
+            // Send notifications
+            $this->notificationService->notifyReplyAdded($reply);
 
             return response()->json([
                 'success' => true,
@@ -138,9 +144,12 @@ class SupportTicketReplyController extends Controller
         try {
             $reply = $this->replyService->createInternalNote(
                 $ticket,
-                $validatedData,
+                $validatedData['content'],
                 Auth::id()
             );
+
+            // Send notifications
+            $this->notificationService->notifyReplyAdded($reply);
 
             return response()->json([
                 'success' => true,

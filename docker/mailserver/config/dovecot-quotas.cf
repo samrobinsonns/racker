@@ -1,0 +1,8 @@
+# Dovecot quotas configuration
+# Format: user@domain.com quota
+# Example: support@example.com 1G
+
+# Default quotas for support accounts
+support@${MAIL_DOMAIN:-example.com} 1G
+admin@${MAIL_DOMAIN:-example.com} 2G
+postmaster@${MAIL_DOMAIN:-example.com} 1G 
