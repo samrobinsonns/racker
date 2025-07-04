@@ -105,7 +105,7 @@ class ProcessEmailsContinuously extends Command
 
             // Get all unread messages
             $processedCount = 0;
-            $unreadEmails = imap_search($connection, 'UNSEEN');
+            $unreadEmails = $this->fetchNewEmails($connection);
             if ($unreadEmails) {
                 foreach ($unreadEmails as $msgNum) {
                     if ($this->processEmail($connection, $msgNum, $emailSettings)) {
@@ -300,15 +300,32 @@ class ProcessEmailsContinuously extends Command
                 'raw_html' => null
             ];
         }
+        
+        // Extract attachments (including inline images)
         $attachments = $this->extractAttachments($connection, $messageNumber, $structure);
-        $result = $this->findBestPart($connection, $messageNumber, $structure, '', $attachments);
-        // If HTML, replace cid: links with data URLs
-        if ($result['raw_html']) {
-            $result['raw_html'] = $this->replaceCidImages($result['raw_html'], $attachments);
+        
+        $bestParts = $this->findBestPart($connection, $messageNumber, $structure);
+        $plain = $bestParts['body'] ?? null;
+        $html = $bestParts['raw_html'] ?? null;
+
+        // Always set description to plain text if available, otherwise strip HTML
+        if ($plain) {
+            $description = $plain;
+        } elseif ($html) {
+            $description = strip_tags($html);
+        } else {
+            $description = '';
         }
+        
+        // Process HTML content to handle images
+        $raw_html = null;
+        if ($html) {
+            $raw_html = $this->processHtmlContent($html, $attachments);
+        }
+
         return [
-            'body' => $result['body'],
-            'raw_html' => $result['raw_html']
+            'body' => $description,
+            'raw_html' => $raw_html
         ];
     }
 
@@ -429,13 +446,30 @@ class ProcessEmailsContinuously extends Command
         } else {
             $isAttachment = false;
             $cid = null;
-            if (isset($structure->disposition) && strtolower($structure->disposition) === 'attachment') {
+            
+            // Check for inline disposition (embedded images)
+            if (isset($structure->disposition) && strtolower($structure->disposition) === 'inline') {
                 $isAttachment = true;
             }
+            // Check for attachment disposition
+            elseif (isset($structure->disposition) && strtolower($structure->disposition) === 'attachment') {
+                $isAttachment = true;
+            }
+            
+            // Get Content-ID for inline images
             if (isset($structure->ifid) && $structure->ifid && isset($structure->id)) {
                 $cid = trim($structure->id, '<>');
                 $isAttachment = true;
             }
+            
+            // Also check for images in the parts array
+            if (isset($structure->type) && $structure->type === 5) { // 5 = image
+                $isAttachment = true;
+                if (isset($structure->ifid) && $structure->ifid && isset($structure->id)) {
+                    $cid = trim($structure->id, '<>');
+                }
+            }
+            
             if ($isAttachment && $cid) {
                 $body = imap_fetchbody($connection, $messageNumber, $partNumberPrefix ?: 1);
                 if (isset($structure->encoding)) {
@@ -460,6 +494,36 @@ class ProcessEmailsContinuously extends Command
             }
             return $matches[0];
         }, $html);
+    }
+
+    /**
+     * Process HTML content to handle images properly
+     */
+    private function processHtmlContent($html, $attachments = [])
+    {
+        // Debug: log attachment count
+        if (property_exists($this, 'debugMode') && $this->debugMode && !empty($attachments)) {
+            $this->info("[DEBUG] Found " . count($attachments) . " attachments/inline images");
+            \Log::info('[DEBUG] Found attachments', ['count' => count($attachments), 'cids' => array_keys($attachments)]);
+        }
+        
+        // Replace CID images with data URLs
+        if (!empty($attachments)) {
+            $originalHtml = $html;
+            $html = $this->replaceCidImages($html, $attachments);
+            
+            // Debug: check if any CID images were replaced
+            if (property_exists($this, 'debugMode') && $this->debugMode && $originalHtml !== $html) {
+                $this->info("[DEBUG] Replaced CID images with data URLs");
+                \Log::info('[DEBUG] Replaced CID images with data URLs');
+            }
+        }
+        
+        // Ensure external images are allowed (but be careful with security)
+        // For now, we'll keep external images as-is, but you might want to proxy them
+        // or add security checks depending on your requirements
+        
+        return $html;
     }
 
     /**
@@ -597,5 +661,17 @@ class ProcessEmailsContinuously extends Command
             'first_name' => ucfirst($localPart),
             'last_name' => '',
         ];
+    }
+
+    private function fetchNewEmails($connection)
+    {
+        // Only fetch unread emails to avoid processing old emails
+        $emails = imap_search($connection, 'UNSEEN');
+        
+        if (!$emails) {
+            return [];
+        }
+        
+        return $emails;
     }
 }

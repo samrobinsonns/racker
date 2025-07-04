@@ -53,6 +53,26 @@ const emailStyles = `
         max-width: 100%;
         height: auto;
         border-radius: 0.375rem;
+        display: block;
+        margin: 1rem 0;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .email-content img[src^="data:"] {
+        /* Base64 encoded images */
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .email-content img[src^="cid:"] {
+        /* CID images (should be replaced with data URLs) */
+        display: none;
+    }
+    
+    .email-content img[src^="http"] {
+        /* External images */
+        max-width: 100%;
+        height: auto;
     }
     
     .email-content blockquote {
@@ -69,6 +89,15 @@ const emailStyles = `
     
     .email-content li {
         margin-bottom: 0.25rem;
+    }
+    
+    /* Responsive images for mobile */
+    @media (max-width: 640px) {
+        .email-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 0.5rem 0;
+        }
     }
 `;
 import PrimaryButton from '@/Components/PrimaryButton';
