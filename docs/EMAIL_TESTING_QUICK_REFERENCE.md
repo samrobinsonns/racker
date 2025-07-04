@@ -4,6 +4,8 @@
 
 **Email Subject/Body Parsing**: Fixed email content appearing entirely in ticket title - now properly separates subject and description with improved encoding handling.
 
+**Sender Email Extraction**: Improved logic to correctly extract the sender's ("From:") email address even when the subject is the first line and the 'From:' header is on the next line (common with some mailserver formats).
+
 **Reply-to-Customer Functionality**: Fixed reply system for email-created tickets by implementing automatic contact creation/linking. Now both email-created and manually-created tickets support proper customer notifications.
 
 ## Quick Test Commands
@@ -37,6 +39,17 @@ echo "Subject: Test Ticket\n\nHello Support Team,\n\nThis is a test ticket.\n\nT
 # Process for all tenants
 ./vendor/bin/sail artisan emails:process
 ```
+
+### 4b. Production: Continuous Email Processing (Marks Emails as Read)
+```bash
+# Run this in production to process all new/unread emails every 60 seconds
+./vendor/bin/sail artisan emails:process-continuously --frequency=60
+
+# You can change the frequency (in seconds) for development/testing
+./vendor/bin/sail artisan emails:process-continuously --frequency=10
+```
+- This command will only process new/unread emails and mark them as read after creating tickets, preventing duplicates.
+- For production, set `--frequency=60` (every minute) or adjust as needed.
 
 ### 5. Test IMAP Connection
 ```bash
@@ -106,7 +119,7 @@ echo 'Requester Email: ' . \$ticket->requester_email . \"\n\";
 
 **Problem**: Entire email content appears in ticket title instead of being separated into subject and description.
 
-**Root Cause**: The original `cleanEmailBody()` method was too aggressive in removing content, thinking message text was email headers.
+**Root Cause**: The original `cleanEmailBody()` method was too aggressive in removing content, thinking message text was email headers. Also, some mailserver formats put the subject as the first line and the 'From:' header on the next line, which was not previously handled.
 
 **Solution Applied**: 
 - Updated `ProcessIncomingEmails.php` with improved email parsing logic
@@ -114,6 +127,7 @@ echo 'Requester Email: ' . \$ticket->requester_email . \"\n\";
 - Added proper email encoding handling (base64, quoted-printable)
 - Improved multipart email structure parsing
 - Added comprehensive debugging output
+- **NEW:** The parser now detects and extracts the sender's email from a 'From:' header that appears immediately after the subject line (for raw emails where the subject is the first line).
 
 **Test the Fix**:
 ```bash

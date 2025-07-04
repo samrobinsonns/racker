@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Jobs\ProcessEmailQueue;
 
 class Kernel extends ConsoleKernel
 {
@@ -31,6 +32,12 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Process email queue every minute
+        $schedule->job(new ProcessEmailQueue())
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onQueue('emails');
     }
 
     /**

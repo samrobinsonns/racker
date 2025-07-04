@@ -1,0 +1,37 @@
+From: Sam Robinson <sam.robinson@ccsleeds.co.uk>
+To: support@example.com
+Subject: HTML Email Test
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary42"
+
+--boundary42
+Content-Type: text/plain; charset="UTF-8"
+
+This is the plain text version of the email.
+
+--boundary42
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+  <body>
+    <p>This is the <b>HTML</b> version of the email.<br>
+    <span style="color: #2563eb;">With a blue signature and a logo:</span></p>
+    <table style="font-family: Arial; font-size: 14px;">
+      <tr>
+        <td><img src="https://upload.wikimedia.org/wikipedia/commons/4/47/React.svg" width="48" height="48" alt="Logo"></td>
+        <td style="padding-left: 12px;">
+          <strong>Sam Robinson</strong> | <span style="color: #2563eb;">CCS Technical Support</span><br>
+          <span style="font-size: 12px;">C.C.S. (Leeds) Ltd<br>
+          Unit A Seacroft Trade Park<br>
+          Coal Road, Leeds LS14 2AQ<br>
+          T: 0113 294 66 99<br>
+          E: <a href="mailto:sam.robinson@ccsleeds.co.uk">sam.robinson@ccsleeds.co.uk</a><br>
+          W: <a href="https://www.ccsleeds.co.uk">www.ccsleeds.co.uk</a></span>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size: 10px; color: #888;">This is a test email for HTML parsing.</p>
+  </body>
+</html>
+
+--boundary42-- 

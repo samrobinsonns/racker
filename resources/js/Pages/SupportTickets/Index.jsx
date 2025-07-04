@@ -103,15 +103,33 @@ export default function Index({
                             Manage and track support requests
                         </p>
                     </div>
-                    {permissions.create && (
-                        <Link
-                            href={route('support-tickets.create')}
-                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-sm text-white hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                        >
-                            <PlusIcon className="h-5 w-5 mr-2" />
-                            New Ticket
-                        </Link>
-                    )}
+                    <div className="flex items-center space-x-4">
+                        {permissions.create && (
+                            <Link
+                                href={route('support-tickets.create')}
+                                className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-sm text-white hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                            >
+                                <PlusIcon className="h-5 w-5 mr-2" />
+                                New Ticket
+                            </Link>
+                        )}
+                        {tickets.data.length > 0 && (
+                            <button
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to delete ALL tickets? This cannot be undone.')) {
+                                        router.post(route('support-tickets.clearAll'), {}, {
+                                            preserveState: true,
+                                            onSuccess: () => window.location.reload(),
+                                        });
+                                    }
+                                }}
+                                className="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-lg font-semibold text-sm text-white hover:bg-red-700 focus:bg-red-700 active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                            >
+                                <XCircleIcon className="h-5 w-5 mr-2" />
+                                Clear All
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Stats Grid */}

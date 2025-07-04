@@ -356,6 +356,24 @@ class SupportTicketsController extends Controller
     }
 
     /**
+     * Clear all tickets (for testing purposes)
+     */
+    public function clearAll(): \Illuminate\Http\JsonResponse
+    {
+        Gate::authorize('create', SupportTicket::class);
+
+        $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        
+        // Delete all tickets for the current tenant
+        $deletedCount = SupportTicket::forTenant($tenantId)->delete();
+        
+        return response()->json([
+            'message' => "Successfully deleted {$deletedCount} tickets",
+            'deleted_count' => $deletedCount
+        ]);
+    }
+
+    /**
      * Get filter options for the index page
      */
     private function getFilterOptions(string $tenantId): array

@@ -1,57 +1,84 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Jobs;
 
-use Illuminate\Console\Command;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use App\Models\EmailSetting;
-use App\Models\SupportTicket;
-use App\Models\SupportTicketStatus;
-use App\Models\SupportTicketPriority;
-use App\Models\User;
 use App\Services\SupportTickets\TicketService;
 use Illuminate\Support\Facades\Log;
 
-class ProcessIncomingEmails extends Command
+class ProcessEmailQueue implements ShouldQueue
 {
-    protected $signature = 'emails:process {tenant_id? : The tenant ID to process emails for}';
-    protected $description = 'Process incoming emails and create support tickets';
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected TicketService $ticketService;
+    public $timeout = 300; // 5 minutes timeout
+    public $tries = 3; // Retry 3 times if it fails
+    
+    protected $tenantId;
 
-    public function __construct(TicketService $ticketService)
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(?string $tenantId = null)
     {
-        parent::__construct();
-        $this->ticketService = $ticketService;
+        $this->tenantId = $tenantId;
+        $this->onQueue('emails'); // Use the emails queue
     }
 
-    public function handle()
+    /**
+     * Execute the job.
+     */
+    public function handle(TicketService $ticketService): void
     {
-        $tenantId = $this->argument('tenant_id');
+        Log::info('Starting email queue processing', [
+            'tenant_id' => $this->tenantId,
+            'job_id' => $this->job->getJobId(),
+        ]);
 
-        if ($tenantId) {
-            $this->processTenantEmails($tenantId);
-        } else {
-            // Process all tenants with IMAP enabled
-            $emailSettings = EmailSetting::where('imap_enabled', true)->get();
-            
-            foreach ($emailSettings as $settings) {
-                $this->processTenantEmails($settings->tenant_id);
+        try {
+            if ($this->tenantId) {
+                $this->processTenantEmails($this->tenantId, $ticketService);
+            } else {
+                // Process all tenants with IMAP enabled
+                $emailSettings = EmailSetting::where('imap_enabled', true)->get();
+                
+                foreach ($emailSettings as $settings) {
+                    $this->processTenantEmails($settings->tenant_id, $ticketService);
+                }
             }
-        }
 
-        $this->info('Email processing completed.');
+            Log::info('Email queue processing completed successfully', [
+                'tenant_id' => $this->tenantId,
+                'job_id' => $this->job->getJobId(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Email queue processing failed', [
+                'tenant_id' => $this->tenantId,
+                'job_id' => $this->job->getJobId(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            throw $e; // Re-throw to trigger retry
+        }
     }
 
-    private function processTenantEmails($tenantId)
+    /**
+     * Process emails for a specific tenant
+     */
+    private function processTenantEmails(string $tenantId, TicketService $ticketService): void
     {
-        $this->info("Processing emails for tenant: {$tenantId}");
-
         $emailSettings = EmailSetting::where('tenant_id', $tenantId)
             ->where('imap_enabled', true)
             ->first();
 
         if (!$emailSettings) {
-            $this->warn("No IMAP settings found for tenant: {$tenantId}");
+            Log::warning("No IMAP settings found for tenant: {$tenantId}");
             return;
         }
 
@@ -59,16 +86,19 @@ class ProcessIncomingEmails extends Command
             $connection = $this->connectToImap($emailSettings);
             
             if (!$connection) {
-                $this->error("Failed to connect to IMAP for tenant: {$tenantId}");
+                Log::error("Failed to connect to IMAP for tenant: {$tenantId}");
                 return;
             }
 
             // Get all messages
             $messageCount = imap_num_msg($connection);
-            $this->info("Found {$messageCount} messages in mailbox");
+            Log::info("Found {$messageCount} messages for tenant {$tenantId}");
 
+            $processedCount = 0;
             for ($i = 1; $i <= $messageCount; $i++) {
-                $this->processEmail($connection, $i, $emailSettings);
+                if ($this->processEmail($connection, $i, $emailSettings, $ticketService)) {
+                    $processedCount++;
+                }
             }
 
             imap_close($connection);
@@ -80,8 +110,10 @@ class ProcessIncomingEmails extends Command
                 'imap_last_check_error' => null,
             ]);
 
+            Log::info("Processed {$processedCount} emails for tenant {$tenantId}");
+
         } catch (\Exception $e) {
-            $this->error("Error processing emails for tenant {$tenantId}: " . $e->getMessage());
+            Log::error("Error processing emails for tenant {$tenantId}: " . $e->getMessage());
             
             $emailSettings->update([
                 'imap_last_check_at' => now(),
@@ -91,6 +123,9 @@ class ProcessIncomingEmails extends Command
         }
     }
 
+    /**
+     * Connect to IMAP server
+     */
     private function connectToImap($emailSettings)
     {
         $connectionString = $this->buildImapConnectionString(
@@ -103,6 +138,9 @@ class ProcessIncomingEmails extends Command
         return @imap_open($connectionString, $emailSettings->imap_username, $emailSettings->imap_password, 0, 1);
     }
 
+    /**
+     * Build IMAP connection string
+     */
     private function buildImapConnectionString($host, $port, $encryption, $folder)
     {
         $encryptionFlag = '';
@@ -122,74 +160,65 @@ class ProcessIncomingEmails extends Command
         return "{{$host}:{$port}/imap{$encryptionFlag}}{$folder}";
     }
 
-    private function processEmail($connection, $messageNumber, $emailSettings)
+    /**
+     * Process individual email
+     */
+    private function processEmail($connection, $messageNumber, $emailSettings, TicketService $ticketService): bool
     {
         try {
             // Get email headers
             $headers = imap_headerinfo($connection, $messageNumber);
             
             if (!$headers) {
-                $this->warn("Could not read headers for message {$messageNumber}");
-                return;
+                Log::warning("Could not read headers for message {$messageNumber}");
+                return false;
             }
 
             $from = $headers->from[0]->mailbox . '@' . $headers->from[0]->host;
             $rawSubject = $headers->subject ?? 'No Subject';
             $date = date('Y-m-d H:i:s', strtotime($headers->date));
 
-            $this->info("Processing email from {$from}");
-            $this->info("Raw subject preview: " . substr($rawSubject, 0, 100) . "...");
+            Log::info("Processing email from {$from} for tenant {$emailSettings->tenant_id}");
 
-            // Check if this looks like a raw email content in the subject (mailserver issue)
+            // Check if this looks like a raw email content in the subject
             if ($this->isRawEmailInSubject($rawSubject)) {
-                $this->info("Detected raw email content in subject - parsing manually");
                 $parsed = $this->parseRawEmailContent($rawSubject);
                 $subject = $parsed['subject'];
                 $body = $parsed['body'];
-                // Use the extracted sender if available
                 if (!empty($parsed['from'])) {
                     $from = $parsed['from'];
-                    $this->info("Using extracted sender: {$from}");
                 }
             } else {
                 $subject = $rawSubject;
                 $body = $this->getEmailBody($connection, $messageNumber);
             }
 
-            $this->info("Final subject: {$subject}");
-            $this->info("Subject length: " . strlen($subject));
-            $this->info("Body length: " . strlen($body));
-            $this->info("Body preview (first 100 chars): " . substr($body, 0, 100));
-
             // Check if ticket already exists for this email
-            $existingTicket = SupportTicket::where('tenant_id', $emailSettings->tenant_id)
+            $existingTicket = \App\Models\SupportTicket::where('tenant_id', $emailSettings->tenant_id)
                 ->where('source', 'email')
                 ->where('source_id', $messageNumber)
                 ->first();
 
             if ($existingTicket) {
-                $this->info("Ticket already exists for message {$messageNumber}");
-                return;
+                Log::info("Ticket already exists for message {$messageNumber}");
+                return false;
             }
 
             // Validate that we have meaningful content
             if (empty(trim($body))) {
-                $this->warn("Email body is empty for message {$messageNumber}, using subject as description");
+                Log::warning("Email body is empty for message {$messageNumber}, using subject as description");
                 $body = "Email content could not be parsed. Subject: {$subject}";
             }
 
             // Create new support ticket
-            $this->createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber);
+            $this->createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber, $ticketService);
 
-            $this->info("Created ticket for message {$messageNumber}");
+            Log::info("Created ticket for message {$messageNumber}");
+            return true;
 
         } catch (\Exception $e) {
-            $this->error("Error processing message {$messageNumber}: " . $e->getMessage());
-            Log::error("Error processing email message {$messageNumber}", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'tenant_id' => $emailSettings->tenant_id
-            ]);
+            Log::error("Error processing message {$messageNumber}: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -198,20 +227,10 @@ class ProcessIncomingEmails extends Command
      */
     private function isRawEmailInSubject($subject): bool
     {
-        // Handle different types of newline characters and escape sequences
         $patterns = [
-            // Standard newlines
-            "\nFrom:",
-            "\nTo:",
-            "\nSubject:",
-            // Windows line endings
-            "\r\nFrom:",
-            "\r\nTo:", 
-            "\r\nSubject:",
-            // Escaped newlines (literal \n)
-            "\\nFrom:",
-            "\\nTo:",
-            "\\nSubject:",
+            "\nFrom:", "\nTo:", "\nSubject:",
+            "\r\nFrom:", "\r\nTo:", "\r\nSubject:",
+            "\\nFrom:", "\\nTo:", "\\nSubject:",
         ];
         
         foreach ($patterns as $pattern) {
@@ -220,17 +239,14 @@ class ProcessIncomingEmails extends Command
             }
         }
         
-        // Check if starts with header patterns
         if (strpos($subject, "From:") === 0 || strpos($subject, "To:") === 0) {
             return true;
         }
         
-        // Check for double newlines (any type)
         if (preg_match('/(\n|\r\n|\\n)\s*(\n|\r\n|\\n)/', $subject)) {
             return true;
         }
         
-        // Check for multiple header-like patterns
         $headerCount = 0;
         $headerPatterns = ['From:', 'To:', 'Subject:', 'Date:', 'Message-ID:'];
         foreach ($headerPatterns as $header) {
@@ -239,20 +255,16 @@ class ProcessIncomingEmails extends Command
             }
         }
         
-        return $headerCount >= 2; // If we find 2+ headers, it's likely raw email
+        return $headerCount >= 2;
     }
 
     /**
-     * Parse raw email content to extract subject and body
+     * Parse raw email content
      */
     private function parseRawEmailContent($rawContent): array
     {
-        // First, normalize line endings and handle escaped newlines
-        $rawContent = str_replace(['\\n', '\n'], "\n", $rawContent); // Convert escaped newlines
-        $rawContent = str_replace("\r\n", "\n", $rawContent); // Normalize Windows line endings
-        
-        $this->info("DEBUG: Raw content after normalization:");
-        $this->info(substr($rawContent, 0, 200) . "...");
+        $rawContent = str_replace(['\\n', '\n'], "\n", $rawContent);
+        $rawContent = str_replace("\r\n", "\n", $rawContent);
         
         $lines = explode("\n", $rawContent);
         $subject = '';
@@ -260,42 +272,36 @@ class ProcessIncomingEmails extends Command
         $inHeaders = true;
         $headersParsed = false;
         $from = '';
+        $subjectLineIndex = null;
         
         $parsedHeaders = [];
-        $subjectLineIndex = null;
         
         for ($i = 0; $i < count($lines); $i++) {
             $line = $lines[$i];
             
             if ($inHeaders && !$headersParsed) {
-                // Parse header lines
                 if (preg_match('/^([A-Za-z\-]+):\s*(.*)$/', $line, $matches)) {
                     $headerName = strtolower($matches[1]);
                     $headerValue = $matches[2];
                     $parsedHeaders[$headerName] = $headerValue;
-                    $this->info("DEBUG: Found header: {$headerName} = {$headerValue}");
+                    
                     if ($headerName === 'subject') {
                         $subject = $headerValue;
                         $subjectLineIndex = $i;
                     } elseif ($headerName === 'from') {
                         $from = $this->extractEmailFromHeader($headerValue);
-                        $this->info("DEBUG: Extracted from email: {$from}");
                     }
                 } elseif (trim($line) === '') {
-                    // Empty line indicates end of headers
                     $inHeaders = false;
                     $headersParsed = true;
-                    $this->info("DEBUG: End of headers detected");
                 } elseif (!isset($parsedHeaders['subject']) && trim($line) !== '') {
-                    // If no proper headers found and we have content, treat first line as subject
                     $subject = trim($line);
                     $subjectLineIndex = $i;
                     $inHeaders = false;
                     $headersParsed = true;
-                    continue; // Don't add this line to body
+                    continue;
                 }
             } else {
-                // This is body content
                 $body .= $line;
                 if ($i < count($lines) - 1) {
                     $body .= "\n";
@@ -303,46 +309,38 @@ class ProcessIncomingEmails extends Command
             }
         }
         
-        // If no 'from' found in headers, check the line(s) after the subject for a 'From:' header
+        // If no 'from' found in headers, check the line(s) after the subject
         if (empty($from) && $subjectLineIndex !== null) {
             for ($j = $subjectLineIndex + 1; $j < min($subjectLineIndex + 4, count($lines)); $j++) {
                 if (preg_match('/^From:\s*(.*)$/i', $lines[$j], $matches)) {
                     $from = $this->extractEmailFromHeader($matches[1]);
-                    $this->info("DEBUG: Extracted from email after subject: {$from}");
                     break;
                 }
             }
         }
         
-        // Clean up the results
         $subject = trim($subject);
         $body = trim($body);
         
-        // If no subject was found in headers, try to extract from content
         if (empty($subject) && !empty($body)) {
             $bodyLines = explode("\n", $body);
             if (count($bodyLines) > 0) {
                 $firstLine = trim($bodyLines[0]);
                 if (strlen($firstLine) > 0 && strlen($firstLine) < 200) {
                     $subject = $firstLine;
-                    // Remove the first line from body
                     array_shift($bodyLines);
                     $body = trim(implode("\n", $bodyLines));
                 }
             }
         }
         
-        // Ensure subject length limit
         if (strlen($subject) > 255) {
             $subject = substr($subject, 0, 252) . '...';
         }
         
-        // If still no subject, provide default
         if (empty($subject)) {
             $subject = 'Email Support Request';
         }
-        
-        $this->info("DEBUG: Final parsed results - subject: '{$subject}', from: '{$from}'");
         
         return [
             'subject' => $subject,
@@ -357,55 +355,38 @@ class ProcessIncomingEmails extends Command
      */
     private function extractEmailFromHeader($header): string
     {
-        // Try to extract email from "Name <email@example.com>" format
         if (preg_match('/<(.+?)>/', $header, $matches)) {
             return $matches[1];
         }
         
-        // If no angle brackets, try to find the first email-like string
         if (preg_match('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', $header, $matches)) {
             return $matches[1];
         }
         
-        // If no email found, return the whole header
         return $header;
     }
 
+    /**
+     * Get email body
+     */
     private function getEmailBody($connection, $messageNumber)
     {
         $structure = imap_fetchstructure($connection, $messageNumber);
         
-        // Debug the email structure
-        $this->info("Email structure type: " . $structure->type);
-        if (isset($structure->parts)) {
-            $this->info("Email has " . count($structure->parts) . " parts");
-        }
-        
         if ($structure->type == 0) {
-            // Simple plain text message
-            $this->info("Processing as plain text message");
             $body = imap_fetchbody($connection, $messageNumber, 1);
             
-            // Handle encoding
             if (isset($structure->encoding)) {
                 $body = $this->decodeEmailBody($body, $structure->encoding);
             }
             
             return $this->cleanEmailBody($body);
         } elseif ($structure->type == 1) {
-            // Multipart message
-            $this->info("Processing as multipart message");
-            
             if (isset($structure->parts)) {
-                // Look for text/plain part first
                 foreach ($structure->parts as $partNumber => $part) {
-                    $this->info("Part " . ($partNumber + 1) . " - Type: {$part->type}, Subtype: " . strtolower($part->subtype));
-                    
                     if ($part->type == 0 && strtolower($part->subtype) == 'plain') {
-                        $this->info("Found plain text part at position " . ($partNumber + 1));
                         $body = imap_fetchbody($connection, $messageNumber, $partNumber + 1);
                         
-                        // Handle encoding
                         if (isset($part->encoding)) {
                             $body = $this->decodeEmailBody($body, $part->encoding);
                         }
@@ -414,29 +395,22 @@ class ProcessIncomingEmails extends Command
                     }
                 }
                 
-                // If no plain text found, try text/html
                 foreach ($structure->parts as $partNumber => $part) {
                     if ($part->type == 0 && strtolower($part->subtype) == 'html') {
-                        $this->info("No plain text found, using HTML part at position " . ($partNumber + 1));
                         $body = imap_fetchbody($connection, $messageNumber, $partNumber + 1);
                         
-                        // Handle encoding
                         if (isset($part->encoding)) {
                             $body = $this->decodeEmailBody($body, $part->encoding);
                         }
                         
-                        // Strip HTML tags to get plain text
                         $body = strip_tags($body);
                         return $this->cleanEmailBody($body);
                     }
                 }
                 
-                // If still nothing found, try the first part
                 if (isset($structure->parts[0])) {
-                    $this->info("No specific text part found, using first part");
                     $body = imap_fetchbody($connection, $messageNumber, 1);
                     
-                    // Handle encoding
                     if (isset($structure->parts[0]->encoding)) {
                         $body = $this->decodeEmailBody($body, $structure->parts[0]->encoding);
                     }
@@ -446,11 +420,8 @@ class ProcessIncomingEmails extends Command
             }
         }
 
-        // Fallback - get the whole message body
-        $this->info("Using fallback method to get email body");
         $body = imap_fetchbody($connection, $messageNumber, 1);
         
-        // Try to handle encoding if we have structure info
         if (isset($structure->encoding)) {
             $body = $this->decodeEmailBody($body, $structure->encoding);
         }
@@ -464,39 +435,31 @@ class ProcessIncomingEmails extends Command
     private function decodeEmailBody($body, $encoding)
     {
         switch ($encoding) {
-            case 1: // 8bit
-                return $body;
-            case 2: // binary
-                return $body;
-            case 3: // base64
-                return base64_decode($body);
-            case 4: // quoted-printable
-                return quoted_printable_decode($body);
-            default:
-                return $body;
+            case 1: return $body; // 8bit
+            case 2: return $body; // binary
+            case 3: return base64_decode($body); // base64
+            case 4: return quoted_printable_decode($body); // quoted-printable
+            default: return $body;
         }
     }
 
+    /**
+     * Clean email body
+     */
     private function cleanEmailBody($body)
     {
-        // Decode if needed
         $body = imap_utf8($body);
         
-        // Handle base64 or quoted-printable encoding if present
         if (strpos($body, '=?') !== false) {
             $body = imap_mime_header_decode($body)[0]->text ?? $body;
         }
         
-        // Simple cleanup - just remove extra whitespace and common email artifacts
         $body = trim($body);
         
-        // Remove any remaining raw email headers only if they appear at the very beginning
-        // Only remove if the body starts with obvious header patterns
         if (preg_match('/^(From|To|Subject|Date|Message-ID):\s/i', $body)) {
             $lines = explode("\n", $body);
             $bodyStart = 0;
             
-            // Find the first empty line (end of headers)
             for ($i = 0; $i < count($lines); $i++) {
                 if (trim($lines[$i]) === '') {
                     $bodyStart = $i + 1;
@@ -504,20 +467,15 @@ class ProcessIncomingEmails extends Command
                 }
             }
             
-            // Take everything after the empty line
             if ($bodyStart > 0 && $bodyStart < count($lines)) {
                 $body = implode("\n", array_slice($lines, $bodyStart));
             }
         }
         
-        // Clean up common email artifacts
-        $body = preg_replace('/^[\r\n\s]*/', '', $body); // Remove leading whitespace
-        $body = preg_replace('/[\r\n\s]*$/', '', $body); // Remove trailing whitespace
-        
-        // Remove excessive line breaks (more than 2 consecutive)
+        $body = preg_replace('/^[\r\n\s]*/', '', $body);
+        $body = preg_replace('/[\r\n\s]*$/', '', $body);
         $body = preg_replace('/\n{3,}/', "\n\n", $body);
         
-        // Limit length to prevent database issues
         if (strlen($body) > 65535) {
             $body = substr($body, 0, 65532) . '...';
         }
@@ -525,13 +483,14 @@ class ProcessIncomingEmails extends Command
         return $body;
     }
 
-    private function createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber)
+    /**
+     * Create support ticket
+     */
+    private function createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber, TicketService $ticketService)
     {
-        // Get first available status and priority for this tenant, or use defaults
-        $defaultStatus = SupportTicketStatus::where('tenant_id', $emailSettings->tenant_id)->first();
-        $defaultPriority = SupportTicketPriority::where('tenant_id', $emailSettings->tenant_id)->first();
+        $defaultStatus = \App\Models\SupportTicketStatus::where('tenant_id', $emailSettings->tenant_id)->first();
+        $defaultPriority = \App\Models\SupportTicketPriority::where('tenant_id', $emailSettings->tenant_id)->first();
 
-        // Prepare ticket data for TicketService
         $ticketData = [
             'subject' => $subject,
             'description' => $body,
@@ -539,13 +498,12 @@ class ProcessIncomingEmails extends Command
             'requester_name' => $this->extractNameFromEmail($from),
             'status_id' => $defaultStatus->id ?? 1,
             'priority_id' => $defaultPriority->id ?? 1,
-            'category_id' => null, // Set to null for email-created tickets
+            'category_id' => null,
             'source' => 'email',
             'source_id' => $messageNumber,
         ];
 
-        // Use TicketService to create the ticket (this will auto-create/link contact)
-        $ticket = $this->ticketService->createTicket($ticketData, $emailSettings->tenant_id);
+        $ticket = $ticketService->createTicket($ticketData, $emailSettings->tenant_id);
 
         Log::info("Created support ticket from email", [
             'ticket_id' => $ticket->id,
@@ -559,13 +517,28 @@ class ProcessIncomingEmails extends Command
         return $ticket;
     }
 
+    /**
+     * Extract name from email
+     */
     private function extractNameFromEmail($email)
     {
         $parts = explode('@', $email);
         $username = $parts[0];
         
-        // Convert username to readable name
         $name = str_replace(['.', '_', '-'], ' ', $username);
         return ucwords($name);
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('Email queue processing job failed', [
+            'tenant_id' => $this->tenantId,
+            'job_id' => $this->job->getJobId(),
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
     }
 } 

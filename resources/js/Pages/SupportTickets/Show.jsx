@@ -1,6 +1,74 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+
+// Add CSS for email content styling
+const emailStyles = `
+    .email-content {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
+        color: #374151;
+    }
+    
+    .email-content p {
+        margin-bottom: 1rem;
+    }
+    
+    .email-content br {
+        display: block;
+        margin: 0.5rem 0;
+    }
+    
+    .email-content strong, .email-content b {
+        font-weight: 600;
+        color: #111827;
+    }
+    
+    .email-content em, .email-content i {
+        font-style: italic;
+    }
+    
+    .email-content a {
+        color: #2563eb;
+        text-decoration: underline;
+    }
+    
+    .email-content a:hover {
+        color: #1d4ed8;
+    }
+    
+    .email-content table {
+        border-collapse: collapse;
+        margin: 1rem 0;
+    }
+    
+    .email-content td, .email-content th {
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+    }
+    
+    .email-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.375rem;
+    }
+    
+    .email-content blockquote {
+        border-left: 4px solid #d1d5db;
+        padding-left: 1rem;
+        margin: 1rem 0;
+        color: #6b7280;
+    }
+    
+    .email-content ul, .email-content ol {
+        padding-left: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    .email-content li {
+        margin-bottom: 0.25rem;
+    }
+`;
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
@@ -304,7 +372,9 @@ export default function Show({
                 </div>
             }
         >
-            <Head title={`Ticket #${ticket.ticket_number}`} />
+            <Head title={`Ticket #${ticket.ticket_number}`}>
+                <style>{emailStyles}</style>
+            </Head>
 
             <div className="py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -342,9 +412,19 @@ export default function Show({
 
                                 {/* Description */}
                                 <div className="mt-6">
-                                    <div className="prose max-w-none">
+                                    {ticket.raw_html ? (
+                                        <div
+                                            className="email-content"
+                                            dangerouslySetInnerHTML={{ __html: ticket.raw_html }}
+                                        />
+                                    ) : ticket.is_html ? (
+                                        <div
+                                            className="email-content"
+                                            dangerouslySetInnerHTML={{ __html: ticket.description }}
+                                        />
+                                    ) : (
                                         <p className="whitespace-pre-wrap">{ticket.description}</p>
-                                    </div>
+                                    )}
                                 </div>
 
                                 {/* Initial Attachments */}

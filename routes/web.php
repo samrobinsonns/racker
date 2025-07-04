@@ -331,6 +331,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:' . Permission::ESCALATE_SUPPORT_TICKETS)
         ->name('support-tickets.escalate');
     
+    // Clear all tickets (for testing)
+    Route::post('support-tickets/clear-all', [SupportTicketsController::class, 'clearAll'])
+        ->middleware('permission:' . Permission::CREATE_SUPPORT_TICKETS)
+        ->name('support-tickets.clearAll');
+    
     // Support Ticket Replies
     Route::resource('support-tickets.replies', SupportTicketRepliesController::class)
         ->middleware([
