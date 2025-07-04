@@ -1,0 +1,16 @@
+Subject: Test HTML Email
+
+<html>
+<body>
+<h1>Hello Support Team</h1>
+<p>This is a <strong>test email</strong> with <em>HTML formatting</em>.</p>
+<p>It should display with proper formatting including:</p>
+<ul>
+<li>Bold text</li>
+<li>Italic text</li>
+<li>Lists</li>
+<li>Paragraphs</li>
+</ul>
+<p>Best regards,<br>Test User</p>
+</body>
+</html>

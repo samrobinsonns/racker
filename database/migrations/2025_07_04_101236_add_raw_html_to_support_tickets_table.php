@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('support_tickets', function (Blueprint $table) {
-            //
+            $table->longText('raw_html')->nullable()->after('description');
+            $table->boolean('is_html')->default(false)->after('raw_html');
         });
     }
 
@@ -22,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('support_tickets', function (Blueprint $table) {
-            //
+            $table->dropColumn(['raw_html', 'is_html']);
         });
     }
 };

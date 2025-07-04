@@ -151,15 +151,20 @@ class ProcessIncomingEmails extends Command
                     $from = $parsed['from'];
                     $this->info("Using extracted sender: {$from}");
                 }
-            } else {
-                $subject = $rawSubject;
-                $body = $this->getEmailBody($connection, $messageNumber);
-            }
+                    } else {
+            $subject = $rawSubject;
+            $result = $this->getEmailBody($connection, $messageNumber);
+            $body = $result['body'];
+            $rawHtml = $result['raw_html'] ?? null;
+        }
 
-            $this->info("Final subject: {$subject}");
-            $this->info("Subject length: " . strlen($subject));
-            $this->info("Body length: " . strlen($body));
-            $this->info("Body preview (first 100 chars): " . substr($body, 0, 100));
+        $this->info("Final subject: {$subject}");
+        $this->info("Subject length: " . strlen($subject));
+        $this->info("Body length: " . strlen($body));
+        $this->info("Body preview (first 100 chars): " . substr($body, 0, 100));
+        if ($rawHtml) {
+            $this->info("HTML content available: " . strlen($rawHtml) . " characters");
+        }
 
             // Check if ticket already exists for this email
             $existingTicket = SupportTicket::where('tenant_id', $emailSettings->tenant_id)
@@ -179,7 +184,7 @@ class ProcessIncomingEmails extends Command
             }
 
             // Create new support ticket
-            $this->createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber);
+            $this->createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber, $rawHtml);
 
             $this->info("Created ticket for message {$messageNumber}");
 
@@ -381,81 +386,72 @@ class ProcessIncomingEmails extends Command
             $this->info("Email has " . count($structure->parts) . " parts");
         }
         
-        if ($structure->type == 0) {
-            // Simple plain text message
-            $this->info("Processing as plain text message");
-            $body = imap_fetchbody($connection, $messageNumber, 1);
-            
-            // Handle encoding
+        // Use the improved method that handles both plain text and HTML
+        $result = $this->findBestPart($connection, $messageNumber, $structure);
+        
+        return $result;
+    }
+
+    /**
+     * Find the best part (plain text or HTML) from the email
+     */
+    private function findBestPart($connection, $messageNumber, $structure, $partNumberPrefix = '', $attachments = [])
+    {
+        $bestPlain = null;
+        $bestHtml = null;
+        $bestPlainLen = 0;
+        $bestHtmlLen = 0;
+
+        if (isset($structure->parts) && is_array($structure->parts)) {
+            foreach ($structure->parts as $idx => $part) {
+                $partNumber = $partNumberPrefix === '' ? ($idx + 1) : ($partNumberPrefix . '.' . ($idx + 1));
+                $found = $this->findBestPart($connection, $messageNumber, $part, $partNumber, $attachments);
+                
+                if ($found['body'] && !$found['raw_html']) {
+                    if (strlen($found['body']) > $bestPlainLen) {
+                        $bestPlain = $found['body'];
+                        $bestPlainLen = strlen($found['body']);
+                    }
+                } elseif ($found['raw_html'] && strlen($found['raw_html']) > $bestHtmlLen) {
+                    $bestHtml = $found['raw_html'];
+                    $bestHtmlLen = strlen($found['raw_html']);
+                }
+            }
+        } else {
+            $body = imap_fetchbody($connection, $messageNumber, $partNumberPrefix ?: 1);
             if (isset($structure->encoding)) {
                 $body = $this->decodeEmailBody($body, $structure->encoding);
             }
-            
-            return $this->cleanEmailBody($body);
-        } elseif ($structure->type == 1) {
-            // Multipart message
-            $this->info("Processing as multipart message");
-            
-            if (isset($structure->parts)) {
-                // Look for text/plain part first
-                foreach ($structure->parts as $partNumber => $part) {
-                    $this->info("Part " . ($partNumber + 1) . " - Type: {$part->type}, Subtype: " . strtolower($part->subtype));
-                    
-                    if ($part->type == 0 && strtolower($part->subtype) == 'plain') {
-                        $this->info("Found plain text part at position " . ($partNumber + 1));
-                        $body = imap_fetchbody($connection, $messageNumber, $partNumber + 1);
-                        
-                        // Handle encoding
-                        if (isset($part->encoding)) {
-                            $body = $this->decodeEmailBody($body, $part->encoding);
-                        }
-                        
-                        return $this->cleanEmailBody($body);
-                    }
-                }
-                
-                // If no plain text found, try text/html
-                foreach ($structure->parts as $partNumber => $part) {
-                    if ($part->type == 0 && strtolower($part->subtype) == 'html') {
-                        $this->info("No plain text found, using HTML part at position " . ($partNumber + 1));
-                        $body = imap_fetchbody($connection, $messageNumber, $partNumber + 1);
-                        
-                        // Handle encoding
-                        if (isset($part->encoding)) {
-                            $body = $this->decodeEmailBody($body, $part->encoding);
-                        }
-                        
-                        // Strip HTML tags to get plain text
-                        $body = strip_tags($body);
-                        return $this->cleanEmailBody($body);
-                    }
-                }
-                
-                // If still nothing found, try the first part
-                if (isset($structure->parts[0])) {
-                    $this->info("No specific text part found, using first part");
-                    $body = imap_fetchbody($connection, $messageNumber, 1);
-                    
-                    // Handle encoding
-                    if (isset($structure->parts[0]->encoding)) {
-                        $body = $this->decodeEmailBody($body, $structure->parts[0]->encoding);
-                    }
-                    
-                    return $this->cleanEmailBody($body);
-                }
+
+            if (isset($structure->subtype) && strtoupper($structure->subtype) === 'HTML') {
+                return [
+                    'body' => $this->cleanEmailBody($body),
+                    'raw_html' => $body
+                ];
+            } elseif (isset($structure->subtype) && strtoupper($structure->subtype) === 'PLAIN') {
+                return [
+                    'body' => $this->cleanEmailBody($body),
+                    'raw_html' => null
+                ];
             }
         }
-
-        // Fallback - get the whole message body
-        $this->info("Using fallback method to get email body");
-        $body = imap_fetchbody($connection, $messageNumber, 1);
         
-        // Try to handle encoding if we have structure info
-        if (isset($structure->encoding)) {
-            $body = $this->decodeEmailBody($body, $structure->encoding);
+        if ($bestHtml) {
+            return [
+                'body' => $this->cleanEmailBody($bestHtml),
+                'raw_html' => $bestHtml
+            ];
+        } elseif ($bestPlain) {
+            return [
+                'body' => $this->cleanEmailBody($bestPlain),
+                'raw_html' => null
+            ];
+        } else {
+            return [
+                'body' => 'No readable content found',
+                'raw_html' => null
+            ];
         }
-        
-        return $this->cleanEmailBody($body);
     }
 
     /**
@@ -479,15 +475,27 @@ class ProcessIncomingEmails extends Command
 
     private function cleanEmailBody($body)
     {
-        // Decode if needed
-        $body = imap_utf8($body);
-        
-        // Handle base64 or quoted-printable encoding if present
-        if (strpos($body, '=?') !== false) {
-            $body = imap_mime_header_decode($body)[0]->text ?? $body;
+        // Check if this is HTML content
+        if (str_contains($body, '<html') || str_contains($body, '<body') || str_contains($body, '<div') || str_contains($body, '<p>')) {
+            // For HTML content, preserve formatting but clean up
+            $body = $this->cleanHtmlBody($body);
+        } else {
+            // For plain text, preserve line breaks but clean up excessive whitespace
+            $body = imap_utf8($body);
+            
+            // Handle base64 or quoted-printable encoding if present
+            if (strpos($body, '=?') !== false) {
+                $body = imap_mime_header_decode($body)[0]->text ?? $body;
+            }
+            
+            $body = strip_tags($body);
+            $body = html_entity_decode($body, ENT_QUOTES, 'UTF-8');
+            // Preserve line breaks but clean up multiple spaces within lines
+            $body = preg_replace('/[ \t]+/', ' ', $body);
+            // Normalize line endings
+            $body = str_replace(["\r\n", "\r"], "\n", $body);
         }
         
-        // Simple cleanup - just remove extra whitespace and common email artifacts
         $body = trim($body);
         
         // Remove any remaining raw email headers only if they appear at the very beginning
@@ -525,16 +533,43 @@ class ProcessIncomingEmails extends Command
         return $body;
     }
 
-    private function createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber)
+    /**
+     * Clean HTML email body while preserving formatting
+     */
+    private function cleanHtmlBody($body)
+    {
+        // Remove potentially dangerous tags but keep formatting
+        $dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'];
+        foreach ($dangerousTags as $tag) {
+            $body = preg_replace('/<' . $tag . '[^>]*>.*?<\/' . $tag . '>/is', '', $body);
+            $body = preg_replace('/<' . $tag . '[^>]*\/?>/i', '', $body);
+        }
+        // Remove on* attributes (onclick, onload, etc.)
+        $body = preg_replace('/\s+on\w+\s*=\s*["\'][^"\']*["\']/i', '', $body);
+        // Remove javascript: URLs
+        $body = preg_replace('/javascript:/i', '', $body);
+        // Decode HTML entities
+        $body = html_entity_decode($body, ENT_QUOTES, 'UTF-8');
+        // Do NOT remove style attributes, table, tr, td, th, font, span, img tags
+        // Do NOT collapse whitespace or strip tags further
+        return $body;
+    }
+
+    private function createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber, $rawHtml = null)
     {
         // Get first available status and priority for this tenant, or use defaults
         $defaultStatus = SupportTicketStatus::where('tenant_id', $emailSettings->tenant_id)->first();
         $defaultPriority = SupportTicketPriority::where('tenant_id', $emailSettings->tenant_id)->first();
 
+        // Check if body contains HTML
+        $isHtml = str_contains($body, '<') && str_contains($body, '>');
+
         // Prepare ticket data for TicketService
         $ticketData = [
             'subject' => $subject,
             'description' => $body,
+            'raw_html' => $rawHtml,
+            'is_html' => $isHtml,
             'requester_email' => $from,
             'requester_name' => $this->extractNameFromEmail($from),
             'status_id' => $defaultStatus->id ?? 1,

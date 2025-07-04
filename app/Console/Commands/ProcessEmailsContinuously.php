@@ -16,7 +16,8 @@ class ProcessEmailsContinuously extends Command
      * @var string
      */
     protected $signature = 'emails:process-continuously 
-                            {--frequency=60 : Frequency in seconds between email checks (default: 60)}';
+                            {--frequency=60 : Frequency in seconds between email checks (default: 60)}
+                            {--debug : Enable debug output for MIME structure and part selection}';
 
     /**
      * The console command description.
@@ -31,6 +32,8 @@ class ProcessEmailsContinuously extends Command
     public function handle()
     {
         $frequency = (int) $this->option('frequency');
+        $debug = $this->option('debug');
+        $this->debugMode = $debug;
         
         $this->info("Starting continuous email processing...");
         $this->info("Frequency: {$frequency} seconds");
@@ -185,11 +188,10 @@ class ProcessEmailsContinuously extends Command
             }
             // Log the MIME structure for debugging
             $structure = imap_fetchstructure($connection, $messageNumber);
-            Log::info('Email MIME structure', [
-                'tenant_id' => $emailSettings->tenant_id,
-                'messageNumber' => $messageNumber,
-                'structure' => json_encode($structure)
-            ]);
+            if ($this->option('debug')) {
+                $this->info("[DEBUG] Full MIME structure: " . json_encode($structure));
+                \Log::info('[DEBUG] Full MIME structure', ['structure' => $structure]);
+            }
             $from = $headers->from[0]->mailbox . '@' . $headers->from[0]->host;
             $rawSubject = $headers->subject ?? 'No Subject';
             $date = date('Y-m-d H:i:s', strtotime($headers->date));
@@ -311,13 +313,26 @@ class ProcessEmailsContinuously extends Command
     }
 
     /**
-     * Recursively find the largest HTML part (fallback to plain text)
+     * Recursively find the largest HTML part (fallback to largest plain text) in any MIME structure.
+     * Handles deeply nested multiparts, multipart/alternative, multipart/related, etc.
+     * Returns: [ 'body' => plain text or null, 'raw_html' => HTML or null ]
      */
     private function findBestPart($connection, $messageNumber, $structure, $partNumberPrefix = '', $attachments = [])
     {
         $bestHtml = null;
         $bestHtmlLen = 0;
         $bestPlain = null;
+        $bestPlainLen = 0;
+
+        // Debug: print structure info
+        if (property_exists($this, 'debugMode') && $this->debugMode) {
+            $type = isset($structure->type) ? $structure->type : null;
+            $subtype = isset($structure->subtype) ? strtoupper($structure->subtype) : '';
+            $this->info("[DEBUG] Traversing part: partNumber={$partNumberPrefix} type={$type} subtype={$subtype}");
+            \Log::info('[DEBUG] Traversing part', ['partNumber' => $partNumberPrefix, 'type' => $type, 'subtype' => $subtype]);
+        }
+
+        // If this part has subparts, recurse into them
         if (isset($structure->parts) && is_array($structure->parts)) {
             foreach ($structure->parts as $idx => $part) {
                 $partNumber = $partNumberPrefix === '' ? ($idx + 1) : ($partNumberPrefix . '.' . ($idx + 1));
@@ -325,43 +340,79 @@ class ProcessEmailsContinuously extends Command
                 if ($found['raw_html'] && strlen($found['raw_html']) > $bestHtmlLen) {
                     $bestHtml = $found['raw_html'];
                     $bestHtmlLen = strlen($found['raw_html']);
+                    if (property_exists($this, 'debugMode') && $this->debugMode) {
+                        $this->info("[DEBUG] Found HTML part at {$partNumber} (len={$bestHtmlLen})");
+                        \Log::info('[DEBUG] Found HTML part', ['partNumber' => $partNumber, 'length' => $bestHtmlLen]);
+                    }
                 }
-                if ($found['body'] && !$bestPlain) {
+                if ($found['body'] && strlen($found['body']) > $bestPlainLen) {
                     $bestPlain = $found['body'];
+                    $bestPlainLen = strlen($found['body']);
+                    if (property_exists($this, 'debugMode') && $this->debugMode) {
+                        $this->info("[DEBUG] Found plain part at {$partNumber} (len={$bestPlainLen})");
+                        \Log::info('[DEBUG] Found plain part', ['partNumber' => $partNumber, 'length' => $bestPlainLen]);
+                    }
                 }
             }
         } else {
+            // This is a leaf part
+            $subtype = isset($structure->subtype) ? strtoupper($structure->subtype) : '';
+            $type = isset($structure->type) ? $structure->type : null;
+            $isText = ($type === 0); // 0 = text, 1 = multipart, 2 = message, etc.
             $body = imap_fetchbody($connection, $messageNumber, $partNumberPrefix ?: 1);
             if (isset($structure->encoding)) {
                 $body = $this->decodeEmailBody($body, $structure->encoding);
             }
-            if (isset($structure->subtype) && strtoupper($structure->subtype) === 'HTML') {
-                return [
-                    'body' => $this->cleanEmailBody($body),
-                    'raw_html' => $body
-                ];
-            } elseif (isset($structure->subtype) && strtoupper($structure->subtype) === 'PLAIN') {
-                return [
-                    'body' => $this->cleanEmailBody($body),
-                    'raw_html' => null
-                ];
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $preview = mb_substr($body, 0, 100);
+                $this->info("[DEBUG] Leaf part: partNumber={$partNumberPrefix} type={$type} subtype={$subtype} preview=" . str_replace("\n", " ", $preview));
+                \Log::info('[DEBUG] Leaf part', ['partNumber' => $partNumberPrefix, 'type' => $type, 'subtype' => $subtype, 'preview' => $preview]);
+            }
+            if ($isText && $subtype === 'HTML') {
+                // HTML part
+                if (property_exists($this, 'debugMode') && $this->debugMode) {
+                    $this->info("[DEBUG] Returning HTML part at {$partNumberPrefix}");
+                    \Log::info('[DEBUG] Returning HTML part', ['partNumber' => $partNumberPrefix]);
+                }
+                return [ 'body' => null, 'raw_html' => $body ];
+            } elseif ($isText && $subtype === 'PLAIN') {
+                // Plain text part
+                if (property_exists($this, 'debugMode') && $this->debugMode) {
+                    $this->info("[DEBUG] Returning plain part at {$partNumberPrefix}");
+                    \Log::info('[DEBUG] Returning plain part', ['partNumber' => $partNumberPrefix]);
+                }
+                return [ 'body' => $this->cleanEmailBody($body), 'raw_html' => null ];
+            }
+            // Some emails (esp. Outlook) use text/richtext or text/enriched
+            elseif ($isText && in_array($subtype, ['ENRICHED', 'RICHTEXT'])) {
+                // Optionally convert to plain text
+                $plain = strip_tags($body);
+                if (property_exists($this, 'debugMode') && $this->debugMode) {
+                    $this->info("[DEBUG] Returning enriched/richtext part at {$partNumberPrefix}");
+                    \Log::info('[DEBUG] Returning enriched/richtext part', ['partNumber' => $partNumberPrefix]);
+                }
+                return [ 'body' => $this->cleanEmailBody($plain), 'raw_html' => null ];
             }
         }
+        // Prefer HTML if found, otherwise plain text
         if ($bestHtml) {
-            return [
-                'body' => $this->cleanEmailBody($bestHtml),
-                'raw_html' => $bestHtml
-            ];
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] Chose HTML part (len={$bestHtmlLen})");
+                \Log::info('[DEBUG] Chose HTML part', ['length' => $bestHtmlLen]);
+            }
+            return [ 'body' => null, 'raw_html' => $bestHtml ];
         } elseif ($bestPlain) {
-            return [
-                'body' => $this->cleanEmailBody($bestPlain),
-                'raw_html' => null
-            ];
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] Chose plain part (len={$bestPlainLen})");
+                \Log::info('[DEBUG] Chose plain part', ['length' => $bestPlainLen]);
+            }
+            return [ 'body' => $bestPlain, 'raw_html' => null ];
         } else {
-            return [
-                'body' => 'No readable content found',
-                'raw_html' => null
-            ];
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] No readable content found");
+                \Log::info('[DEBUG] No readable content found');
+            }
+            return [ 'body' => 'No readable content found', 'raw_html' => null ];
         }
     }
 
@@ -456,17 +507,20 @@ class ProcessEmailsContinuously extends Command
             // For HTML content, preserve formatting but clean up
             $body = $this->cleanHtmlBody($body);
         } else {
-            // For plain text, clean as before
+            // For plain text, preserve line breaks but clean up excessive whitespace
             $body = strip_tags($body);
             $body = html_entity_decode($body, ENT_QUOTES, 'UTF-8');
-            $body = preg_replace('/\s+/', ' ', $body);
+            // Preserve line breaks but clean up multiple spaces within lines
+            $body = preg_replace('/[ \t]+/', ' ', $body);
+            // Normalize line endings
+            $body = str_replace(["\r\n", "\r"], "\n", $body);
         }
         
         return trim($body);
     }
 
     /**
-     * Clean HTML email body while preserving formatting
+     * Clean HTML email body while preserving formatting and allowing safe styles
      */
     private function cleanHtmlBody($body)
     {
@@ -474,12 +528,19 @@ class ProcessEmailsContinuously extends Command
         $dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'];
         foreach ($dangerousTags as $tag) {
             $body = preg_replace('/<' . $tag . '[^>]*>.*?<\/' . $tag . '>/is', '', $body);
-            $body = preg_replace('/<' . $tag . '[^>]*\/?>/i', '', $body);
+            $body = preg_replace('/<' . $tag . '[^>]*\/?\>/i', '', $body);
         }
         // Remove on* attributes (onclick, onload, etc.)
-        $body = preg_replace('/\s+on\w+\s*=\s*["\'][^"\']*["\']/i', '', $body);
+        $body = preg_replace('/\s+on\w+\s*=\s*(["\"][^"\"]*["\"]|[^\s>]*)/i', '', $body);
         // Remove javascript: URLs
         $body = preg_replace('/javascript:/i', '', $body);
+        // Remove dangerous style properties from style attributes
+        $body = preg_replace_callback('/style\s*=\s*(["\"]).*?\1/i', function ($matches) {
+            $style = $matches[0];
+            // Remove dangerous properties
+            $style = preg_replace('/(position|z-index|left|top|right|bottom|behavior|expression|url)\s*:[^;"\"]+;?/i', '', $style);
+            return $style;
+        }, $body);
         // Decode HTML entities
         $body = html_entity_decode($body, ENT_QUOTES, 'UTF-8');
         // Do NOT remove style attributes, table, tr, td, th, font, span, img tags

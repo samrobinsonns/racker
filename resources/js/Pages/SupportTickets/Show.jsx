@@ -7,8 +7,10 @@ const emailStyles = `
     .email-content {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         line-height: 1.6;
-        color: #374151;
+        color: inherit;
     }
+    
+    .email-content * { color: inherit !important; }
     
     .email-content p {
         margin-bottom: 1rem;
@@ -413,15 +415,7 @@ export default function Show({
                                 {/* Description */}
                                 <div className="mt-6">
                                     {ticket.raw_html ? (
-                                        <div
-                                            className="email-content"
-                                            dangerouslySetInnerHTML={{ __html: ticket.raw_html }}
-                                        />
-                                    ) : ticket.is_html ? (
-                                        <div
-                                            className="email-content"
-                                            dangerouslySetInnerHTML={{ __html: ticket.description }}
-                                        />
+                                        <div className="email-content" dangerouslySetInnerHTML={{ __html: ticket.raw_html }} />
                                     ) : (
                                         <p className="whitespace-pre-wrap">{ticket.description}</p>
                                     )}
