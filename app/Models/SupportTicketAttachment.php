@@ -13,6 +13,7 @@ class SupportTicketAttachment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tenant_id',
         'ticket_id',
         'reply_id',
         'uploaded_by',

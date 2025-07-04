@@ -89,6 +89,7 @@ class AttachmentService
         $fileHash = hash('sha256', $attachmentData['content']);
 
         return SupportTicketAttachment::create([
+            'tenant_id' => $ticket->tenant_id,
             'ticket_id' => $ticket->id,
             'reply_id' => $replyId,
             'uploaded_by' => null,

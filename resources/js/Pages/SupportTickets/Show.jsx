@@ -226,6 +226,26 @@ export default function Show({
         return created.toLocaleDateString();
     };
 
+    const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const getFileIcon = (mimeType) => {
+        if (mimeType?.startsWith('image/')) return '🖼️';
+        if (mimeType?.startsWith('video/')) return '🎥';
+        if (mimeType?.startsWith('audio/')) return '🎵';
+        if (mimeType === 'application/pdf') return '📄';
+        if (mimeType?.includes('word') || mimeType?.includes('document')) return '📝';
+        if (mimeType?.includes('excel') || mimeType?.includes('spreadsheet')) return '📊';
+        if (mimeType?.includes('powerpoint') || mimeType?.includes('presentation')) return '📈';
+        if (mimeType?.includes('zip') || mimeType?.includes('archive')) return '📦';
+        return '📎';
+    };
+
     const updateTicketField = (field, value) => {
         // Map frontend field names to database field names
         const fieldMapping = {
@@ -453,15 +473,28 @@ export default function Show({
                                 {/* Initial Attachments */}
                                 {attachments.filter(att => !att.reply_id).length > 0 && (
                                     <div className="mt-6">
-                                        <h3 className="text-sm font-medium text-gray-900 mb-3">Attachments</h3>
+                                        <h3 className="text-sm font-medium text-gray-900 mb-3">Attachments ({attachments.filter(att => !att.reply_id).length})</h3>
                                         <div className="space-y-2">
                                             {attachments.filter(att => !att.reply_id).map((attachment) => (
-                                                <div key={attachment.id} className="flex items-center p-2 border border-gray-200 rounded-md">
-                                                    <PaperClipIcon className="h-4 w-4 text-gray-400 mr-2" />
-                                                    <span className="text-sm text-gray-900 flex-1">{attachment.original_filename}</span>
+                                                <div key={attachment.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                                    <span className="text-lg mr-3">{getFileIcon(attachment.mime_type)}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                                            {attachment.original_filename}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {formatFileSize(attachment.file_size)} • {attachment.mime_type}
+                                                            {attachment.is_from_email && (
+                                                                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                                    From Email
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                     <a
-                                                        href={route('support-tickets.attachments.download', attachment.id)}
-                                                        className="text-sm text-indigo-600 hover:text-indigo-500 ml-2"
+                                                        href={route('support-tickets.attachments.download', { ticket: ticket.id, attachment: attachment.id })}
+                                                        className="text-sm text-indigo-600 hover:text-indigo-500 ml-3 p-1 rounded hover:bg-indigo-50 transition-colors"
+                                                        title="Download attachment"
                                                     >
                                                         <DocumentArrowDownIcon className="h-4 w-4" />
                                                     </a>
@@ -517,15 +550,20 @@ export default function Show({
                                                     {/* Reply Attachments */}
                                                     {attachments.filter(att => att.reply_id === reply.id).length > 0 && (
                                                         <div className="mt-3">
+                                                            <div className="text-xs font-medium text-gray-500 mb-2">
+                                                                Attachments ({attachments.filter(att => att.reply_id === reply.id).length})
+                                                            </div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {attachments.filter(att => att.reply_id === reply.id).map((attachment) => (
                                                                     <a
                                                                         key={attachment.id}
-                                                                        href={route('support-tickets.attachments.download', attachment.id)}
-                                                                        className="inline-flex items-center px-2 py-1 border border-gray-200 rounded text-xs text-gray-700 hover:bg-gray-50"
+                                                                        href={route('support-tickets.attachments.download', { ticket: ticket.id, attachment: attachment.id })}
+                                                                        className="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                                                                        title={`${attachment.original_filename} (${formatFileSize(attachment.file_size)})`}
                                                                     >
-                                                                        <PaperClipIcon className="h-3 w-3 mr-1" />
-                                                                        {attachment.original_filename}
+                                                                        <span className="mr-2">{getFileIcon(attachment.mime_type)}</span>
+                                                                        <span className="truncate max-w-32">{attachment.original_filename}</span>
+                                                                        <span className="ml-2 text-gray-400">({formatFileSize(attachment.file_size)})</span>
                                                                     </a>
                                                                 ))}
                                                             </div>

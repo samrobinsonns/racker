@@ -354,9 +354,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->only(['store', 'destroy'])
         ->shallow();
     
-    Route::get('attachments/{attachment}/download', [SupportTicketAttachmentsController::class, 'download'])
+    Route::get('support-tickets/{ticket}/attachments/{attachment}/download', [SupportTicketAttachmentsController::class, 'download'])
         ->middleware('permission:' . Permission::VIEW_SUPPORT_TICKETS)
-        ->name('attachments.download');
+        ->name('support-tickets.attachments.download');
 });
 
 // Messaging API Routes

@@ -50,9 +50,9 @@ class SupportTicketAttachmentsController extends Controller
     /**
      * Download attachment
      */
-    public function download(SupportTicketAttachment $supportTicketAttachment): StreamedResponse|RedirectResponse
+    public function download(SupportTicket $ticket, SupportTicketAttachment $attachment): StreamedResponse|RedirectResponse
     {
-        $response = $this->attachmentService->downloadAttachment($supportTicketAttachment, auth()->user());
+        $response = $this->attachmentService->downloadAttachment($attachment, auth()->user());
         
         if (!$response) {
             return back()->with('error', 'File not found or access denied.');

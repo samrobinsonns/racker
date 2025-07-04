@@ -7,6 +7,9 @@ use App\Jobs\ProcessEmailQueue;
 use Illuminate\Support\Facades\Log;
 use App\Models\EmailSetting;
 use App\Services\SupportTickets\TicketService;
+use App\Models\SupportTicket;
+use App\Models\EmailSettings;
+use App\Services\SupportTickets\AttachmentService;
 
 class ProcessEmailsContinuously extends Command
 {
@@ -186,15 +189,18 @@ class ProcessEmailsContinuously extends Command
             if (!$headers) {
                 return false;
             }
+            
             // Log the MIME structure for debugging
             $structure = imap_fetchstructure($connection, $messageNumber);
             if ($this->option('debug')) {
                 $this->info("[DEBUG] Full MIME structure: " . json_encode($structure));
                 \Log::info('[DEBUG] Full MIME structure', ['structure' => $structure]);
             }
+            
             $from = $headers->from[0]->mailbox . '@' . $headers->from[0]->host;
             $rawSubject = $headers->subject ?? 'No Subject';
             $date = date('Y-m-d H:i:s', strtotime($headers->date));
+            
             if ($this->isRawEmailInSubject($rawSubject)) {
                 $parsed = $this->parseRawEmailContent($rawSubject);
                 $subject = $parsed['subject'];
@@ -209,14 +215,39 @@ class ProcessEmailsContinuously extends Command
                 $body = $bodyParts['body'];
                 $rawHtml = $bodyParts['raw_html'] ?? null;
             }
+            
             $existingTicket = \App\Models\SupportTicket::where('tenant_id', $emailSettings->tenant_id)
                 ->where('source', 'email')
                 ->where('source_id', $messageNumber)
                 ->first();
+                
             if ($existingTicket) {
                 return false; // Already processed
             }
-            $this->createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber, $rawHtml);
+            
+            // Extract file attachments
+            $fileAttachments = $this->extractFileAttachments($connection, $messageNumber, $structure);
+            
+            // Create the ticket
+            $ticket = $this->createSupportTicket($emailSettings, $from, $subject, $body, $messageNumber, $rawHtml);
+            
+            // Store file attachments if any
+            if (!empty($fileAttachments) && $ticket) {
+                $attachmentService = app(AttachmentService::class);
+                foreach ($fileAttachments as $attachmentData) {
+                    try {
+                        $attachmentService->createEmailAttachment($ticket, $attachmentData);
+                        if (property_exists($this, 'debugMode') && $this->debugMode) {
+                            $this->info("[DEBUG] Stored file attachment: {$attachmentData['filename']}");
+                            \Log::info('[DEBUG] Stored file attachment', ['filename' => $attachmentData['filename']]);
+                        }
+                    } catch (\Exception $e) {
+                        $this->error("Error storing attachment {$attachmentData['filename']}: " . $e->getMessage());
+                        \Log::error('Error storing attachment', ['filename' => $attachmentData['filename'], 'error' => $e->getMessage()]);
+                    }
+                }
+            }
+            
             imap_setflag_full($connection, $messageNumber, "\\Seen");
             return true;
         } catch (\Exception $e) {
@@ -638,6 +669,8 @@ class ProcessEmailsContinuously extends Command
         ], $emailSettings->tenant_id);
 
         $this->info("Created ticket #{$ticket->id} from email: {$from}" . ($isHtml ? ' (HTML)' : ' (Plain text)'));
+
+        return $ticket;
     }
 
     /**
@@ -673,5 +706,75 @@ class ProcessEmailsContinuously extends Command
         }
         
         return $emails;
+    }
+
+    /**
+     * Extract file attachments (not inline images) from email
+     */
+    private function extractFileAttachments($connection, $messageNumber, $structure, $partNumberPrefix = '', &$attachments = [])
+    {
+        if (isset($structure->parts) && is_array($structure->parts)) {
+            foreach ($structure->parts as $idx => $part) {
+                $partNumber = $partNumberPrefix === '' ? ($idx + 1) : ($partNumberPrefix . '.' . ($idx + 1));
+                $this->extractFileAttachments($connection, $messageNumber, $part, $partNumber, $attachments);
+            }
+        } else {
+            // Check if this is a file attachment (not inline image)
+            $isFileAttachment = false;
+            $filename = null;
+            
+            // Check for attachment disposition
+            if (isset($structure->disposition) && strtolower($structure->disposition) === 'attachment') {
+                $isFileAttachment = true;
+            }
+            
+            // Get filename from parameters
+            if (isset($structure->ifparameters) && $structure->ifparameters) {
+                foreach ($structure->parameters as $param) {
+                    if (strtolower($param->attribute) === 'name' || strtolower($param->attribute) === 'filename') {
+                        $filename = $param->value;
+                        $isFileAttachment = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Also check for filename in dparameters (disposition parameters)
+            if (isset($structure->ifdparameters) && $structure->ifdparameters) {
+                foreach ($structure->dparameters as $param) {
+                    if (strtolower($param->attribute) === 'filename') {
+                        $filename = $param->value;
+                        $isFileAttachment = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Skip if this is an inline image (has Content-ID)
+            if (isset($structure->ifid) && $structure->ifid && isset($structure->id)) {
+                $isFileAttachment = false; // This is an inline image, not a file attachment
+            }
+            
+            if ($isFileAttachment && $filename) {
+                $body = imap_fetchbody($connection, $messageNumber, $partNumberPrefix ?: 1);
+                if (isset($structure->encoding)) {
+                    $body = $this->decodeEmailBody($body, $structure->encoding);
+                }
+                $mime = $this->getMimeType($structure);
+                
+                $attachments[] = [
+                    'filename' => $filename,
+                    'content' => $body,
+                    'mime_type' => $mime,
+                    'size' => strlen($body),
+                ];
+                
+                if (property_exists($this, 'debugMode') && $this->debugMode) {
+                    $this->info("[DEBUG] Found file attachment: {$filename} ({$mime}, " . number_format(strlen($body)) . " bytes)");
+                    \Log::info('[DEBUG] Found file attachment', ['filename' => $filename, 'mime_type' => $mime, 'size' => strlen($body)]);
+                }
+            }
+        }
+        return $attachments;
     }
 }
