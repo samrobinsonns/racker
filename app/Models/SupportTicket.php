@@ -44,6 +44,7 @@ class SupportTicket extends Model
         'escalated_by',
         'microsoft365_message_id',
         'microsoft365_thread_id',
+        'email_message_id',
         'email_headers',
         'created_by',
         'contact_id',

@@ -216,6 +216,7 @@ class ProcessEmailsContinuously extends Command
                 $rawHtml = $bodyParts['raw_html'] ?? null;
             }
             
+            // Check if this email has already been processed
             $existingTicket = \App\Models\SupportTicket::where('tenant_id', $emailSettings->tenant_id)
                 ->where('source', 'email')
                 ->where('source_id', $messageNumber)
@@ -223,6 +224,16 @@ class ProcessEmailsContinuously extends Command
                 
             if ($existingTicket) {
                 return false; // Already processed
+            }
+            
+            // Check if this is a reply to an existing ticket
+            $existingTicket = $this->findExistingTicket($emailSettings->tenant_id, $headers, $subject);
+            
+            if ($existingTicket) {
+                // This is a reply to an existing ticket - create a reply instead
+                $this->createEmailReply($existingTicket, $from, $subject, $body, $messageNumber, $rawHtml, $structure, $connection, $headers);
+                $this->info("Added reply to existing ticket #{$existingTicket->ticket_number} from email: {$from}");
+                return true;
             }
             
             // Extract file attachments
@@ -341,9 +352,9 @@ class ProcessEmailsContinuously extends Command
 
         // Always set description to plain text if available, otherwise strip HTML
         if ($plain) {
-            $description = $plain;
+            $description = $this->cleanReplyContent($plain);
         } elseif ($html) {
-            $description = strip_tags($html);
+            $description = $this->cleanReplyContent(strip_tags($html));
         } else {
             $description = '';
         }
@@ -352,12 +363,143 @@ class ProcessEmailsContinuously extends Command
         $raw_html = null;
         if ($html) {
             $raw_html = $this->processHtmlContent($html, $attachments);
+            // Clean the HTML content for replies
+            $raw_html = $this->cleanReplyHtmlContent($raw_html);
         }
 
         return [
             'body' => $description,
             'raw_html' => $raw_html
         ];
+    }
+
+    /**
+     * Clean reply content by removing quoted text, signatures, and email headers
+     */
+    private function cleanReplyContent($content): string
+    {
+        // Split content into lines
+        $lines = explode("\n", $content);
+        $cleanedLines = [];
+        $inQuotedText = false;
+        $inSignature = false;
+        
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+            
+            // Skip empty lines at the beginning
+            if (empty($trimmedLine) && empty($cleanedLines)) {
+                continue;
+            }
+            
+            // Check for quoted text indicators
+            if (preg_match('/^>+\s/', $trimmedLine) || 
+                preg_match('/^\|+\s/', $trimmedLine) ||
+                preg_match('/^On .+ wrote:$/', $trimmedLine) ||
+                preg_match('/^From: .+$/', $trimmedLine) ||
+                preg_match('/^Sent: .+$/', $trimmedLine) ||
+                preg_match('/^To: .+$/', $trimmedLine) ||
+                preg_match('/^Subject: .+$/', $trimmedLine) ||
+                preg_match('/^Date: .+$/', $trimmedLine) ||
+                preg_match('/^Reply-To: .+$/', $trimmedLine) ||
+                preg_match('/^CC: .+$/', $trimmedLine) ||
+                preg_match('/^BCC: .+$/', $trimmedLine)) {
+                $inQuotedText = true;
+                continue;
+            }
+            
+            // Check for signature indicators
+            if (preg_match('/^--\s*$/', $trimmedLine) ||
+                preg_match('/^Best regards,?$/i', $trimmedLine) ||
+                preg_match('/^Sincerely,?$/i', $trimmedLine) ||
+                preg_match('/^Thanks,?$/i', $trimmedLine) ||
+                preg_match('/^Regards,?$/i', $trimmedLine) ||
+                preg_match('/^Kind regards,?$/i', $trimmedLine) ||
+                preg_match('/^Yours truly,?$/i', $trimmedLine) ||
+                preg_match('/^Cheers,?$/i', $trimmedLine) ||
+                preg_match('/^Thank you,?$/i', $trimmedLine) ||
+                preg_match('/^This email is regarding ticket #/', $trimmedLine) ||
+                preg_match('/^© \d{4} .+\. All rights reserved\.$/', $trimmedLine) ||
+                preg_match('/^Disclaimer$/', $trimmedLine) ||
+                preg_match('/^This e-mail is confidential/', $trimmedLine) ||
+                preg_match('/^Registered in England/', $trimmedLine) ||
+                preg_match('/^T: \d/', $trimmedLine) ||
+                preg_match('/^F: \d/', $trimmedLine) ||
+                preg_match('/^E: .+@.+$/', $trimmedLine) ||
+                preg_match('/^W: .+$/', $trimmedLine)) {
+                $inSignature = true;
+                continue;
+            }
+            
+            // If we're in quoted text or signature, skip this line
+            if ($inQuotedText || $inSignature) {
+                continue;
+            }
+            
+            // Add the line if it's not empty or if we have content already
+            if (!empty($trimmedLine) || !empty($cleanedLines)) {
+                $cleanedLines[] = $line;
+            }
+        }
+        
+        $cleanedContent = implode("\n", $cleanedLines);
+        
+        // Remove excessive whitespace
+        $cleanedContent = preg_replace('/\n\s*\n\s*\n/', "\n\n", $cleanedContent);
+        $cleanedContent = trim($cleanedContent);
+        
+        return $cleanedContent;
+    }
+
+    /**
+     * Clean HTML reply content by removing quoted text, signatures, and email headers
+     */
+    private function cleanReplyHtmlContent($html): string
+    {
+        // Remove quoted text blocks
+        $html = preg_replace('/<blockquote[^>]*>.*?<\/blockquote>/is', '', $html);
+        $html = preg_replace('/<div[^>]*class="[^"]*quote[^"]*"[^>]*>.*?<\/div>/is', '', $html);
+        
+        // Remove signature blocks
+        $html = preg_replace('/<div[^>]*class="[^"]*signature[^"]*"[^>]*>.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*style="[^"]*border-left[^"]*"[^>]*>.*?<\/div>/is', '', $html);
+        
+        // Remove email headers in HTML
+        $html = preg_replace('/<div[^>]*>From:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>Sent:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>To:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>Subject:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>Date:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>Reply-To:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>CC:.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>BCC:.*?<\/div>/is', '', $html);
+        
+        // Remove "On ... wrote:" lines
+        $html = preg_replace('/<div[^>]*>On .+ wrote:.*?<\/div>/is', '', $html);
+        
+        // Remove disclaimer and copyright notices
+        $html = preg_replace('/<div[^>]*>Disclaimer.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>This e-mail is confidential.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>© \d{4} .+\. All rights reserved\..*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>Registered in England.*?<\/div>/is', '', $html);
+        
+        // Remove contact information blocks
+        $html = preg_replace('/<div[^>]*>T: \d.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>F: \d.*?<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>E: .+@.+<\/div>/is', '', $html);
+        $html = preg_replace('/<div[^>]*>W: .+<\/div>/is', '', $html);
+        
+        // Remove "This email is regarding ticket" messages
+        $html = preg_replace('/<div[^>]*>This email is regarding ticket #.*?<\/div>/is', '', $html);
+        
+        // Remove excessive whitespace and empty divs
+        $html = preg_replace('/<div[^>]*>\s*<\/div>/', '', $html);
+        $html = preg_replace('/\s*\n\s*\n\s*/', "\n", $html);
+        
+        // Clean up the HTML
+        $html = trim($html);
+        
+        return $html;
     }
 
     /**
@@ -656,17 +798,21 @@ class ProcessEmailsContinuously extends Command
         // Check if body contains HTML
         $isHtml = str_contains($body, '<') && str_contains($body, '>');
 
-        // Create the ticket
-        $ticket = $ticketService->createTicket([
-            'subject' => $subject,
-            'description' => $body,
-            'raw_html' => $rawHtml,
-            'requester_email' => $from,
-            'requester_name' => $name['first_name'] . ' ' . $name['last_name'],
-            'source' => 'email',
-            'source_id' => $messageNumber,
-            'is_html' => $isHtml,
-        ], $emailSettings->tenant_id);
+                    // Get the actual email Message-ID for threading
+            $emailMessageId = isset($headers->message_id) ? trim($headers->message_id, '<>') : null;
+            
+            // Create the ticket
+            $ticket = $ticketService->createTicket([
+                'subject' => $subject,
+                'description' => $body,
+                'raw_html' => $rawHtml,
+                'requester_email' => $from,
+                'requester_name' => $name['first_name'] . ' ' . $name['last_name'],
+                'source' => 'email',
+                'source_id' => $messageNumber,
+                'email_message_id' => $emailMessageId,
+                'is_html' => $isHtml,
+            ], $emailSettings->tenant_id);
 
         $this->info("Created ticket #{$ticket->id} from email: {$from}" . ($isHtml ? ' (HTML)' : ' (Plain text)'));
 
@@ -776,5 +922,192 @@ class ProcessEmailsContinuously extends Command
             }
         }
         return $attachments;
+    }
+
+    /**
+     * Find existing ticket by email thread or subject
+     */
+    private function findExistingTicket($tenantId, $headers, $subject): ?\App\Models\SupportTicket
+    {
+        if (property_exists($this, 'debugMode') && $this->debugMode) {
+            $this->info("[DEBUG] Looking for existing ticket for subject: {$subject}");
+            $this->info("[DEBUG] Headers: " . json_encode($headers));
+        }
+        
+        // Look for ticket number in subject (e.g., [TKT-2024-123456] or TKT-2025-822401)
+        if (preg_match('/\[TKT-\d{4}-\d{6}\]/', $subject, $matches)) {
+            $ticketNumber = trim($matches[0], '[]');
+            $ticket = \App\Models\SupportTicket::where('tenant_id', $tenantId)
+                ->where('ticket_number', $ticketNumber)
+                ->first();
+            
+            if ($ticket) {
+                $this->info("Found existing ticket by ticket number in subject: {$ticketNumber}");
+                return $ticket;
+            }
+        }
+        
+        // Also look for ticket number without brackets (e.g., TKT-2025-822401)
+        if (preg_match('/TKT-\d{4}-\d{6}/', $subject, $matches)) {
+            $ticketNumber = $matches[0];
+            $ticket = \App\Models\SupportTicket::where('tenant_id', $tenantId)
+                ->where('ticket_number', $ticketNumber)
+                ->first();
+            
+            if ($ticket) {
+                $this->info("Found existing ticket by ticket number in subject (no brackets): {$ticketNumber}");
+                return $ticket;
+            }
+        }
+        
+        // Look for In-Reply-To header
+        if (isset($headers->in_reply_to) && $headers->in_reply_to) {
+            $inReplyTo = trim($headers->in_reply_to, '<>');
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] Checking In-Reply-To: {$inReplyTo}");
+            }
+            
+            // First check tickets
+            $ticket = \App\Models\SupportTicket::where('tenant_id', $tenantId)
+                ->where('email_message_id', $inReplyTo)
+                ->first();
+            
+            if ($ticket) {
+                $this->info("Found existing ticket by In-Reply-To header: {$inReplyTo}");
+                return $ticket;
+            }
+            
+            // Then check replies
+            $reply = \App\Models\SupportTicketReply::where('tenant_id', $tenantId)
+                ->where('microsoft365_message_id', $inReplyTo)
+                ->first();
+            
+            if ($reply) {
+                $this->info("Found existing ticket by In-Reply-To in reply: {$inReplyTo}");
+                return $reply->ticket;
+            }
+        }
+        
+        // Look for References header
+        if (isset($headers->references) && $headers->references) {
+            $references = trim($headers->references, '<>');
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] Checking References: {$references}");
+            }
+            
+            // First check tickets
+            $ticket = \App\Models\SupportTicket::where('tenant_id', $tenantId)
+                ->where('email_message_id', $references)
+                ->first();
+            
+            if ($ticket) {
+                $this->info("Found existing ticket by References header: {$references}");
+                return $ticket;
+            }
+            
+            // Then check replies
+            $reply = \App\Models\SupportTicketReply::where('tenant_id', $tenantId)
+                ->where('microsoft365_message_id', $references)
+                ->first();
+            
+            if ($reply) {
+                $this->info("Found existing ticket by References in reply: {$references}");
+                return $reply->ticket;
+            }
+        }
+        
+        // Look for Message-ID in existing replies
+        if (isset($headers->message_id) && $headers->message_id) {
+            $messageId = trim($headers->message_id, '<>');
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] Checking Message-ID: {$messageId}");
+            }
+            
+            $reply = \App\Models\SupportTicketReply::where('tenant_id', $tenantId)
+                ->where('microsoft365_message_id', $messageId)
+                ->first();
+            
+            if ($reply) {
+                $this->info("Found existing ticket by Message-ID in reply: {$messageId}");
+                return $reply->ticket;
+            }
+        }
+        
+        // Additional check: Look for "Re:" in subject and try to match by email address and similar subject
+        if (stripos($subject, 're:') === 0) {
+            $originalSubject = trim(substr($subject, 3)); // Remove "Re: " prefix
+            if (property_exists($this, 'debugMode') && $this->debugMode) {
+                $this->info("[DEBUG] Checking for reply with subject: {$originalSubject}");
+            }
+            
+            // Look for tickets with similar subject (case insensitive)
+            $ticket = \App\Models\SupportTicket::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(subject) = ?', [strtolower($originalSubject)])
+                ->first();
+            
+            if ($ticket) {
+                $this->info("Found existing ticket by similar subject (reply): {$originalSubject}");
+                return $ticket;
+            }
+        }
+        
+        if (property_exists($this, 'debugMode') && $this->debugMode) {
+            $this->info("[DEBUG] No existing ticket found");
+        }
+        
+        return null;
+    }
+
+    /**
+     * Create email reply to existing ticket
+     */
+    private function createEmailReply($ticket, $from, $subject, $body, $messageNumber, $rawHtml, $structure, $connection, $headers)
+    {
+        $replyService = app(\App\Services\SupportTickets\ReplyService::class);
+        
+        // Extract name from email
+        $name = $this->extractNameFromEmail($from);
+        
+        // Check if body contains HTML
+        $isHtml = str_contains($body, '<') && str_contains($body, '>');
+        
+        // Get the actual email Message-ID for threading
+        $emailMessageId = isset($headers->message_id) ? trim($headers->message_id, '<>') : null;
+        
+        // Create the reply
+        $reply = $replyService->createEmailReply($ticket, [
+            'body_text' => $body,
+            'body_html' => $rawHtml,
+            'from_email' => $from,
+            'from_name' => $name['first_name'] . ' ' . $name['last_name'],
+            'subject' => $subject,
+            'message_id' => $emailMessageId,
+            'headers' => [
+                'message_id' => $emailMessageId,
+                'received_at' => now(),
+            ],
+            'received_at' => now(),
+            'microsoft365_message_id' => $emailMessageId, // Store message ID for threading
+        ]);
+        
+        // Extract and store file attachments if any
+        $fileAttachments = $this->extractFileAttachments($connection, $messageNumber, $structure);
+        if (!empty($fileAttachments)) {
+            $attachmentService = app(AttachmentService::class);
+            foreach ($fileAttachments as $attachmentData) {
+                try {
+                    $attachmentService->createEmailAttachment($ticket, $attachmentData, $reply->id);
+                    if (property_exists($this, 'debugMode') && $this->debugMode) {
+                        $this->info("[DEBUG] Stored file attachment for reply: {$attachmentData['filename']}");
+                        \Log::info('[DEBUG] Stored file attachment for reply', ['filename' => $attachmentData['filename']]);
+                    }
+                } catch (\Exception $e) {
+                    $this->error("Error storing attachment {$attachmentData['filename']}: " . $e->getMessage());
+                    \Log::error('Error storing attachment for reply', ['filename' => $attachmentData['filename'], 'error' => $e->getMessage()]);
+                }
+            }
+        }
+        
+        return $reply;
     }
 }
