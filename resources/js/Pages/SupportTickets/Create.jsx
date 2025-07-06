@@ -15,6 +15,7 @@ import {
     PhotoIcon,
     ArrowLeftIcon
 } from '@heroicons/react/24/outline';
+import Avatar from '@/Components/User/Avatar';
 
 export default function Create({ priorities, categories, statuses, users, auth }) {
     const [attachments, setAttachments] = useState([]);
@@ -544,11 +545,7 @@ export default function Create({ priorities, categories, statuses, users, auth }
                                                 >
                                                     <div className="flex items-center space-x-3">
                                                         <div className="flex-shrink-0">
-                                                            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                                                                <span className="text-sm font-medium text-gray-700">
-                                                                    {user.name.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
+                                                            <Avatar user={user} size="sm" />
                                                         </div>
                                                         <div>
                                                             <div className="text-sm font-medium text-gray-900">

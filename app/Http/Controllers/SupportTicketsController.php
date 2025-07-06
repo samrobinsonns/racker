@@ -157,15 +157,15 @@ class SupportTicketsController extends Controller
 
         // Process mentions in description
         if (!empty($validated['description'])) {
-            // Create a temporary reply object to process mentions
-            $tempReply = new \App\Models\SupportTicketReply([
+            // Create and save the reply first
+            $reply = new \App\Models\SupportTicketReply([
                 'tenant_id' => $tenantId,
                 'ticket_id' => $ticket->id,
                 'content' => $validated['description'],
                 'created_by' => $userId,
             ]);
-            
-            $this->mentionService->processMentions($tempReply, $validated['description'], $userId);
+            $reply->save();
+            $this->mentionService->processMentions($reply, $validated['description'], $userId);
         }
 
         // Send notifications
