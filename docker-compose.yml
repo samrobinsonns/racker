@@ -23,7 +23,7 @@ services:
             - sail
         depends_on:
             - mysql
-            - mailserver
+            - mailpit
             - soketi
     mysql:
         image: 'mysql:8.0'
@@ -50,30 +50,6 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
-    mailserver:
-        image: mailserver/docker-mailserver:latest
-        container_name: mailserver
-        hostname: mail.example.com
-        domainname: example.com
-        env_file: mailserver.env
-        ports:
-            - "25:25"
-            - "143:143"
-            - "465:465"
-            - "587:587"
-            - "993:993"
-            - "4190:4190"
-        volumes:
-            - ./docker-data/dms/mail-data/:/var/mail/
-            - ./docker-data/dms/mail-state/:/var/mail-state/
-            - ./docker-data/dms/mail-logs/:/var/log/mail/
-            - ./docker-data/dms/config/:/tmp/docker-mailserver/
-            - ./docker-data/dms/config/postfix-accounts.cf:/tmp/docker-mailserver/postfix-accounts.cf:ro
-            - /etc/localtime:/etc/localtime:ro
-        networks:
-            - sail
-        restart: unless-stopped
-    # Keep mailpit for development/testing
     mailpit:
         image: 'axllent/mailpit:latest'
         ports:
@@ -81,8 +57,6 @@ services:
             - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
-        profiles:
-            - dev
     soketi:
         image: 'quay.io/soketi/soketi:latest-16-alpine'
         environment:

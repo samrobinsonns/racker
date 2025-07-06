@@ -11,6 +11,7 @@ use App\Services\SupportTickets\TicketService;
 use App\Services\SupportTickets\ReplyService;
 use App\Services\SupportTickets\AttachmentService;
 use App\Services\SupportTickets\NotificationService;
+use App\Services\MentionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -24,7 +25,8 @@ class SupportTicketsController extends Controller
         private TicketService $ticketService,
         private ReplyService $replyService,
         private AttachmentService $attachmentService,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private MentionService $mentionService
     ) {
         // Middleware will be handled in the routes file
     }
@@ -151,6 +153,19 @@ class SupportTicketsController extends Controller
             foreach ($request->file('attachments') as $file) {
                 $this->attachmentService->uploadAttachment($ticket, $file, $userId);
             }
+        }
+
+        // Process mentions in description
+        if (!empty($validated['description'])) {
+            // Create a temporary reply object to process mentions
+            $tempReply = new \App\Models\SupportTicketReply([
+                'tenant_id' => $tenantId,
+                'ticket_id' => $ticket->id,
+                'content' => $validated['description'],
+                'created_by' => $userId,
+            ]);
+            
+            $this->mentionService->processMentions($tempReply, $validated['description'], $userId);
         }
 
         // Send notifications

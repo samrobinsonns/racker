@@ -7,6 +7,7 @@ use App\Models\SupportTicketReply;
 use App\Services\SupportTickets\ReplyService;
 use App\Services\SupportTickets\AttachmentService;
 use App\Services\SupportTickets\NotificationService;
+use App\Services\MentionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +17,8 @@ class SupportTicketRepliesController extends Controller
     public function __construct(
         private ReplyService $replyService,
         private AttachmentService $attachmentService,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private MentionService $mentionService
     ) {
         $this->middleware(['auth', 'verified']);
     }
@@ -52,6 +54,9 @@ class SupportTicketRepliesController extends Controller
                 );
             }
         }
+
+        // Process mentions
+        $this->mentionService->processMentions($reply, $validated['content'], $userId);
 
         // Send notifications
         $this->notificationService->notifyReplyAdded($reply);

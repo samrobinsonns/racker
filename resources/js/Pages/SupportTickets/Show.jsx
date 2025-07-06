@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ContactSelector from '@/Components/ContactSelector';
+import Avatar from '@/Components/User/Avatar';
 
 // Add CSS for email content styling
 const emailStyles = `
@@ -99,6 +101,60 @@ const emailStyles = `
             margin: 0.5rem 0;
         }
     }
+
+    /* Mention autocomplete styles */
+    .mention-autocomplete {
+        position: absolute;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 50;
+        max-height: 200px;
+        overflow-y: auto;
+        min-width: 200px;
+    }
+
+    .mention-suggestion {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .mention-suggestion:hover {
+        background-color: #f3f4f6;
+    }
+
+    .mention-suggestion.selected {
+        background-color: #e5e7eb;
+    }
+
+    .mention-avatar {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background-color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .mention-text {
+        color: #2563eb;
+        font-weight: 500;
+    }
+
+    /* Active mention state for textarea */
+    .textarea-mention-active {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+        outline: none !important;
+    }
 `;
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -123,7 +179,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import ContactSelector from '@/Components/ContactSelector';
 
 export default function Show({ 
     ticket, 
@@ -140,6 +195,14 @@ export default function Show({
     const [replyType, setReplyType] = useState('public'); // 'public' or 'internal'
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    
+    // Mention functionality state
+    const [mentionSuggestions, setMentionSuggestions] = useState([]);
+    const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
+    const [mentionSearchTerm, setMentionSearchTerm] = useState('');
+    const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+    const [mentionCursorPosition, setMentionCursorPosition] = useState({ start: 0, end: 0 });
+    const textareaRef = useRef(null);
 
     const { data: replyData, setData: setReplyData, post: postReply, processing: replyProcessing, errors: replyErrors, reset: resetReply } = useForm({
         content: '',
@@ -156,12 +219,101 @@ export default function Show({
         assignee_id: ticket.assignee_id || ''
     });
 
+    // Mention functionality
+    const searchMentions = async (searchTerm) => {
+        if (!searchTerm || searchTerm.length < 1) {
+            setMentionSuggestions([]);
+            setShowMentionAutocomplete(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(route('mentions.search-users', { search: searchTerm }));
+            if (response.ok) {
+                const data = await response.json();
+                setMentionSuggestions(data.users);
+                setShowMentionAutocomplete(data.users.length > 0);
+                setSelectedMentionIndex(0);
+            }
+        } catch (error) {
+            console.error('Error searching mentions:', error);
+        }
+    };
+
+    const handleMentionSelect = (user) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const beforeMention = replyData.content.substring(0, mentionCursorPosition.start);
+        const afterMention = replyData.content.substring(mentionCursorPosition.end);
+        const newContent = beforeMention + `@${user.name} ` + afterMention;
+
+        setReplyData('content', newContent);
+        setShowMentionAutocomplete(false);
+        setMentionSuggestions([]);
+        setMentionSearchTerm('');
+
+        // Focus back to textarea and set cursor position after the mention
+        setTimeout(() => {
+            textarea.focus();
+            const newPosition = mentionCursorPosition.start + user.name.length + 2; // +2 for @ and space
+            textarea.setSelectionRange(newPosition, newPosition);
+        }, 0);
+    };
+
+    const handleTextareaChange = (e) => {
+        const value = e.target.value;
+        setReplyData('content', value);
+
+        // Check for @ mentions
+        const cursorPosition = e.target.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+        if (mentionMatch) {
+            const searchTerm = mentionMatch[1];
+            setMentionSearchTerm(searchTerm);
+            setMentionCursorPosition({
+                start: cursorPosition - searchTerm.length - 1, // -1 for @
+                end: cursorPosition
+            });
+            searchMentions(searchTerm);
+        } else {
+            setShowMentionAutocomplete(false);
+            setMentionSuggestions([]);
+        }
+    };
+
+    const handleTextareaKeyDown = (e) => {
+        if (showMentionAutocomplete) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedMentionIndex(prev => 
+                    prev < mentionSuggestions.length - 1 ? prev + 1 : 0
+                );
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedMentionIndex(prev => 
+                    prev > 0 ? prev - 1 : mentionSuggestions.length - 1
+                );
+            } else if (e.key === 'Enter' && mentionSuggestions.length > 0) {
+                e.preventDefault();
+                handleMentionSelect(mentionSuggestions[selectedMentionIndex]);
+            } else if (e.key === 'Escape') {
+                setShowMentionAutocomplete(false);
+                setMentionSuggestions([]);
+            }
+        }
+    };
+
     const handleReplySubmit = (e) => {
         e.preventDefault();
         postReply(route('support-tickets.replies.store', ticket.id), {
             onSuccess: () => {
                 resetReply();
                 setShowReplyForm(false);
+                setShowMentionAutocomplete(false);
+                setMentionSuggestions([]);
             }
         });
     };
@@ -234,6 +386,53 @@ export default function Show({
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
+    // Function to process mentions in content and convert them to profile links
+    const processMentionsInContent = (content) => {
+        if (!content) return content;
+        // Regex to match @ followed by one or more words (including spaces), stopping at line break or punctuation
+        // This will match @Name, @First Last, etc.
+        const mentionRegex = /@([\w][\w ]*[\w])/g;
+        let lastIndex = 0;
+        const elements = [];
+        let match;
+        while ((match = mentionRegex.exec(content)) !== null) {
+            // Push text before the mention
+            if (match.index > lastIndex) {
+                elements.push(
+                    <span key={lastIndex}>{content.slice(lastIndex, match.index)}</span>
+                );
+            }
+            const mentionText = match[0]; // e.g., @CCS Admin
+            const username = match[1]; // e.g., CCS Admin
+            // Find the user by name (case-insensitive, trimmed)
+            const user = users.find(u => u.name.trim().toLowerCase() === username.trim().toLowerCase());
+            if (user) {
+                elements.push(
+                    <Link
+                        key={match.index}
+                        href={route('profile.show', { user: user.id })}
+                        className="font-medium text-gray-900 hover:text-violet-600"
+                    >
+                        {mentionText}
+                    </Link>
+                );
+            } else {
+                // If not found, just render as plain text
+                elements.push(
+                    <span key={match.index}>{mentionText}</span>
+                );
+            }
+            lastIndex = match.index + mentionText.length;
+        }
+        // Push any remaining text after the last mention
+        if (lastIndex < content.length) {
+            elements.push(
+                <span key={lastIndex}>{content.slice(lastIndex)}</span>
+            );
+        }
+        return elements;
+    };
+
     const getFileIcon = (mimeType) => {
         if (mimeType?.startsWith('image/')) return '🖼️';
         if (mimeType?.startsWith('video/')) return '🎥';
@@ -297,6 +496,17 @@ export default function Show({
             }
         });
     };
+
+    // Debug: log users and reply for troubleshooting avatar issues
+    useEffect(() => {
+        if (users && replies) {
+            // Only log once on mount
+            // eslint-disable-next-line no-console
+            console.log('SupportTicket users:', users);
+            // eslint-disable-next-line no-console
+            console.log('SupportTicket replies:', replies);
+        }
+    }, [users, replies]);
 
     return (
         <AuthenticatedLayout
@@ -518,18 +728,73 @@ export default function Show({
                                         <div key={reply.id} className={`p-6 ${reply.is_internal ? 'bg-yellow-50' : ''}`}>
                                             <div className="flex items-start space-x-3">
                                                 <div className="flex-shrink-0">
-                                                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                        <span className="text-sm font-medium text-gray-700">
-                                                            {reply.author_name?.charAt(0) || '?'}
-                                                        </span>
-                                                    </div>
+                                                    {/* Use reply.user if available, fallback to users array */}
+                                                    {(() => {
+                                                        let authorUser = reply.user;
+                                                        if (!authorUser) {
+                                                            // Prefer email match, fallback to name (case-insensitive, trimmed)
+                                                            authorUser = users.find(u => {
+                                                                if (reply.author_email && u.email && u.email.toLowerCase() === reply.author_email?.toLowerCase()) {
+                                                                    return true;
+                                                                }
+                                                                if (u.name && reply.author_name && u.name.trim().toLowerCase() === reply.author_name.trim().toLowerCase()) {
+                                                                    return true;
+                                                                }
+                                                                return false;
+                                                            });
+                                                        }
+                                                        if (authorUser) {
+                                                            return (
+                                                                <Link href={route('profile.show', { user: authorUser.id })} title={authorUser.name}>
+                                                                    <Avatar user={authorUser} size="sm" />
+                                                                </Link>
+                                                            );
+                                                        } else {
+                                                            // fallback: initials only
+                                                            return (
+                                                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                                    <span className="text-sm font-medium text-gray-700">
+                                                                        {reply.author_name?.charAt(0) || '?'}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        }
+                                                    })()}
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center space-x-2">
-                                                            <span className="text-sm font-medium text-gray-900">
-                                                                {reply.author_name}
-                                                            </span>
+                                                            {/* Author name as link if user found */}
+                                                            {(() => {
+                                                                let authorUser = reply.user;
+                                                                if (!authorUser) {
+                                                                    authorUser = users.find(u => {
+                                                                        if (reply.author_email && u.email && u.email.toLowerCase() === reply.author_email?.toLowerCase()) {
+                                                                            return true;
+                                                                        }
+                                                                        if (u.name && reply.author_name && u.name.trim().toLowerCase() === reply.author_name.trim().toLowerCase()) {
+                                                                            return true;
+                                                                        }
+                                                                        return false;
+                                                                    });
+                                                                }
+                                                                if (authorUser) {
+                                                                    return (
+                                                                        <Link
+                                                                            href={route('profile.show', { user: authorUser.id })}
+                                                                            className="text-sm font-medium text-gray-900 hover:text-violet-600"
+                                                                        >
+                                                                            {reply.author_name}
+                                                                        </Link>
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <span className="text-sm font-medium text-gray-900">
+                                                                            {reply.author_name}
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                            })()}
                                                             {reply.is_internal && (
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                                                                     <EyeSlashIcon className="h-3 w-3 mr-1" />
@@ -542,9 +807,9 @@ export default function Show({
                                                         </div>
                                                     </div>
                                                     <div className="mt-2 prose max-w-none">
-                                                        <p className="whitespace-pre-wrap text-sm text-gray-700">
-                                                            {reply.content}
-                                                        </p>
+                                                        <div className="whitespace-pre-wrap text-sm text-gray-700">
+                                                            {processMentionsInContent(reply.content)}
+                                                        </div>
                                                     </div>
 
                                                     {/* Reply Attachments */}
@@ -614,14 +879,47 @@ export default function Show({
                                                     )}
                                                 </div>
                                                 
-                                                <textarea
-                                                    value={replyData.content}
-                                                    onChange={(e) => setReplyData('content', e.target.value)}
-                                                    rows={4}
-                                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                                    placeholder={replyType === 'internal' ? 'Add an internal note...' : 'Type your reply...'}
-                                                    required
-                                                />
+                                                <div className="relative">
+                                                    <textarea
+                                                        ref={textareaRef}
+                                                        value={replyData.content}
+                                                        onChange={handleTextareaChange}
+                                                        onKeyDown={handleTextareaKeyDown}
+                                                        rows={4}
+                                                        className={`block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${showMentionAutocomplete ? 'textarea-mention-active' : ''}`}
+                                                        placeholder={replyType === 'internal' ? 'Add an internal note... (Use @ to mention users)' : 'Type your reply...'}
+                                                        required
+                                                    />
+                                                    
+                                                    {/* Mention Autocomplete */}
+                                                    {showMentionAutocomplete && mentionSuggestions.length > 0 && (
+                                                        // Debug: log mentionSuggestions
+                                                        console.log('Mention suggestions:', mentionSuggestions),
+                                                        <div className="mention-autocomplete">
+                                                            {mentionSuggestions.map((user, index) => (
+                                                                <div
+                                                                    key={user.id}
+                                                                    className={`mention-suggestion ${index === selectedMentionIndex ? 'selected' : ''}`}
+                                                                    onClick={() => handleMentionSelect(user)}
+                                                                >
+                                                                    {/* Show avatar instead of just initial */}
+                                                                    {console.log('Mention dropdown user:', user)}
+                                                                    <span className="mention-avatar">
+                                                                        <Avatar user={user} size="sm" />
+                                                                    </span>
+                                                                    <div>
+                                                                        <div className="text-sm font-medium text-gray-900">
+                                                                            {user.name}
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-500">
+                                                                            {user.email}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <InputError message={replyErrors.content} />
 
                                                 <div className="flex items-center space-x-3">

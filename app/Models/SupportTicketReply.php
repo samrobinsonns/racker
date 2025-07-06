@@ -27,7 +27,8 @@ class SupportTicketReply extends Model
         'email_headers',
         'email_received_at',
         'email_metadata',
-        'metadata'
+        'metadata',
+        'mentions_processed'
     ];
 
     protected $casts = [
@@ -36,7 +37,8 @@ class SupportTicketReply extends Model
         'email_headers' => 'array',
         'email_metadata' => 'array',
         'metadata' => 'array',
-        'email_received_at' => 'datetime'
+        'email_received_at' => 'datetime',
+        'mentions_processed' => 'boolean'
     ];
 
     protected static function boot()
@@ -74,6 +76,14 @@ class SupportTicketReply extends Model
     public function attachments()
     {
         return $this->hasMany(SupportTicketAttachment::class, 'reply_id');
+    }
+
+    /**
+     * Get mentions for this reply
+     */
+    public function mentions()
+    {
+        return $this->hasMany(SupportTicketMention::class, 'reply_id');
     }
 
     /**

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
@@ -21,6 +21,14 @@ export default function Create({ priorities, categories, statuses, users, auth }
     const [dragActive, setDragActive] = useState(false);
     const [selectedContact, setSelectedContact] = useState(null);
     const { contact_id, contact_name, contact_email, contact_phone, contact_company } = usePage().props;
+    
+    // Mention functionality state
+    const [mentionSuggestions, setMentionSuggestions] = useState([]);
+    const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
+    const [mentionSearchTerm, setMentionSearchTerm] = useState('');
+    const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+    const [mentionCursorPosition, setMentionCursorPosition] = useState({ start: 0, end: 0 });
+    const descriptionRef = useRef(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         subject: '',
@@ -196,6 +204,93 @@ export default function Create({ priorities, categories, statuses, users, auth }
             requester_email: '',
             requester_name: ''
         });
+    };
+
+    // Mention functionality
+    const searchMentions = async (searchTerm) => {
+        if (!searchTerm || searchTerm.length < 1) {
+            setMentionSuggestions([]);
+            setShowMentionAutocomplete(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(route('mentions.search-users', { search: searchTerm }));
+            if (response.ok) {
+                const data = await response.json();
+                setMentionSuggestions(data.users);
+                setShowMentionAutocomplete(data.users.length > 0);
+                setSelectedMentionIndex(0);
+            }
+        } catch (error) {
+            console.error('Error searching mentions:', error);
+        }
+    };
+
+    const handleMentionSelect = (user) => {
+        const textarea = descriptionRef.current;
+        if (!textarea) return;
+
+        const beforeMention = data.description.substring(0, mentionCursorPosition.start);
+        const afterMention = data.description.substring(mentionCursorPosition.end);
+        const newContent = beforeMention + `@${user.name} ` + afterMention;
+
+        setData('description', newContent);
+        setShowMentionAutocomplete(false);
+        setMentionSuggestions([]);
+        setMentionSearchTerm('');
+
+        // Focus back to textarea and set cursor position after the mention
+        setTimeout(() => {
+            textarea.focus();
+            const newPosition = mentionCursorPosition.start + user.name.length + 2; // +2 for @ and space
+            textarea.setSelectionRange(newPosition, newPosition);
+        }, 0);
+    };
+
+    const handleDescriptionChange = (e) => {
+        const value = e.target.value;
+        setData('description', value);
+
+        // Check for @ mentions
+        const cursorPosition = e.target.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+        if (mentionMatch) {
+            const searchTerm = mentionMatch[1];
+            setMentionSearchTerm(searchTerm);
+            setMentionCursorPosition({
+                start: cursorPosition - searchTerm.length - 1, // -1 for @
+                end: cursorPosition
+            });
+            searchMentions(searchTerm);
+        } else {
+            setShowMentionAutocomplete(false);
+            setMentionSuggestions([]);
+        }
+    };
+
+    const handleDescriptionKeyDown = (e) => {
+        if (showMentionAutocomplete) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedMentionIndex(prev => 
+                    prev < mentionSuggestions.length - 1 ? prev + 1 : 0
+                );
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedMentionIndex(prev => 
+                    prev > 0 ? prev - 1 : mentionSuggestions.length - 1
+                );
+            } else if (e.key === 'Enter' && mentionSuggestions.length > 0) {
+                e.preventDefault();
+                handleMentionSelect(mentionSuggestions[selectedMentionIndex]);
+            } else if (e.key === 'Escape') {
+                setShowMentionAutocomplete(false);
+                setMentionSuggestions([]);
+            }
+        }
     };
 
     return (
@@ -422,19 +517,56 @@ export default function Create({ priorities, categories, statuses, users, auth }
                             {/* Description */}
                             <div className="mt-6">
                                 <InputLabel htmlFor="description" value="Description *" />
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    rows={6}
-                                    value={data.description}
-                                    onChange={(e) => setData('description', e.target.value)}
-                                    className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                    placeholder="Detailed description of the issue, including steps to reproduce, expected behavior, and any error messages..."
-                                    required
-                                />
+                                <div className="relative">
+                                    <textarea
+                                        ref={descriptionRef}
+                                        id="description"
+                                        name="description"
+                                        rows={6}
+                                        value={data.description}
+                                        onChange={handleDescriptionChange}
+                                        onKeyDown={handleDescriptionKeyDown}
+                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                        placeholder="Detailed description of the issue, including steps to reproduce, expected behavior, and any error messages... (Use @ to mention users)"
+                                        required
+                                    />
+                                    
+                                    {/* Mention Autocomplete */}
+                                    {showMentionAutocomplete && mentionSuggestions.length > 0 && (
+                                        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                            {mentionSuggestions.map((user, index) => (
+                                                <div
+                                                    key={user.id}
+                                                    className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
+                                                        index === selectedMentionIndex ? 'bg-gray-100' : ''
+                                                    }`}
+                                                    onClick={() => handleMentionSelect(user)}
+                                                >
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="flex-shrink-0">
+                                                            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
+                                                                <span className="text-sm font-medium text-gray-700">
+                                                                    {user.name.charAt(0).toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {user.name}
+                                                            </div>
+                                                            <div className="text-sm text-gray-500">
+                                                                {user.email}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <InputError message={errors.description} className="mt-2" />
                                 <p className="mt-2 text-sm text-gray-500">
-                                    Provide as much detail as possible to help us resolve your issue quickly.
+                                    Provide as much detail as possible to help us resolve your issue quickly. Use @ to mention team members.
                                 </p>
                             </div>
 

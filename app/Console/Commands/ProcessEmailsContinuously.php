@@ -350,10 +350,14 @@ class ProcessEmailsContinuously extends Command
         $plain = $bestParts['body'] ?? null;
         $html = $bestParts['raw_html'] ?? null;
 
-        // Always set description to plain text if available, otherwise strip HTML
+        // Ensure proper UTF-8 encoding for both plain text and HTML content
         if ($plain) {
+            $plain = mb_convert_encoding($plain, 'UTF-8', 'AUTO');
+            $plain = html_entity_decode($plain, ENT_QUOTES, 'UTF-8');
             $description = $this->cleanReplyContent($plain);
         } elseif ($html) {
+            $html = mb_convert_encoding($html, 'UTF-8', 'AUTO');
+            $html = html_entity_decode($html, ENT_QUOTES, 'UTF-8');
             $description = $this->cleanReplyContent(strip_tags($html));
         } else {
             $description = '';
@@ -456,6 +460,15 @@ class ProcessEmailsContinuously extends Command
      */
     private function cleanReplyHtmlContent($html): string
     {
+        // Remove raw CSS styles that appear as text (common in Outlook emails)
+        $html = preg_replace('/[A-Za-z]+\s*\{[^}]*\}/', '', $html);
+        
+        // Remove style tags and their content
+        $html = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $html);
+        
+        // Remove script tags and their content
+        $html = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $html);
+        
         // Remove quoted text blocks
         $html = preg_replace('/<blockquote[^>]*>.*?<\/blockquote>/is', '', $html);
         $html = preg_replace('/<div[^>]*class="[^"]*quote[^"]*"[^>]*>.*?<\/div>/is', '', $html);
@@ -495,6 +508,9 @@ class ProcessEmailsContinuously extends Command
         // Remove excessive whitespace and empty divs
         $html = preg_replace('/<div[^>]*>\s*<\/div>/', '', $html);
         $html = preg_replace('/\s*\n\s*\n\s*/', "\n", $html);
+        
+        // Remove any remaining raw CSS-like content
+        $html = preg_replace('/[A-Za-z]+\s*\{[^}]*\}/', '', $html);
         
         // Clean up the HTML
         $html = trim($html);
@@ -761,6 +777,12 @@ class ProcessEmailsContinuously extends Command
      */
     private function cleanHtmlBody($body)
     {
+        // Remove raw CSS styles that appear as text (common in Outlook emails)
+        $body = preg_replace('/[A-Za-z]+\s*\{[^}]*\}/', '', $body);
+        
+        // Remove style tags and their content
+        $body = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $body);
+        
         // Remove potentially dangerous tags but keep formatting
         $dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'];
         foreach ($dangerousTags as $tag) {
@@ -1073,6 +1095,18 @@ class ProcessEmailsContinuously extends Command
         
         // Get the actual email Message-ID for threading
         $emailMessageId = isset($headers->message_id) ? trim($headers->message_id, '<>') : null;
+        
+        // Ensure proper UTF-8 encoding for HTML content
+        if ($rawHtml) {
+            // Convert to UTF-8 if needed and handle special characters
+            $rawHtml = mb_convert_encoding($rawHtml, 'UTF-8', 'AUTO');
+            // Clean up any remaining encoding issues
+            $rawHtml = html_entity_decode($rawHtml, ENT_QUOTES, 'UTF-8');
+        }
+        
+        // Ensure proper UTF-8 encoding for text content
+        $body = mb_convert_encoding($body, 'UTF-8', 'AUTO');
+        $body = html_entity_decode($body, ENT_QUOTES, 'UTF-8');
         
         // Create the reply
         $reply = $replyService->createEmailReply($ticket, [
