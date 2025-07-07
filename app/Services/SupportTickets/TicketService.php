@@ -174,6 +174,10 @@ class TicketService
                         isset($oldValues['status_id']) && 
                         $data['status_id'] !== $oldValues['status_id'];
         
+        // Check if assignment is being changed
+        $assignmentChanged = isset($data['assigned_to']) && 
+                           $data['assigned_to'] !== $oldValues['assigned_to'];
+        
         $oldStatus = null;
         if ($statusChanged) {
             $oldStatus = $ticket->status->name;
@@ -195,6 +199,25 @@ class TicketService
                 $newStatus,
                 $changedBy
             );
+        }
+
+        // Handle assignment change notifications
+        if ($assignmentChanged) {
+            $newAssigneeId = $data['assigned_to'];
+            
+            // Only notify if ticket is being assigned to someone (not unassigned)
+            if ($newAssigneeId) {
+                $assignee = User::find($newAssigneeId);
+                if ($assignee) {
+                    $assignedBy = $userId ? User::find($userId) : null;
+                    
+                    app(\App\Services\SupportTickets\NotificationService::class)->notifyTicketAssigned(
+                        $ticket->fresh(),
+                        $assignee,
+                        $assignedBy
+                    );
+                }
+            }
         }
 
         return $ticket->fresh();
