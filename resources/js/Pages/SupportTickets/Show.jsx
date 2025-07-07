@@ -683,7 +683,7 @@ export default function Show({
                 </div>
             }
         >
-            <Head title={`Ticket #${ticket.ticket_number}`}>
+            <Head title={`Ticket #${ticket.ticket_number} - ${ticket.subject}`}>
                 <style>{emailStyles}</style>
             </Head>
 
@@ -697,7 +697,7 @@ export default function Show({
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                                            {ticket.subject}
+                                            #{ticket.ticket_number} - {ticket.subject}
                                         </h1>
                                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                                             <span>Created {formatTimeAgo(ticket.created_at)}</span>
