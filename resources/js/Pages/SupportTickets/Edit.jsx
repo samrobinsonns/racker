@@ -14,13 +14,18 @@ export default function Edit({ ticket, priorities, categories, statuses, users, 
         priority_id: ticket.priority_id || '',
         category_id: ticket.category_id || '',
         status_id: ticket.status_id || '',
-        assignee_id: ticket.assignee_id || '',
+        assignee_id: ticket.assigned_to || '',
         tags: ticket.tags || []
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('support-tickets.update', ticket.id));
+        const formData = {
+            ...data,
+            assigned_to: data.assignee_id
+        };
+        delete formData.assignee_id;
+        put(route('support-tickets.update', ticket.id), formData);
     };
 
     const getPriorityColor = (level) => {

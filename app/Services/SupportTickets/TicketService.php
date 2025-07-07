@@ -75,6 +75,7 @@ class TicketService
             'subject' => $data['subject'] ?? null,
             'tenant_id' => $tenantId,
             'user_id' => $userId,
+            'assigned_to' => $data['assigned_to'] ?? null,
         ]);
 
         // Set default status if not provided
@@ -149,6 +150,14 @@ class TicketService
 
         // Log ticket creation
         SupportTicketActivityLog::logTicketCreated($ticket, $userId);
+
+        // If ticket was assigned, trigger notification
+        if (!empty($data['assigned_to'])) {
+            $assignee = User::find($data['assigned_to']);
+            if ($assignee) {
+                app(NotificationService::class)->notifyTicketAssigned($ticket, $assignee, $userId ? User::find($userId) : null);
+            }
+        }
 
         return $ticket;
     }

@@ -159,7 +159,7 @@ class CannedResponseService
 
         // Create usage record
         $usage = CannedResponseUsage::create([
-            'tenant_id' => $tenantId,
+            'tenant_id' => $ticket->tenant_id,
             'canned_response_id' => $cannedResponse->id,
             'ticket_id' => $ticket->id,
             'reply_id' => $reply->id,
@@ -318,5 +318,27 @@ class CannedResponseService
                 ];
             })
             ->toArray();
+    }
+
+    /**
+     * Track usage of a canned response
+     */
+    public function trackUsage(int $cannedResponseId, string $tenantId, int $userId, ?int $ticketId = null): CannedResponseUsage
+    {
+        $cannedResponse = CannedResponse::forTenant($tenantId)->findOrFail($cannedResponseId);
+        
+        // Increment usage count
+        $cannedResponse->incrementUsage();
+
+        // Create usage record
+        $usage = CannedResponseUsage::create([
+            'tenant_id' => $tenantId,
+            'canned_response_id' => $cannedResponseId,
+            'ticket_id' => $ticketId,
+            'reply_id' => null, // Will be set when reply is created
+            'used_by' => $userId,
+        ]);
+
+        return $usage;
     }
 } 

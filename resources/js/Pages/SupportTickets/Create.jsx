@@ -87,6 +87,16 @@ export default function Create({ priorities, categories, statuses, users, auth }
                 data[key].forEach((tag, index) => {
                     formData.append('tags[]', tag);
                 });
+            } else if (key === 'assignee_id') {
+                // Map assignee_id to assigned_to for backend compatibility
+                if (data[key] !== null && data[key] !== '') {
+                    formData.append('assigned_to', data[key]);
+                }
+            } else if (key === 'category_id') {
+                // Only append category_id if it has a value
+                if (data[key] !== null && data[key] !== '') {
+                    formData.append(key, data[key]);
+                }
             } else if (data[key] !== null && data[key] !== '') {
                 formData.append(key, data[key]);
             }
@@ -97,7 +107,7 @@ export default function Create({ priorities, categories, statuses, users, auth }
             priority_id: formData.get('priority_id'),
             category_id: formData.get('category_id'),
             status_id: formData.get('status_id'),
-            assignee_id: formData.get('assignee_id'),
+            assigned_to: formData.get('assigned_to'),
             requester_email: formData.get('requester_email'),
             requester_name: formData.get('requester_name'),
             contact_id: formData.get('contact_id'),
@@ -375,14 +385,13 @@ export default function Create({ priorities, categories, statuses, users, auth }
 
                                 {/* Category */}
                                 <div>
-                                    <InputLabel htmlFor="category_id" value="Category *" />
+                                    <InputLabel htmlFor="category_id" value="Category" />
                                     <select
                                         id="category_id"
                                         name="category_id"
                                         value={data.category_id}
                                         onChange={(e) => setData('category_id', e.target.value)}
                                         className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                        required
                                     >
                                         <option value="">Select Category</option>
                                         {categories.map(category => (

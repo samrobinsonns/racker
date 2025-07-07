@@ -58,7 +58,7 @@ class CannedResponseController extends Controller
     /**
      * Store a newly created canned response
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         Gate::authorize('create', CannedResponse::class);
 
@@ -74,7 +74,21 @@ class CannedResponseController extends Controller
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
 
-        $this->cannedResponseService->createCannedResponse($validated, $tenantId, $userId);
+        $cannedResponse = $this->cannedResponseService->createCannedResponse($validated, $tenantId, $userId);
+
+        // Return JSON for AJAX requests (modal)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Canned response created successfully.',
+                'canned_response' => [
+                    'id' => $cannedResponse->id,
+                    'name' => $cannedResponse->name,
+                    'content' => $cannedResponse->content,
+                    'category' => $cannedResponse->category,
+                ]
+            ]);
+        }
 
         return redirect()->route('canned-responses.index')
             ->with('success', 'Canned response created successfully.');
@@ -113,7 +127,7 @@ class CannedResponseController extends Controller
     /**
      * Update the specified canned response
      */
-    public function update(Request $request, CannedResponse $cannedResponse): RedirectResponse
+    public function update(Request $request, CannedResponse $cannedResponse): RedirectResponse|JsonResponse
     {
         Gate::authorize('update', $cannedResponse);
 
@@ -128,7 +142,21 @@ class CannedResponseController extends Controller
 
         $userId = auth()->id();
 
-        $this->cannedResponseService->updateCannedResponse($cannedResponse, $validated, $userId);
+        $updatedResponse = $this->cannedResponseService->updateCannedResponse($cannedResponse, $validated, $userId);
+
+        // Return JSON for AJAX requests (modal)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Canned response updated successfully.',
+                'canned_response' => [
+                    'id' => $updatedResponse->id,
+                    'name' => $updatedResponse->name,
+                    'content' => $updatedResponse->content,
+                    'category' => $updatedResponse->category,
+                ]
+            ]);
+        }
 
         return redirect()->route('canned-responses.index')
             ->with('success', 'Canned response updated successfully.');
@@ -137,11 +165,19 @@ class CannedResponseController extends Controller
     /**
      * Remove the specified canned response
      */
-    public function destroy(CannedResponse $cannedResponse): RedirectResponse
+    public function destroy(CannedResponse $cannedResponse): RedirectResponse|JsonResponse
     {
         Gate::authorize('delete', $cannedResponse);
 
         $this->cannedResponseService->deleteCannedResponse($cannedResponse);
+
+        // Return JSON for AJAX requests (modal)
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Canned response deleted successfully.'
+            ]);
+        }
 
         return redirect()->route('canned-responses.index')
             ->with('success', 'Canned response deleted successfully.');
@@ -153,12 +189,12 @@ class CannedResponseController extends Controller
     public function search(Request $request): JsonResponse
     {
         $request->validate([
-            'search' => 'required|string|min:1|max:100',
+            'search' => 'nullable|string|max:100',
             'limit' => 'sometimes|integer|min:1|max:50',
         ]);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
-        $search = $request->search;
+        $search = $request->search ?? '';
         $limit = $request->input('limit', 10);
 
         $responses = $this->cannedResponseService->searchCannedResponses($tenantId, $search, $limit);
@@ -343,5 +379,38 @@ class CannedResponseController extends Controller
             'imported' => $result['imported'],
             'errors' => $result['errors'],
         ]);
+    }
+
+    /**
+     * Track usage of a canned response
+     */
+    public function trackUsage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'canned_response_id' => 'required|exists:canned_responses,id',
+            'ticket_id' => 'nullable|exists:support_tickets,id',
+        ]);
+
+        $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
+        $userId = auth()->id();
+
+        try {
+            $this->cannedResponseService->trackUsage(
+                $request->canned_response_id,
+                $tenantId,
+                $userId,
+                $request->ticket_id
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usage tracked successfully.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to track usage: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 }

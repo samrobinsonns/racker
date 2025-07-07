@@ -3,6 +3,8 @@ import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ContactSelector from '@/Components/ContactSelector';
 import Avatar from '@/Components/User/Avatar';
+import CannedResponseModal from '@/Components/CannedResponseModal';
+import EditTicketModal from '@/Components/EditTicketModal';
 
 // Add CSS for email content styling
 const emailStyles = `
@@ -155,6 +157,44 @@ const emailStyles = `
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
         outline: none !important;
     }
+
+    /* Canned response autocomplete styles */
+    .canned-response-autocomplete {
+        position: absolute;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 50;
+        max-height: 300px;
+        overflow-y: auto;
+        min-width: 300px;
+    }
+
+    .canned-response-suggestion {
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .canned-response-suggestion:hover {
+        background-color: #f3f4f6;
+    }
+
+    .canned-response-suggestion.selected {
+        background-color: #e5e7eb;
+    }
+
+    .canned-response-suggestion:last-child {
+        border-bottom: none;
+    }
+
+    /* Active canned response state for textarea */
+    .textarea-canned-response-active {
+        border-color: #059669 !important;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1) !important;
+        outline: none !important;
+    }
 `;
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -175,7 +215,8 @@ import {
     DocumentArrowDownIcon,
     EyeIcon,
     EyeSlashIcon,
-    TrashIcon
+    TrashIcon,
+    ChatBubbleBottomCenterTextIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -195,6 +236,9 @@ export default function Show({
     const [replyType, setReplyType] = useState('public'); // 'public' or 'internal'
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [showCannedResponseModal, setShowCannedResponseModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [messagesReversed, setMessagesReversed] = useState(true);
     
     // Mention functionality state
     const [mentionSuggestions, setMentionSuggestions] = useState([]);
@@ -203,6 +247,13 @@ export default function Show({
     const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
     const [mentionCursorPosition, setMentionCursorPosition] = useState({ start: 0, end: 0 });
     const textareaRef = useRef(null);
+
+    // Canned response functionality state
+    const [cannedResponseSuggestions, setCannedResponseSuggestions] = useState([]);
+    const [showCannedResponseAutocomplete, setShowCannedResponseAutocomplete] = useState(false);
+    const [cannedResponseSearchTerm, setCannedResponseSearchTerm] = useState('');
+    const [selectedCannedResponseIndex, setSelectedCannedResponseIndex] = useState(0);
+    const [cannedResponseCursorPosition, setCannedResponseCursorPosition] = useState({ start: 0, end: 0 });
 
     const { data: replyData, setData: setReplyData, post: postReply, processing: replyProcessing, errors: replyErrors, reset: resetReply } = useForm({
         content: '',
@@ -240,6 +291,27 @@ export default function Show({
         }
     };
 
+    // Canned response functionality
+    const searchCannedResponses = async (searchTerm) => {
+        if (!searchTerm || searchTerm.length < 1) {
+            setCannedResponseSuggestions([]);
+            setShowCannedResponseAutocomplete(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(route('canned-responses.search', { search: searchTerm, limit: 10 }));
+            if (response.ok) {
+                const data = await response.json();
+                setCannedResponseSuggestions(data.responses);
+                setShowCannedResponseAutocomplete(data.responses.length > 0);
+                setSelectedCannedResponseIndex(0);
+            }
+        } catch (error) {
+            console.error('Error searching canned responses:', error);
+        }
+    };
+
     const handleMentionSelect = (user) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
@@ -261,14 +333,63 @@ export default function Show({
         }, 0);
     };
 
+    const handleCannedResponseSelect = (cannedResponse) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        // Process the canned response content with placeholders
+        const processedContent = cannedResponse.content
+            .replace(/{customer_name}/g, ticket.requester_name || ticket.requester?.name || 'Customer')
+            .replace(/{agent_name}/g, auth.user.name)
+            .replace(/{ticket_number}/g, ticket.ticket_number)
+            .replace(/{date}/g, new Date().toLocaleDateString())
+            .replace(/{time}/g, new Date().toLocaleTimeString());
+
+        const beforeCannedResponse = replyData.content.substring(0, cannedResponseCursorPosition.start);
+        const afterCannedResponse = replyData.content.substring(cannedResponseCursorPosition.end);
+        const newContent = beforeCannedResponse + processedContent + afterCannedResponse;
+
+        setReplyData('content', newContent);
+        setShowCannedResponseAutocomplete(false);
+        setCannedResponseSuggestions([]);
+        setCannedResponseSearchTerm('');
+
+        // Focus back to textarea and set cursor position after the canned response
+        setTimeout(() => {
+            textarea.focus();
+            const newPosition = cannedResponseCursorPosition.start + processedContent.length;
+            textarea.setSelectionRange(newPosition, newPosition);
+        }, 0);
+
+        // Track usage
+        try {
+            fetch(route('canned-responses.track-usage'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    canned_response_id: cannedResponse.id,
+                    ticket_id: ticket.id
+                })
+            });
+        } catch (error) {
+            console.error('Error tracking canned response usage:', error);
+        }
+    };
+
     const handleTextareaChange = (e) => {
         const value = e.target.value;
         setReplyData('content', value);
 
-        // Check for @ mentions
         const cursorPosition = e.target.selectionStart;
         const textBeforeCursor = value.substring(0, cursorPosition);
+
+        // Check for @ mentions
         const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+        // Check for / canned responses
+        const cannedResponseMatch = textBeforeCursor.match(/\/(\w*)$/);
 
         if (mentionMatch) {
             const searchTerm = mentionMatch[1];
@@ -278,9 +399,26 @@ export default function Show({
                 end: cursorPosition
             });
             searchMentions(searchTerm);
-        } else {
+            // Hide canned response autocomplete if mention is active
+            setShowCannedResponseAutocomplete(false);
+            setCannedResponseSuggestions([]);
+        } else if (cannedResponseMatch) {
+            const searchTerm = cannedResponseMatch[1];
+            setCannedResponseSearchTerm(searchTerm);
+            setCannedResponseCursorPosition({
+                start: cursorPosition - searchTerm.length - 1, // -1 for /
+                end: cursorPosition
+            });
+            searchCannedResponses(searchTerm);
+            // Hide mention autocomplete if canned response is active
             setShowMentionAutocomplete(false);
             setMentionSuggestions([]);
+        } else {
+            // Hide both autocompletion systems
+            setShowMentionAutocomplete(false);
+            setMentionSuggestions([]);
+            setShowCannedResponseAutocomplete(false);
+            setCannedResponseSuggestions([]);
         }
     };
 
@@ -303,6 +441,24 @@ export default function Show({
                 setShowMentionAutocomplete(false);
                 setMentionSuggestions([]);
             }
+        } else if (showCannedResponseAutocomplete) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedCannedResponseIndex(prev => 
+                    prev < cannedResponseSuggestions.length - 1 ? prev + 1 : 0
+                );
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedCannedResponseIndex(prev => 
+                    prev > 0 ? prev - 1 : cannedResponseSuggestions.length - 1
+                );
+            } else if (e.key === 'Enter' && cannedResponseSuggestions.length > 0) {
+                e.preventDefault();
+                handleCannedResponseSelect(cannedResponseSuggestions[selectedCannedResponseIndex]);
+            } else if (e.key === 'Escape') {
+                setShowCannedResponseAutocomplete(false);
+                setCannedResponseSuggestions([]);
+            }
         }
     };
 
@@ -314,6 +470,8 @@ export default function Show({
                 setShowReplyForm(false);
                 setShowMentionAutocomplete(false);
                 setMentionSuggestions([]);
+                setShowCannedResponseAutocomplete(false);
+                setCannedResponseSuggestions([]);
             }
         });
     };
@@ -512,123 +670,15 @@ export default function Show({
         <AuthenticatedLayout
             user={auth.user}
             header={
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                            <Link
-                                href={route('support-tickets.index')}
-                                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
-                            >
-                                <ArrowLeftIcon className="h-4 w-4 mr-1" />
-                                Back to Tickets
-                            </Link>
-                        </div>
-
-                        {/* Actions Menu */}
-                        <div className="flex items-center space-x-3">
-                            {permissions.update && (
-                                <Link
-                                    href={route('support-tickets.edit', ticket.id)}
-                                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                >
-                                    <PencilIcon className="h-4 w-4 mr-2" />
-                                    Edit
-                                </Link>
-                            )}
-
-                            <Menu as="div" className="relative inline-block text-left">
-                                <Menu.Button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    Actions
-                                    <EllipsisVerticalIcon className="h-4 w-4 ml-2" />
-                                </Menu.Button>
-
-                                <Transition
-                                    as={Fragment}
-                                    enter="transition ease-out duration-100"
-                                    enterFrom="transform opacity-0 scale-95"
-                                    enterTo="transform opacity-100 scale-100"
-                                    leave="transition ease-in duration-75"
-                                    leaveFrom="transform opacity-100 scale-100"
-                                    leaveTo="transform opacity-0 scale-95"
-                                >
-                                    <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                        <div className="py-1">
-                                            {permissions.assign && (
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button
-                                                            onClick={() => setShowAssignModal(true)}
-                                                            className={`${
-                                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                        >
-                                                            <UserIcon className="mr-3 h-4 w-4" />
-                                                            Assign/Reassign
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            )}
-                                            
-                                            {permissions.update && (
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button
-                                                            onClick={() => setShowStatusModal(true)}
-                                                            className={`${
-                                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                        >
-                                                            <TagIcon className="mr-3 h-4 w-4" />
-                                                            Change Status
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            )}
-
-                                            {permissions.manage && !ticket.is_escalated && (
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button
-                                                            onClick={escalateTicket}
-                                                            className={`${
-                                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                        >
-                                                            <ArrowTrendingUpIcon className="mr-3 h-4 w-4" />
-                                                            Escalate Ticket
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            )}
-
-                                            {permissions.delete && (
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button
-                                                            onClick={() => {
-                                                                if (confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
-                                                                    router.delete(route('support-tickets.destroy', ticket.id), {
-                                                                        onSuccess: () => {
-                                                                            router.visit(route('support-tickets.index'));
-                                                                        },
-                                                                    });
-                                                                }
-                                                            }}
-                                                            className={`${
-                                                                active ? 'bg-gray-100 text-red-900' : 'text-red-700'
-                                                            } group flex items-center px-4 py-2 text-sm w-full text-left`}
-                                                        >
-                                                            <TrashIcon className="mr-3 h-4 w-4" />
-                                                            Delete Ticket
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            )}
-                                        </div>
-                                    </Menu.Items>
-                                </Transition>
-                            </Menu>
-                        </div>
+                <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center">
+                        <Link
+                            href={route('support-tickets.index')}
+                            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+                            Back to Tickets
+                        </Link>
                     </div>
                 </div>
             }
@@ -638,10 +688,10 @@ export default function Show({
             </Head>
 
             <div className="py-6">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                         {/* Main Content */}
-                        <div className="lg:col-span-2 space-y-6">
+                        <div className="lg:col-span-3 space-y-6">
                             {/* Ticket Header */}
                             <div className="bg-white shadow rounded-lg p-6">
                                 <div className="flex items-start justify-between">
@@ -715,16 +765,172 @@ export default function Show({
                                 )}
                             </div>
 
+                            {/* Reply Buttons and Forms */}
+                            {permissions.reply && (
+                                <div className="bg-white shadow rounded-lg mb-6">
+                                    <div className="p-6">
+                                        <div className="flex space-x-3">
+                                            <PrimaryButton
+                                                onClick={() => {
+                                                    setReplyType('public');
+                                                    setReplyData('is_internal', false);
+                                                    setShowReplyForm(true);
+                                                }}
+                                            >
+                                                <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
+                                                Reply to Customer
+                                            </PrimaryButton>
+                                            {permissions.manage && (
+                                                <SecondaryButton
+                                                    onClick={() => {
+                                                        setReplyType('internal');
+                                                        setReplyData('is_internal', true);
+                                                        setShowReplyForm(true);
+                                                    }}
+                                                >
+                                                    <EyeSlashIcon className="h-4 w-4 mr-2" />
+                                                    Add Internal Note
+                                                </SecondaryButton>
+                                            )}
+                                        </div>
+
+                                        {/* Reply Forms */}
+                                        {showReplyForm && (
+                                            <div className="mt-6">
+                                                <form onSubmit={handleReplySubmit} className="space-y-4">
+                                                    <div className="flex items-center space-x-2 text-sm">
+                                                        <span className="font-medium">
+                                                            {replyType === 'internal' ? 'Internal Note' : 'Public Reply'}
+                                                        </span>
+                                                        {replyType === 'internal' && (
+                                                            <span className="text-yellow-600">(Not visible to customer)</span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="relative">
+                                                        <textarea
+                                                            ref={textareaRef}
+                                                            value={replyData.content}
+                                                            onChange={handleTextareaChange}
+                                                            onKeyDown={handleTextareaKeyDown}
+                                                            rows={4}
+                                                            className={`block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${showMentionAutocomplete ? 'textarea-mention-active' : ''} ${showCannedResponseAutocomplete ? 'textarea-canned-response-active' : ''}`}
+                                                            placeholder={replyType === 'internal' ? 'Add an internal note... (Use @ to mention users, / for canned responses)' : 'Type your reply... (Use @ to mention users, / for canned responses)'}
+                                                            required
+                                                        />
+                                                        
+                                                        {/* Mention Autocomplete */}
+                                                        {showMentionAutocomplete && mentionSuggestions.length > 0 && (
+                                                            <div className="mention-autocomplete">
+                                                                {mentionSuggestions.map((user, index) => (
+                                                                    <div
+                                                                        key={user.id}
+                                                                        className={`mention-suggestion ${index === selectedMentionIndex ? 'selected' : ''}`}
+                                                                        onClick={() => handleMentionSelect(user)}
+                                                                    >
+                                                                        <span className="mention-avatar">
+                                                                            <Avatar user={user} size="sm" />
+                                                                        </span>
+                                                                        <div>
+                                                                            <div className="text-sm font-medium text-gray-900">
+                                                                                {user.name}
+                                                                            </div>
+                                                                            <div className="text-xs text-gray-500">
+                                                                                {user.email}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Canned Response Autocomplete */}
+                                                        {showCannedResponseAutocomplete && cannedResponseSuggestions.length > 0 && (
+                                                            <div className="canned-response-autocomplete">
+                                                                {cannedResponseSuggestions.map((response, index) => (
+                                                                    <div
+                                                                        key={response.id}
+                                                                        className={`canned-response-suggestion ${index === selectedCannedResponseIndex ? 'selected' : ''}`}
+                                                                        onClick={() => handleCannedResponseSelect(response)}
+                                                                    >
+                                                                        <div className="flex items-start justify-between">
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="text-sm font-medium text-gray-900 truncate">
+                                                                                    {response.name}
+                                                                                </div>
+                                                                                <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                                                                    {response.content.substring(0, 100)}...
+                                                                                </div>
+                                                                                <div className="flex items-center space-x-2 mt-1">
+                                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                                                        {response.category}
+                                                                                    </span>
+                                                                                    {response.usage_count > 0 && (
+                                                                                        <span className="text-xs text-gray-400">
+                                                                                            Used {response.usage_count} times
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <InputError message={replyErrors.content} />
+
+                                                    <div className="flex items-center space-x-3">
+                                                        <PrimaryButton type="submit" disabled={replyProcessing}>
+                                                            {replyProcessing ? 'Sending...' : (replyType === 'internal' ? 'Add Note' : 'Send Reply')}
+                                                        </PrimaryButton>
+                                                        <SecondaryButton
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowReplyForm(false);
+                                                                resetReply();
+                                                                setShowMentionAutocomplete(false);
+                                                                setMentionSuggestions([]);
+                                                                setShowCannedResponseAutocomplete(false);
+                                                                setCannedResponseSuggestions([]);
+                                                            }}
+                                                        >
+                                                            Cancel
+                                                        </SecondaryButton>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Replies */}
                             <div className="bg-white shadow rounded-lg">
-                                <div className="px-6 py-4 border-b border-gray-200">
+                                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                                     <h3 className="text-lg font-medium text-gray-900">
                                         Communication ({replies.length})
                                     </h3>
+                                    <button
+                                        onClick={() => setMessagesReversed(!messagesReversed)}
+                                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    >
+                                        {messagesReversed ? (
+                                            <>
+                                                <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
+                                                Newest First
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ArrowTrendingUpIcon className="h-4 w-4 mr-2 transform rotate-180" />
+                                                Oldest First
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
 
                                 <div className="divide-y divide-gray-200">
-                                    {replies.map((reply) => (
+                                    {(messagesReversed ? [...replies].reverse() : replies).map((reply) => (
                                         <div key={reply.id} className={`p-6 ${reply.is_internal ? 'bg-yellow-50' : ''}`}>
                                             <div className="flex items-start space-x-3">
                                                 <div className="flex-shrink-0">
@@ -839,107 +1045,6 @@ export default function Show({
                                         </div>
                                     ))}
                                 </div>
-
-                                {/* Reply Form */}
-                                {permissions.reply && (
-                                    <div className="p-6 border-t border-gray-200">
-                                        {!showReplyForm ? (
-                                            <div className="flex space-x-3">
-                                                <PrimaryButton
-                                                    onClick={() => {
-                                                        setReplyType('public');
-                                                        setReplyData('is_internal', false);
-                                                        setShowReplyForm(true);
-                                                    }}
-                                                >
-                                                    <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
-                                                    Reply to Customer
-                                                </PrimaryButton>
-                                                {permissions.manage && (
-                                                    <SecondaryButton
-                                                        onClick={() => {
-                                                            setReplyType('internal');
-                                                            setReplyData('is_internal', true);
-                                                            setShowReplyForm(true);
-                                                        }}
-                                                    >
-                                                        <EyeSlashIcon className="h-4 w-4 mr-2" />
-                                                        Add Internal Note
-                                                    </SecondaryButton>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <form onSubmit={handleReplySubmit} className="space-y-4">
-                                                <div className="flex items-center space-x-2 text-sm">
-                                                    <span className="font-medium">
-                                                        {replyType === 'internal' ? 'Internal Note' : 'Public Reply'}
-                                                    </span>
-                                                    {replyType === 'internal' && (
-                                                        <span className="text-yellow-600">(Not visible to customer)</span>
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="relative">
-                                                    <textarea
-                                                        ref={textareaRef}
-                                                        value={replyData.content}
-                                                        onChange={handleTextareaChange}
-                                                        onKeyDown={handleTextareaKeyDown}
-                                                        rows={4}
-                                                        className={`block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${showMentionAutocomplete ? 'textarea-mention-active' : ''}`}
-                                                        placeholder={replyType === 'internal' ? 'Add an internal note... (Use @ to mention users)' : 'Type your reply...'}
-                                                        required
-                                                    />
-                                                    
-                                                    {/* Mention Autocomplete */}
-                                                    {showMentionAutocomplete && mentionSuggestions.length > 0 && (
-                                                        // Debug: log mentionSuggestions
-                                                        console.log('Mention suggestions:', mentionSuggestions),
-                                                        <div className="mention-autocomplete">
-                                                            {mentionSuggestions.map((user, index) => (
-                                                                <div
-                                                                    key={user.id}
-                                                                    className={`mention-suggestion ${index === selectedMentionIndex ? 'selected' : ''}`}
-                                                                    onClick={() => handleMentionSelect(user)}
-                                                                >
-                                                                    {/* Show avatar instead of just initial */}
-                                                                    {console.log('Mention dropdown user:', user)}
-                                                                    <span className="mention-avatar">
-                                                                        <Avatar user={user} size="sm" />
-                                                                    </span>
-                                                                    <div>
-                                                                        <div className="text-sm font-medium text-gray-900">
-                                                                            {user.name}
-                                                                        </div>
-                                                                        <div className="text-xs text-gray-500">
-                                                                            {user.email}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <InputError message={replyErrors.content} />
-
-                                                <div className="flex items-center space-x-3">
-                                                    <PrimaryButton type="submit" disabled={replyProcessing}>
-                                                        {replyProcessing ? 'Sending...' : (replyType === 'internal' ? 'Add Note' : 'Send Reply')}
-                                                    </PrimaryButton>
-                                                    <SecondaryButton
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setShowReplyForm(false);
-                                                            resetReply();
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </SecondaryButton>
-                                                </div>
-                                            </form>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         </div>
 
@@ -976,8 +1081,8 @@ export default function Show({
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                                 </svg>
                                                                 <span>{ticket.contact.email}</span>
-                                                        </div>
-                                                        {ticket.contact.phone && (
+                                                            </div>
+                                                            {ticket.contact.phone && (
                                                                 <div className="flex items-center space-x-2 mt-1">
                                                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -991,8 +1096,8 @@ export default function Show({
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                                                     </svg>
                                                                     <span>{ticket.contact.company}</span>
-                                                            </div>
-                                                        )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1146,6 +1251,45 @@ export default function Show({
                                 </dl>
                             </div>
 
+                            {/* Actions Panel */}
+                            <div className="bg-white shadow rounded-lg p-6">
+                                <div className="space-y-3">
+                                    {permissions.update && (
+                                        <button
+                                            onClick={() => setShowEditModal(true)}
+                                            className="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                        >
+                                            <PencilIcon className="h-4 w-4 mr-2" />
+                                            Edit Ticket
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setShowCannedResponseModal(true)}
+                                        className="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    >
+                                        <ChatBubbleBottomCenterTextIcon className="h-4 w-4 mr-2" />
+                                        Manage Canned Responses
+                                    </button>
+                                    {permissions.delete && (
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
+                                                    router.delete(route('support-tickets.destroy', ticket.id), {
+                                                        onSuccess: () => {
+                                                            router.visit(route('support-tickets.index'));
+                                                        },
+                                                    });
+                                                }
+                                            }}
+                                            className="w-full inline-flex items-center justify-center px-3 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                        >
+                                            <TrashIcon className="h-4 w-4 mr-2" />
+                                            Delete Ticket
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Activity Log */}
                             {ticket.activity_logs && ticket.activity_logs.length > 0 && (
                                 <div className="bg-white shadow rounded-lg p-6">
@@ -1166,18 +1310,18 @@ export default function Show({
                                                             </div>
                                                             <div className="min-w-0 flex-1">
                                                                 <div>
-                                                                                                                        <div className="text-sm">
-                                                        {log.user ? (
-                                                            <Link
-                                                                href={route('profile.show', { user: log.user.id })}
-                                                                className="font-medium text-gray-900 hover:text-violet-600"
-                                                            >
-                                                                {log.user.name}
-                                                            </Link>
-                                                        ) : (
-                                                            <span className="font-medium text-gray-900">System</span>
-                                                        )}
-                                                    </div>
+                                                                    <div className="text-sm">
+                                                                        {log.user ? (
+                                                                            <Link
+                                                                                href={route('profile.show', { user: log.user.id })}
+                                                                                className="font-medium text-gray-900 hover:text-violet-600"
+                                                                            >
+                                                                                {log.user.name}
+                                                                            </Link>
+                                                                        ) : (
+                                                                            <span className="font-medium text-gray-900">System</span>
+                                                                        )}
+                                                                    </div>
                                                                     <p className="mt-0.5 text-sm text-gray-500">
                                                                         {formatTimeAgo(log.created_at)}
                                                                     </p>
@@ -1198,6 +1342,23 @@ export default function Show({
                     </div>
                 </div>
             </div>
+
+            {/* Canned Response Modal */}
+            <CannedResponseModal
+                show={showCannedResponseModal}
+                onClose={() => setShowCannedResponseModal(false)}
+            />
+
+            {/* Edit Ticket Modal */}
+            <EditTicketModal
+                show={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                ticket={ticket}
+                priorities={priorities}
+                categories={categories}
+                statuses={statuses}
+                users={users}
+            />
         </AuthenticatedLayout>
     );
 } 

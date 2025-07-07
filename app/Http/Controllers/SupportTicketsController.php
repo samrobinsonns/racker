@@ -122,13 +122,15 @@ class SupportTicketsController extends Controller
     {
         Gate::authorize('create', SupportTicket::class);
 
+        \Log::info('Incoming ticket request data:', $request->all());
+
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'description' => 'required|string',
             'priority_id' => 'required|exists:support_ticket_priorities,id',
-            'category_id' => 'required|exists:support_ticket_categories,id',
+            'category_id' => 'nullable|exists:support_ticket_categories,id',
             'status_id' => 'nullable|exists:support_ticket_statuses,id',
-            'assignee_id' => 'nullable|exists:users,id',
+            'assigned_to' => 'nullable|exists:users,id',
             'requester_email' => 'nullable|email',
             'requester_name' => 'nullable|string|max:255',
             'contact_id' => 'nullable|exists:contacts,id',
@@ -137,6 +139,8 @@ class SupportTicketsController extends Controller
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|max:10240', // 10MB max
         ]);
+
+        \Log::info('Validated ticket data:', $validated);
 
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
@@ -147,6 +151,11 @@ class SupportTicketsController extends Controller
         }
 
         $ticket = $this->ticketService->createTicket($validated, $tenantId, $userId);
+
+        \Log::info('Created ticket:', [
+            'ticket_id' => $ticket->id,
+            'assigned_to' => $ticket->assigned_to
+        ]);
 
         // Handle file attachments
         if ($request->hasFile('attachments')) {
@@ -264,7 +273,7 @@ class SupportTicketsController extends Controller
             'priority_id' => 'required|exists:support_ticket_priorities,id',
             'category_id' => 'nullable|exists:support_ticket_categories,id',
             'status_id' => 'nullable|exists:support_ticket_statuses,id',
-            'assignee_id' => 'nullable|exists:users,id',
+            'assigned_to' => 'nullable|exists:users,id',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
         ]);

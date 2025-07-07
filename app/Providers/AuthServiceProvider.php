@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\SupportTicket;
+use App\Models\CannedResponse;
 use App\Policies\SupportTicketPolicy;
 use App\Policies\SupportTicketSettingsPolicy;
+use App\Policies\CannedResponsePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -18,6 +20,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         SupportTicket::class => SupportTicketPolicy::class,
         'App\Models\SupportTicketSettings' => SupportTicketSettingsPolicy::class,
+        CannedResponse::class => CannedResponsePolicy::class,
     ];
 
     /**
