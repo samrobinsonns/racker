@@ -336,8 +336,12 @@ class TicketService
             $query->where('category_id', $filters['category_id']);
         }
 
-        if (!empty($filters['assignee_id'])) {
-            $query->where('assignee_id', $filters['assignee_id']);
+        if (isset($filters['assignee_id'])) {
+            if ($filters['assignee_id'] === 'unassigned') {
+                $query->whereNull('assigned_to');
+            } else {
+                $query->where('assigned_to', $filters['assignee_id']);
+            }
         }
 
         if (isset($filters['unassigned']) && $filters['unassigned']) {

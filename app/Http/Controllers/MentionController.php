@@ -28,6 +28,13 @@ class MentionController extends Controller
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $excludeUserId = auth()->id();
 
+        // Return empty results if no tenant is found
+        if (!$tenantId) {
+            return response()->json([
+                'users' => [],
+            ]);
+        }
+
         $users = $this->mentionService->searchMentionableUsers(
             $tenantId,
             $request->search,
@@ -55,6 +62,13 @@ class MentionController extends Controller
     {
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $excludeUserId = $request->input('exclude_user_id');
+
+        // Return empty results if no tenant is found
+        if (!$tenantId) {
+            return response()->json([
+                'users' => [],
+            ]);
+        }
 
         $users = $this->mentionService->getMentionableUsers($tenantId, $excludeUserId);
 
@@ -84,6 +98,13 @@ class MentionController extends Controller
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
         $limit = $request->input('limit', 20);
+
+        // Return empty results if no tenant is found
+        if (!$tenantId) {
+            return response()->json([
+                'mentions' => [],
+            ]);
+        }
 
         $mentions = $this->mentionService->getUserMentions($userId, $tenantId, $limit);
 
@@ -120,6 +141,14 @@ class MentionController extends Controller
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
 
+        // Return empty results if no tenant is found
+        if (!$tenantId) {
+            return response()->json([
+                'mentions' => [],
+                'count' => 0,
+            ]);
+        }
+
         $mentions = $this->mentionService->getUnreadMentions($userId, $tenantId);
 
         return response()->json([
@@ -148,18 +177,26 @@ class MentionController extends Controller
     }
 
     /**
-     * Mark mentions as read
+     * Mark mentions as read for the authenticated user
      */
-    public function markMentionsAsRead(Request $request): JsonResponse
+    public function markAsRead(Request $request): JsonResponse
     {
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
 
+        // Return success if no tenant is found
+        if (!$tenantId) {
+            return response()->json([
+                'marked_count' => 0,
+                'message' => 'No mentions to mark as read'
+            ]);
+        }
+
         $markedCount = $this->mentionService->markMentionsAsRead($userId, $tenantId);
 
         return response()->json([
-            'message' => "Marked {$markedCount} mentions as read",
             'marked_count' => $markedCount,
+            'message' => "Marked {$markedCount} mentions as read"
         ]);
     }
 
@@ -170,6 +207,16 @@ class MentionController extends Controller
     {
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
         $userId = auth()->id();
+
+        // Return empty stats if no tenant is found
+        if (!$tenantId) {
+            return response()->json([
+                'total_mentions' => 0,
+                'unread_mentions' => 0,
+                'recent_mentions' => 0,
+                'today_mentions' => 0,
+            ]);
+        }
 
         $mentions = $this->mentionService->getUserMentions($userId, $tenantId, 1000);
         $unreadMentions = $this->mentionService->getUnreadMentions($userId, $tenantId);

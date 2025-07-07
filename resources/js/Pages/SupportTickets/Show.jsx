@@ -655,24 +655,35 @@ export default function Show({
             data.due_date = value;
         }
 
-        // Special handling for assignee updates
-        if (field === 'assignee_id') {
-            // Use the special assign endpoint for assignee changes
-            router.post(route('support-tickets.assign', ticket.id), {
-                assignee_id: value
-            }, {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    // Refresh the page to get updated data
-                    router.reload();
-                },
-                onError: (errors) => {
-                    console.error('Error assigning ticket:', errors);
-                }
-            });
-            return;
-        }
+                    // Special handling for assignee updates
+            if (field === 'assignee_id') {
+                // Use the regular update endpoint which allows null for assigned_to
+                const data = {
+                    subject: ticket.subject,
+                    description: ticket.description,
+                    priority_id: ticket.priority_id,
+                    status_id: ticket.status_id,
+                    category_id: ticket.category_id,
+                    due_date: ticket.due_date,
+                    assigned_to: value === 'unassigned' ? null : value
+                };
+                
+                // Log the data being sent for debugging
+                console.log('Sending update data:', data);
+                
+                router.put(route('support-tickets.update', ticket.id), data, {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: () => {
+                        // Refresh the page to get updated data
+                        router.reload();
+                    },
+                    onError: (errors) => {
+                        console.error('Error updating ticket:', errors);
+                    }
+                });
+                return;
+            }
 
         router.put(route('support-tickets.update', ticket.id), data, {
             preserveScroll: true,
@@ -1299,11 +1310,14 @@ export default function Show({
                                         <dd className="mt-1">
                                             {permissions.assign ? (
                                                 <select
-                                                    value={ticket.assigned_to || ''}
-                                                    onChange={(e) => updateTicketField('assignee_id', e.target.value)}
+                                                    value={ticket.assigned_to || 'unassigned'}
+                                                    onChange={(e) => {
+                                                        console.log('Selected value:', e.target.value);
+                                                        updateTicketField('assignee_id', e.target.value);
+                                                    }}
                                                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                                                 >
-                                                    <option value="">Unassigned</option>
+                                                    <option value="unassigned">Unassigned</option>
                                                     {users.map((user) => (
                                                         <option key={user.id} value={user.id}>
                                                             {user.name} ({user.email})

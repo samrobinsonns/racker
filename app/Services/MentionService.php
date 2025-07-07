@@ -50,10 +50,21 @@ class MentionService
      */
     public function extractMentions(string $content): array
     {
-        // Match @username patterns
-        preg_match_all('/@([a-zA-Z0-9._-]+)/', $content, $matches);
+        // Match @username patterns - the frontend always inserts "@Name " (with space after)
+        // So we capture everything between @ and the next space
+        preg_match_all('/@([^@]+?)\s/', $content, $matches);
         
-        return array_unique($matches[1] ?? []);
+        // Also catch mentions at the end of text (without trailing space)
+        preg_match_all('/@([^@\s]+(?:\s+[^@\s]+)*)$/', $content, $endMatches);
+        
+        // Combine both results
+        $allMentions = array_merge($matches[1] ?? [], $endMatches[1] ?? []);
+        
+        // Clean up the matched names (trim whitespace)
+        $mentions = array_map('trim', $allMentions);
+        
+        // Remove empty mentions and return unique values
+        return array_unique(array_filter($mentions));
     }
 
     /**
@@ -180,10 +191,7 @@ class MentionService
     {
         return SupportTicketMention::forTenant($tenantId)
             ->forUser($userId)
-            ->whereDoesntHave('reply.ticket.notifications', function ($q) use ($userId) {
-                $q->where('user_id', $userId)
-                  ->where('metadata->is_mention', true);
-            })
+            ->unread()
             ->with(['ticket', 'reply', 'mentionedByUser'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -196,24 +204,13 @@ class MentionService
     {
         $mentions = $this->getUnreadMentions($userId, $tenantId);
         
+        $markedCount = 0;
         foreach ($mentions as $mention) {
-            // Create read notification or update existing
-            $this->notificationService->createForUser(
-                user: User::find($userId),
-                type: 'info',
-                message: "Mention in ticket #{$mention->ticket->ticket_number}",
-                title: 'Mention Read',
-                actionUrl: route('support-tickets.show', $mention->ticket),
-                actionText: 'View Ticket',
-                metadata: [
-                    'ticket_id' => $mention->ticket_id,
-                    'reply_id' => $mention->reply_id,
-                    'is_mention' => true,
-                    'read_at' => now(),
-                ]
-            );
+            if ($mention->markAsRead()) {
+                $markedCount++;
+            }
         }
 
-        return $mentions->count();
+        return $markedCount;
     }
 } 

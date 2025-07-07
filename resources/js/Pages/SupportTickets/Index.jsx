@@ -23,7 +23,12 @@ export default function Index({
     auth 
 }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [activeFilters, setActiveFilters] = useState(filters);
+    const [activeFilters, setActiveFilters] = useState({
+        status_id: filters.status_id || '',
+        priority_id: filters.priority_id || '',
+        assignee_id: filters.assignee_id || '',
+        search: filters.search || '',
+    });
     const [showFilters, setShowFilters] = useState(false);
 
     // Debounced search
@@ -39,17 +44,31 @@ export default function Index({
 
     const handleFilterChange = (key, value) => {
         const newFilters = { ...activeFilters, [key]: value };
-        if (!value) {
-            delete newFilters[key];
-        }
+        setActiveFilters(newFilters);
         
-        router.get(route('support-tickets.index'), newFilters, {
+        // Clean up empty values for the API request
+        const apiFilters = {};
+        Object.entries(newFilters).forEach(([k, v]) => {
+            if (v) {
+                apiFilters[k] = v;
+            }
+        });
+        
+        router.get(route('support-tickets.index'), apiFilters, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
     const clearFilters = () => {
+        const emptyFilters = {
+            status_id: '',
+            priority_id: '',
+            assignee_id: '',
+            search: '',
+        };
+        setActiveFilters(emptyFilters);
+        setSearchTerm('');
         router.get(route('support-tickets.index'), {}, {
             preserveState: true,
         });
@@ -331,12 +350,18 @@ export default function Index({
                                                         {ticket.is_escalated && (
                                                             <ArrowTrendingUpIcon className="h-5 w-5 text-red-500" />
                                                         )}
-                                                        {ticket.is_overdue && (
-                                                            <ExclamationTriangleIcon className="h-5 w-5 text-orange-500" />
-                                                        )}
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium ring-1 ring-inset ${getStatusColor(ticket.status)}`}>
-                                                            {ticket.status.name}
-                                                        </span>
+                                                        <div className="w-20 flex justify-start">
+                                                            {ticket.is_overdue && (
+                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 bg-white border border-red-600 rounded-md">
+                                                                    Overdue
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="w-20 flex justify-start">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium ring-1 ring-inset ${getStatusColor(ticket.status)}`}>
+                                                                {ticket.status.name}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

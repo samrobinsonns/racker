@@ -16,11 +16,13 @@ class SupportTicketMention extends Model
         'reply_id',
         'mentioned_user_id',
         'mentioned_by_user_id',
+        'read_at',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'read_at' => 'datetime',
     ];
 
     /**
@@ -109,5 +111,56 @@ class SupportTicketMention extends Model
     public function isRecent(): bool
     {
         return $this->created_at->isAfter(now()->subDay());
+    }
+
+    /**
+     * Check if the mention has been read
+     */
+    public function isRead(): bool
+    {
+        return !is_null($this->read_at);
+    }
+
+    /**
+     * Check if the mention is unread
+     */
+    public function isUnread(): bool
+    {
+        return is_null($this->read_at);
+    }
+
+    /**
+     * Mark the mention as read
+     */
+    public function markAsRead(): bool
+    {
+        if ($this->isUnread()) {
+            return $this->update(['read_at' => now()]);
+        }
+        return true;
+    }
+
+    /**
+     * Mark the mention as unread
+     */
+    public function markAsUnread(): bool
+    {
+        return $this->update(['read_at' => null]);
+    }
+
+    /**
+     * Scope to get unread mentions
+     */
+    public function scopeUnread(Builder $query): Builder
+    {
+        return $query->whereNull('read_at');
+    }
+
+    /**
+     * Scope to get read mentions
+     */
+    public function scopeRead(Builder $query): Builder
+    {
+        return $query->whereNotNull('read_at');
     }
 }
