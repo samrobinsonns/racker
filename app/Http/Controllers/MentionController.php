@@ -201,12 +201,11 @@ class MentionController extends Controller
     }
 
     /**
-     * Get mention statistics for a user
+     * Get mention statistics for the tenant (for analytics dashboard)
      */
     public function getMentionStats(Request $request): JsonResponse
     {
         $tenantId = auth()->user()->tenant_id ?? session('impersonated_tenant_id');
-        $userId = auth()->id();
 
         // Return empty stats if no tenant is found
         if (!$tenantId) {
@@ -218,15 +217,8 @@ class MentionController extends Controller
             ]);
         }
 
-        $mentions = $this->mentionService->getUserMentions($userId, $tenantId, 1000);
-        $unreadMentions = $this->mentionService->getUnreadMentions($userId, $tenantId);
-
-        $stats = [
-            'total_mentions' => $mentions->count(),
-            'unread_mentions' => $unreadMentions->count(),
-            'recent_mentions' => $mentions->where('created_at', '>=', now()->subDays(7))->count(),
-            'today_mentions' => $mentions->where('created_at', '>=', now()->startOfDay())->count(),
-        ];
+        // Get tenant-wide mention statistics for analytics dashboard
+        $stats = $this->mentionService->getTenantMentionStats($tenantId);
 
         return response()->json($stats);
     }

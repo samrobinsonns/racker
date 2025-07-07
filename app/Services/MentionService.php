@@ -213,4 +213,38 @@ class MentionService
 
         return $markedCount;
     }
+
+    /**
+     * Get tenant-wide mention statistics for analytics
+     */
+    public function getTenantMentionStats(string $tenantId): array
+    {
+        $totalMentions = SupportTicketMention::forTenant($tenantId)->count();
+        $unreadMentions = SupportTicketMention::forTenant($tenantId)->unread()->count();
+        $recentMentions = SupportTicketMention::forTenant($tenantId)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->count();
+        $todayMentions = SupportTicketMention::forTenant($tenantId)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->count();
+
+        return [
+            'total_mentions' => $totalMentions,
+            'unread_mentions' => $unreadMentions,
+            'recent_mentions' => $recentMentions,
+            'today_mentions' => $todayMentions,
+        ];
+    }
+
+    /**
+     * Get all mentions for a tenant (for analytics)
+     */
+    public function getTenantMentions(string $tenantId, int $limit = 1000): Collection
+    {
+        return SupportTicketMention::forTenant($tenantId)
+            ->with(['ticket', 'reply', 'mentionedUser', 'mentionedByUser'])
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
 } 
