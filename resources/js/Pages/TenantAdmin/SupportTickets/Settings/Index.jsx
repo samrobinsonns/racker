@@ -8,7 +8,6 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
-import { Tab } from '@headlessui/react';
 import { 
     Cog6ToothIcon,
     EnvelopeIcon,
@@ -18,7 +17,8 @@ import {
     TrashIcon,
     ArrowPathIcon,
     CheckCircleIcon,
-    XCircleIcon
+    XCircleIcon,
+    InboxIcon
 } from '@heroicons/react/24/outline';
 
 function classNames(...classes) {
@@ -36,6 +36,13 @@ export default function Index({ settings, emailSettings, categories, permissions
     const [imapTestResult, setImapTestResult] = useState(null);
     const [testingImapConnection, setTestingImapConnection] = useState(false);
     const { flash } = usePage().props;
+
+    const navigation = [
+        { name: 'General Settings', icon: Cog6ToothIcon, current: selectedTab === 0 },
+        { name: 'Email Configuration', icon: EnvelopeIcon, current: selectedTab === 1 },
+        { name: 'IMAP Settings', icon: InboxIcon, current: selectedTab === 2 },
+        { name: 'Categories', icon: TagIcon, current: selectedTab === 3 },
+    ];
 
     // Show test result modal if we have a flash message
     useEffect(() => {
@@ -182,65 +189,46 @@ export default function Index({ settings, emailSettings, categories, permissions
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6">
-                            <div className="flex items-center space-x-4 mb-6">
-                                <Cog6ToothIcon className="h-8 w-8 text-emerald-600" />
-                                <h1 className="text-2xl font-bold text-gray-900">
-                                    Support System Settings
-                                </h1>
+                        <div className="flex">
+                            {/* Sidebar Navigation */}
+                            <div className="w-64 bg-white border-r border-gray-200">
+                                <div className="h-16 flex items-center px-6 border-b border-gray-200">
+                                    <h1 className="text-lg font-medium text-gray-900">Settings</h1>
+                                </div>
+                                <nav className="flex flex-col p-4 space-y-1">
+                                    {navigation.map((item, index) => (
+                                        <button
+                                            key={item.name}
+                                            onClick={() => setSelectedTab(index)}
+                                            className={classNames(
+                                                item.current
+                                                    ? 'bg-emerald-50 text-emerald-600'
+                                                    : 'text-gray-600 hover:bg-gray-50',
+                                                'group flex items-center px-3 py-2 text-sm font-medium rounded-md w-full'
+                                            )}
+                                        >
+                                            <item.icon
+                                                className={classNames(
+                                                    item.current ? 'text-emerald-500' : 'text-gray-400 group-hover:text-gray-500',
+                                                    'mr-3 flex-shrink-0 h-6 w-6'
+                                                )}
+                                                aria-hidden="true"
+                                            />
+                                            {item.name}
+                                        </button>
+                                    ))}
+                                </nav>
                             </div>
 
-                            <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
-                                <Tab.List className="flex space-x-1 rounded-xl bg-emerald-900/10 p-1">
-                                    <Tab className={({ selected }) =>
-                                        classNames(
-                                            'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
-                                            'ring-white ring-opacity-60 ring-offset-2 focus:outline-none focus:ring-2',
-                                            selected
-                                                ? 'bg-white text-emerald-700 shadow'
-                                                : 'text-gray-600 hover:bg-white/[0.12] hover:text-emerald-600'
-                                        )
-                                    }>
-                                        General Settings
-                                    </Tab>
-                                    <Tab className={({ selected }) =>
-                                        classNames(
-                                            'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
-                                            'ring-white ring-opacity-60 ring-offset-2 focus:outline-none focus:ring-2',
-                                            selected
-                                                ? 'bg-white text-emerald-700 shadow'
-                                                : 'text-gray-600 hover:bg-white/[0.12] hover:text-emerald-600'
-                                        )
-                                    }>
-                                        Email Configuration
-                                    </Tab>
-                                    <Tab className={({ selected }) =>
-                                        classNames(
-                                            'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
-                                            'ring-white ring-opacity-60 ring-offset-2 focus:outline-none focus:ring-2',
-                                            selected
-                                                ? 'bg-white text-emerald-700 shadow'
-                                                : 'text-gray-600 hover:bg-white/[0.12] hover:text-emerald-600'
-                                        )
-                                    }>
-                                        IMAP Settings
-                                    </Tab>
-                                    <Tab className={({ selected }) =>
-                                        classNames(
-                                            'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
-                                            'ring-white ring-opacity-60 ring-offset-2 focus:outline-none focus:ring-2',
-                                            selected
-                                                ? 'bg-white text-emerald-700 shadow'
-                                                : 'text-gray-600 hover:bg-white/[0.12] hover:text-emerald-600'
-                                        )
-                                    }>
-                                        Categories
-                                    </Tab>
-                                </Tab.List>
-
-                                <Tab.Panels className="mt-6">
-                                    {/* General Settings Panel */}
-                                    <Tab.Panel>
+                            {/* Main Content Area */}
+                            <div className="flex-1 p-6">
+                                {/* General Settings Panel */}
+                                {selectedTab === 0 && (
+                                    <div>
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <Cog6ToothIcon className="h-8 w-8 text-emerald-600" />
+                                            <h2 className="text-2xl font-bold text-gray-900">General Settings</h2>
+                                        </div>
                                         <form onSubmit={handleTicketSettingsSubmit} className="space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 {/* Ticket Assignment */}
@@ -356,10 +344,16 @@ export default function Index({ settings, emailSettings, categories, permissions
                                                 </div>
                                             )}
                                         </form>
-                                    </Tab.Panel>
+                                    </div>
+                                )}
 
-                                    {/* Email Settings Panel */}
-                                    <Tab.Panel>
+                                {/* Email Settings Panel */}
+                                {selectedTab === 1 && (
+                                    <div>
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <EnvelopeIcon className="h-8 w-8 text-emerald-600" />
+                                            <h2 className="text-2xl font-bold text-gray-900">Email Configuration</h2>
+                                        </div>
                                         <form onSubmit={handleEmailSettingsSubmit} className="space-y-6">
                                             {/* Connection Status */}
                                             {emailSettings && (
@@ -409,19 +403,6 @@ export default function Index({ settings, emailSettings, categories, permissions
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {/* SendGrid Configuration - Temporarily Disabled
-                                            <div className="col-span-2 bg-blue-50 p-4 rounded-lg">
-                                                <div className="text-sm text-blue-700">
-                                                    <strong>SendGrid Configuration:</strong> When using SendGrid, make sure to:
-                                                </div>
-                                                <ul className="list-disc ml-8 mt-2 text-sm text-blue-700">
-                                                    <li>Use "apikey" as the SMTP Username</li>
-                                                    <li>Use your SendGrid API Key as the SMTP Password</li>
-                                                    <li>Keep SSL/TLS enabled</li>
-                                                </ul>
-                                            </div>
-                                            */}
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div>
@@ -552,10 +533,16 @@ export default function Index({ settings, emailSettings, categories, permissions
                                                 </PrimaryButton>
                                             </div>
                                         </form>
-                                    </Tab.Panel>
+                                    </div>
+                                )}
 
-                                    {/* IMAP Settings Panel */}
-                                    <Tab.Panel>
+                                {/* IMAP Settings Panel */}
+                                {selectedTab === 2 && (
+                                    <div>
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <InboxIcon className="h-8 w-8 text-emerald-600" />
+                                            <h2 className="text-2xl font-bold text-gray-900">IMAP Settings</h2>
+                                        </div>
                                         <form onSubmit={handleImapSettingsSubmit} className="space-y-6">
                                             {/* Connection Status */}
                                             {imapSettings && (
@@ -716,10 +703,16 @@ export default function Index({ settings, emailSettings, categories, permissions
                                                 </PrimaryButton>
                                             </div>
                                         </form>
-                                    </Tab.Panel>
+                                    </div>
+                                )}
 
-                                    {/* Categories Panel */}
-                                    <Tab.Panel>
+                                {/* Categories Panel */}
+                                {selectedTab === 3 && (
+                                    <div>
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <TagIcon className="h-8 w-8 text-emerald-600" />
+                                            <h2 className="text-2xl font-bold text-gray-900">Categories</h2>
+                                        </div>
                                         <div className="bg-white shadow rounded-lg">
                                             <div className="px-6 py-4 border-b border-gray-200">
                                                 <div className="flex items-center justify-between">
@@ -817,9 +810,9 @@ export default function Index({ settings, emailSettings, categories, permissions
                                                 </div>
                                             </div>
                                         </div>
-                                    </Tab.Panel>
-                                </Tab.Panels>
-                            </Tab.Group>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -485,14 +485,14 @@ export default function Show({
 
     const handleStatusChange = (e) => {
         e.preventDefault();
-        postStatus(route('support-tickets.change-status', ticket.id), {
+        postStatus(route('support-tickets.status', ticket.id), {
             onSuccess: () => setShowStatusModal(false)
         });
     };
 
     const handleAssignChange = (e) => {
         e.preventDefault();
-        postAssign(route('support-tickets.assign', ticket.id), {
+        postAssign(route('support-tickets.update', ticket.id), {
             onSuccess: () => setShowAssignModal(false)
         });
     };
@@ -634,7 +634,56 @@ export default function Show({
         // Use the mapped field name if it exists, otherwise use the original
         const dbField = fieldMapping[field] || field;
         
-        // Prepare the base data with required fields
+        // Special handling for status changes - use the dedicated status change endpoint
+        if (field === 'status_id') {
+            router.post(route('support-tickets.status', ticket.id), {
+                status_id: value,
+                reason: ''  // Optional reason for the status change
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    // Refresh the page to get updated data
+                    router.reload();
+                },
+                onError: (errors) => {
+                    console.error('Error updating ticket status:', errors);
+                }
+            });
+            return;
+        }
+
+        // Special handling for assignee updates
+        if (field === 'assignee_id') {
+            // Use the regular update endpoint which allows null for assigned_to
+            const data = {
+                subject: ticket.subject,
+                description: ticket.description,
+                priority_id: ticket.priority_id,
+                status_id: ticket.status_id,
+                category_id: ticket.category_id,
+                due_date: ticket.due_date,
+                assigned_to: value === 'unassigned' ? null : value
+            };
+            
+            // Log the data being sent for debugging
+            console.log('Sending update data:', data);
+            
+            router.put(route('support-tickets.update', ticket.id), data, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    // Refresh the page to get updated data
+                    router.reload();
+                },
+                onError: (errors) => {
+                    console.error('Error updating ticket:', errors);
+                }
+            });
+            return;
+        }
+
+        // For all other fields, use the regular update endpoint
         const data = {
             subject: ticket.subject,
             description: ticket.description,
@@ -645,50 +694,10 @@ export default function Show({
             [dbField]: value
         };
 
-        // If we're updating priority, use the new value
-        if (field === 'priority_id') {
-            data.priority_id = value;
-        }
-
-        // If we're updating due_date, use the new value
-        if (field === 'due_date') {
-            data.due_date = value;
-        }
-
-                    // Special handling for assignee updates
-            if (field === 'assignee_id') {
-                // Use the regular update endpoint which allows null for assigned_to
-                const data = {
-                    subject: ticket.subject,
-                    description: ticket.description,
-                    priority_id: ticket.priority_id,
-                    status_id: ticket.status_id,
-                    category_id: ticket.category_id,
-                    due_date: ticket.due_date,
-                    assigned_to: value === 'unassigned' ? null : value
-                };
-                
-                // Log the data being sent for debugging
-                console.log('Sending update data:', data);
-                
-                router.put(route('support-tickets.update', ticket.id), data, {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onSuccess: () => {
-                        // Refresh the page to get updated data
-                        router.reload();
-                    },
-                    onError: (errors) => {
-                        console.error('Error updating ticket:', errors);
-                    }
-                });
-                return;
-            }
-
         router.put(route('support-tickets.update', ticket.id), data, {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: (page) => {
+            onSuccess: () => {
                 // Force reload to get fresh data
                 router.reload();
             },

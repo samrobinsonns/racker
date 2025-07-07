@@ -232,13 +232,66 @@ export default function Index({ analytics, period }) {
                             {/* Average Resolution Time */}
                             <div className="mb-8">
                                 <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                    <h3 className="text-sm font-medium text-gray-600">Average Resolution Time</h3>
-                                    <p className="mt-2 text-3xl font-semibold text-gray-900">
-                                        {analytics.average_resolution_time ? 
-                                            `${Math.round(analytics.average_resolution_time)} hours` :
-                                            'N/A'
-                                        }
-                                    </p>
+                                    <h3 className="text-sm font-medium text-gray-600">Resolution Time Statistics</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                        <div>
+                                            <p className="text-sm text-gray-500">Average Time</p>
+                                            <p className="mt-2 text-2xl font-semibold text-gray-900">
+                                                {analytics.resolution_time_stats?.formatted?.average || 'N/A'}
+                                            </p>
+                                            {analytics.resolution_time_stats?.average && (
+                                                <div className="mt-1 text-sm text-gray-500">
+                                                    <span className="inline-block mr-2">
+                                                        {analytics.resolution_time_stats.average.days}d
+                                                    </span>
+                                                    <span className="inline-block mr-2">
+                                                        {analytics.resolution_time_stats.average.hours}h
+                                                    </span>
+                                                    <span className="inline-block">
+                                                        {analytics.resolution_time_stats.average.minutes}m
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500">Fastest Resolution</p>
+                                            <p className="mt-2 text-2xl font-semibold text-green-600">
+                                                {analytics.resolution_time_stats?.formatted?.minimum || 'N/A'}
+                                            </p>
+                                            {analytics.resolution_time_stats?.minimum && (
+                                                <div className="mt-1 text-sm text-gray-500">
+                                                    <span className="inline-block mr-2">
+                                                        {analytics.resolution_time_stats.minimum.days}d
+                                                    </span>
+                                                    <span className="inline-block mr-2">
+                                                        {analytics.resolution_time_stats.minimum.hours}h
+                                                    </span>
+                                                    <span className="inline-block">
+                                                        {analytics.resolution_time_stats.minimum.minutes}m
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500">Longest Resolution</p>
+                                            <p className="mt-2 text-2xl font-semibold text-red-600">
+                                                {analytics.resolution_time_stats?.formatted?.maximum || 'N/A'}
+                                            </p>
+                                            {analytics.resolution_time_stats?.maximum && (
+                                                <div className="mt-1 text-sm text-gray-500">
+                                                    <span className="inline-block mr-2">
+                                                        {analytics.resolution_time_stats.maximum.days}d
+                                                    </span>
+                                                    <span className="inline-block mr-2">
+                                                        {analytics.resolution_time_stats.maximum.hours}h
+                                                    </span>
+                                                    <span className="inline-block">
+                                                        {analytics.resolution_time_stats.maximum.minutes}m
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
