@@ -52,6 +52,29 @@ class SupportTicketController extends Controller
     }
 
     /**
+     * Get ticket statistics
+     */
+    public function stats(Request $request)
+    {
+        $this->authorize('viewAny', SupportTicket::class);
+
+        try {
+            $tenantId = Auth::user()->tenant_id ?? session('impersonated_tenant_id');
+            $stats = $this->ticketService->getTicketStats($tenantId);
+
+            return response()->json([
+                'success' => true,
+                'stats' => $stats,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch stats: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Create a new support ticket
      */
     public function store(Request $request)

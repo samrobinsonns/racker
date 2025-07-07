@@ -216,7 +216,10 @@ import {
     EyeIcon,
     EyeSlashIcon,
     TrashIcon,
-    ChatBubbleBottomCenterTextIcon
+    ChatBubbleBottomCenterTextIcon,
+    CalendarIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -239,6 +242,10 @@ export default function Show({
     const [showCannedResponseModal, setShowCannedResponseModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [messagesReversed, setMessagesReversed] = useState(true);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(ticket.due_date || null);
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const datePickerRef = useRef(null);
     
     // Mention functionality state
     const [mentionSuggestions, setMentionSuggestions] = useState([]);
@@ -536,6 +543,21 @@ export default function Show({
         return created.toLocaleDateString();
     };
 
+    const formatTimeRemaining = (date) => {
+        const now = new Date();
+        const dueDate = new Date(date);
+        const diffInHours = Math.floor((dueDate - now) / (1000 * 60 * 60));
+        
+        if (diffInHours < 0) return 'Overdue';
+        if (diffInHours < 1) return 'Due soon';
+        if (diffInHours < 24) return `${diffInHours}h remaining`;
+        const diffInDays = Math.floor(diffInHours / 24);
+        if (diffInDays < 7) return `${diffInDays}d remaining`;
+        const diffInWeeks = Math.floor(diffInDays / 7);
+        if (diffInWeeks < 4) return `${diffInWeeks}w remaining`;
+        return dueDate.toLocaleDateString();
+    };
+
     const formatFileSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -619,12 +641,18 @@ export default function Show({
             priority_id: ticket.priority_id,
             status_id: ticket.status_id,
             category_id: ticket.category_id,
+            due_date: ticket.due_date,
             [dbField]: value
         };
 
         // If we're updating priority, use the new value
         if (field === 'priority_id') {
             data.priority_id = value;
+        }
+
+        // If we're updating due_date, use the new value
+        if (field === 'due_date') {
+            data.due_date = value;
         }
 
         // Special handling for assignee updates
@@ -649,10 +677,90 @@ export default function Show({
         router.put(route('support-tickets.update', ticket.id), data, {
             preserveScroll: true,
             preserveState: true,
+            onSuccess: (page) => {
+                // Force reload to get fresh data
+                router.reload();
+            },
             onError: (errors) => {
                 console.error('Error updating ticket:', errors);
             }
         });
+    };
+
+    // Close date picker when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+                setShowDatePicker(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Update selected date when ticket.due_date changes
+    useEffect(() => {
+        setSelectedDate(ticket.due_date || null);
+    }, [ticket.due_date]);
+
+    // Calendar helper functions
+    const getDaysInMonth = (date) => {
+        return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    };
+
+    const getFirstDayOfMonth = (date) => {
+        return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    };
+
+    const formatDateForInput = (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const handleDateSelect = (day) => {
+        const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+        
+        // If there's an existing time, preserve it
+        if (selectedDate) {
+            const existingDate = new Date(selectedDate);
+            newDate.setHours(existingDate.getHours(), existingDate.getMinutes());
+        } else {
+            // Default to end of business day
+            newDate.setHours(17, 0);
+        }
+        
+        setSelectedDate(newDate.toISOString());
+        updateTicketField('due_date', newDate.toISOString());
+        setShowDatePicker(false);
+    };
+
+    const handleTimeChange = (time) => {
+        if (!selectedDate) return;
+        
+        const [hours, minutes] = time.split(':');
+        const newDate = new Date(selectedDate);
+        newDate.setHours(parseInt(hours), parseInt(minutes));
+        
+        setSelectedDate(newDate.toISOString());
+        updateTicketField('due_date', newDate.toISOString());
+    };
+
+    const navigateMonth = (direction) => {
+        setCurrentMonth(prev => {
+            const newMonth = new Date(prev);
+            newMonth.setMonth(prev.getMonth() + direction);
+            return newMonth;
+        });
+    };
+
+    const clearDueDate = () => {
+        setSelectedDate(null);
+        updateTicketField('due_date', null);
+        setShowDatePicker(false);
     };
 
     // Debug: log users and reply for troubleshooting avatar issues
@@ -1224,6 +1332,217 @@ export default function Show({
                                                         </>
                                                     ) : (
                                                         <span className="text-sm text-gray-500">Unassigned</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </dd>
+                                    </div>
+
+                                                                        {/* Due Date */}
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500 flex items-center space-x-2">
+                                            <ClockIcon className="h-4 w-4" />
+                                            <span>Due Date</span>
+                                        </dt>
+                                        <dd className="mt-1">
+                                            {permissions.update ? (
+                                                <div className="space-y-2">
+                                                    <div className="relative" ref={datePickerRef}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowDatePicker(!showDatePicker)}
+                                                            className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        >
+                                                            <span className={selectedDate ? 'text-gray-900' : 'text-gray-500'}>
+                                                                {selectedDate ? formatDateForInput(selectedDate) : 'Select due date...'}
+                                                            </span>
+                                                            <CalendarIcon className="h-4 w-4 text-gray-400" />
+                                                        </button>
+
+                                                        {/* Date Picker Dropdown */}
+                                                        {showDatePicker && (
+                                                            <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-72">
+                                                                {/* Calendar Header */}
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => navigateMonth(-1)}
+                                                                        className="p-1 hover:bg-gray-100 rounded"
+                                                                    >
+                                                                        <ChevronLeftIcon className="h-4 w-4" />
+                                                                    </button>
+                                                                    <h3 className="text-sm font-semibold">
+                                                                        {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                                                    </h3>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => navigateMonth(1)}
+                                                                        className="p-1 hover:bg-gray-100 rounded"
+                                                                    >
+                                                                        <ChevronRightIcon className="h-4 w-4" />
+                                                                    </button>
+                                                                </div>
+
+                                                                {/* Calendar Grid */}
+                                                                <div className="grid grid-cols-7 gap-1 mb-4">
+                                                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                                                                        <div key={day} className="text-xs font-medium text-gray-500 text-center py-2">
+                                                                            {day}
+                                                                        </div>
+                                                                    ))}
+                                                                    {Array.from({ length: getFirstDayOfMonth(currentMonth) }, (_, i) => (
+                                                                        <div key={`empty-${i}`} className="py-2"></div>
+                                                                    ))}
+                                                                    {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => {
+                                                                        const day = i + 1;
+                                                                        const isToday = new Date().toDateString() === new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toDateString();
+                                                                        const isSelected = selectedDate && new Date(selectedDate).toDateString() === new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toDateString();
+                                                                        
+                                                                        return (
+                                                                            <button
+                                                                                key={day}
+                                                                                type="button"
+                                                                                onClick={() => handleDateSelect(day)}
+                                                                                className={`py-2 text-sm rounded hover:bg-gray-100 ${
+                                                                                    isSelected
+                                                                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                                                        : isToday
+                                                                                        ? 'bg-indigo-100 text-indigo-600 font-semibold'
+                                                                                        : 'text-gray-700'
+                                                                                }`}
+                                                                            >
+                                                                                {day}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+
+                                                                {/* Time Picker */}
+                                                                {selectedDate && (
+                                                                    <div className="border-t pt-3">
+                                                                        <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                                            Time
+                                                                        </label>
+                                                                        <input
+                                                                            type="time"
+                                                                            value={selectedDate ? new Date(selectedDate).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '17:00'}
+                                                                            onChange={(e) => handleTimeChange(e.target.value)}
+                                                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                                        />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Quick Presets */}
+                                                                <div className="border-t pt-3 mt-3">
+                                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                                        Quick Select
+                                                                    </label>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const today = new Date();
+                                                                                today.setHours(17, 0, 0, 0);
+                                                                                setSelectedDate(today.toISOString());
+                                                                                updateTicketField('due_date', today.toISOString());
+                                                                            }}
+                                                                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                                                                        >
+                                                                            Today 5PM
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const tomorrow = new Date();
+                                                                                tomorrow.setDate(tomorrow.getDate() + 1);
+                                                                                tomorrow.setHours(17, 0, 0, 0);
+                                                                                setSelectedDate(tomorrow.toISOString());
+                                                                                updateTicketField('due_date', tomorrow.toISOString());
+                                                                            }}
+                                                                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                                                                        >
+                                                                            Tomorrow
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const nextWeek = new Date();
+                                                                                nextWeek.setDate(nextWeek.getDate() + 7);
+                                                                                nextWeek.setHours(17, 0, 0, 0);
+                                                                                setSelectedDate(nextWeek.toISOString());
+                                                                                updateTicketField('due_date', nextWeek.toISOString());
+                                                                            }}
+                                                                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                                                                        >
+                                                                            Next Week
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const nextMonth = new Date();
+                                                                                nextMonth.setMonth(nextMonth.getMonth() + 1);
+                                                                                nextMonth.setHours(17, 0, 0, 0);
+                                                                                setSelectedDate(nextMonth.toISOString());
+                                                                                updateTicketField('due_date', nextMonth.toISOString());
+                                                                            }}
+                                                                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                                                                        >
+                                                                            Next Month
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Action Buttons */}
+                                                                <div className="flex items-center justify-between pt-3 border-t mt-3">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={clearDueDate}
+                                                                        className="text-xs text-red-600 hover:text-red-500"
+                                                                    >
+                                                                        Clear
+                                                                    </button>
+                                                                    <div className="flex space-x-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setShowDatePicker(false)}
+                                                                            className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setShowDatePicker(false)}
+                                                                            className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                                                        >
+                                                                            Done
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {selectedDate && (
+                                                        <div className="text-xs text-gray-500">
+                                                            {formatTimeRemaining(selectedDate)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center space-x-2">
+                                                    {ticket.due_date ? (
+                                                        <>
+                                                            <ClockIcon className="h-4 w-4 text-gray-400" />
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    {formatDateTime(ticket.due_date)}
+                                                                </div>
+                                                                <div className={`text-xs font-medium ${new Date(ticket.due_date) < new Date() ? 'text-red-600' : 'text-gray-500'}`}>
+                                                                    {formatTimeRemaining(ticket.due_date)}
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-sm text-gray-500">No due date set</span>
                                                     )}
                                                 </div>
                                             )}

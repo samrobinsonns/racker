@@ -67,6 +67,10 @@ class SupportTicket extends Model
         'customer_satisfaction_rating' => 'decimal:1',
     ];
 
+    protected $appends = [
+        'is_overdue'
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -205,7 +209,8 @@ class SupportTicket extends Model
      */
     public function scopeOverdue(Builder $query): Builder
     {
-        return $query->where('due_date', '<', now())
+        return $query->whereNotNull('due_date')
+                    ->where('due_date', '<', now())
                     ->whereHas('status', function ($q) {
                         $q->where('is_closed', false);
                     });
@@ -263,9 +268,22 @@ class SupportTicket extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->due_date && 
+        return $this->due_date !== null && 
                $this->due_date < now() && 
                !$this->status->is_closed;
+    }
+
+    /**
+     * Get the is_overdue attribute for API responses
+     */
+    public function getIsOverdueAttribute(): bool
+    {
+        // Make sure status relationship is loaded to avoid N+1 queries
+        if (!$this->relationLoaded('status')) {
+            $this->load('status');
+        }
+        
+        return $this->isOverdue();
     }
 
     /**

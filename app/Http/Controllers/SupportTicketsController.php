@@ -274,6 +274,7 @@ class SupportTicketsController extends Controller
             'category_id' => 'nullable|exists:support_ticket_categories,id',
             'status_id' => 'nullable|exists:support_ticket_statuses,id',
             'assigned_to' => 'nullable|exists:users,id',
+            'due_date' => 'nullable|date',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
         ]);

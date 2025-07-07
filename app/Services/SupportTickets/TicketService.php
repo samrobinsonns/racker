@@ -271,16 +271,14 @@ class TicketService
      */
     public function getTicketStats(string $tenantId): array
     {
-        $baseQuery = SupportTicket::forTenant($tenantId);
-
         return [
-            'total' => $baseQuery->count(),
-            'open' => $baseQuery->open()->count(),
-            'unassigned' => $baseQuery->unassigned()->count(),
-            'overdue' => $baseQuery->overdue()->count(),
-            'escalated' => $baseQuery->escalated()->count(),
-            'resolved_today' => $baseQuery->whereDate('resolved_at', today())->count(),
-            'created_today' => $baseQuery->whereDate('created_at', today())->count(),
+            'total' => SupportTicket::forTenant($tenantId)->count(),
+            'open' => SupportTicket::forTenant($tenantId)->open()->count(),
+            'unassigned' => SupportTicket::forTenant($tenantId)->unassigned()->count(),
+            'overdue' => SupportTicket::forTenant($tenantId)->overdue()->count(),
+            'escalated' => SupportTicket::forTenant($tenantId)->escalated()->count(),
+            'resolved_today' => SupportTicket::forTenant($tenantId)->whereDate('resolved_at', today())->count(),
+            'created_today' => SupportTicket::forTenant($tenantId)->whereDate('created_at', today())->count(),
             'by_priority' => $this->getTicketsByPriority($tenantId),
             'by_status' => $this->getTicketsByStatus($tenantId),
             'by_category' => $this->getTicketsByCategory($tenantId),

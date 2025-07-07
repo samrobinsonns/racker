@@ -28,6 +28,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('support-tickets')->group(function () {
         // Ticket Management
         Route::get('/', [SupportTicketController::class, 'index']);
+        Route::get('/stats', [SupportTicketController::class, 'stats']);
         Route::post('/', [SupportTicketController::class, 'store']);
         Route::get('/{ticket}', [SupportTicketController::class, 'show']);
         Route::put('/{ticket}', [SupportTicketController::class, 'update']);

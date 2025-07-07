@@ -143,7 +143,7 @@ export default function Index({
                             </div>
                             <div className="ml-4">
                                 <h2 className="text-sm font-medium text-gray-500">Total Tickets</h2>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
+                                <p className="text-2xl font-semibold text-gray-900">{stats.total || 0}</p>
                             </div>
                         </div>
                     </div>
@@ -157,7 +157,7 @@ export default function Index({
                             </div>
                             <div className="ml-4">
                                 <h2 className="text-sm font-medium text-gray-500">Open Tickets</h2>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.open}</p>
+                                <p className="text-2xl font-semibold text-gray-900">{stats.open || 0}</p>
                             </div>
                         </div>
                     </div>
@@ -171,7 +171,7 @@ export default function Index({
                             </div>
                             <div className="ml-4">
                                 <h2 className="text-sm font-medium text-gray-500">Overdue</h2>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.overdue}</p>
+                                <p className="text-2xl font-semibold text-gray-900">{stats.overdue || 0}</p>
                             </div>
                         </div>
                     </div>
@@ -185,7 +185,7 @@ export default function Index({
                             </div>
                             <div className="ml-4">
                                 <h2 className="text-sm font-medium text-gray-500">Unassigned</h2>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.unassigned}</p>
+                                <p className="text-2xl font-semibold text-gray-900">{stats.unassigned || 0}</p>
                             </div>
                         </div>
                     </div>
