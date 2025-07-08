@@ -18,9 +18,24 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
+        $tenant = tenant();
+        $navigationBranding = null;
+
+        // Get navigation branding if tenant exists
+        if ($tenant) {
+            $navigationBranding = \App\Models\NavigationConfiguration::where('tenant_id', $tenant->id)
+                ->where('is_active', true)
+                ->first()?->configuration['branding'] ?? null;
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'tenant' => $tenant ? [
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+            ] : null,
+            'navigationBranding' => $navigationBranding,
         ]);
     }
 

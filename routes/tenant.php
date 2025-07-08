@@ -9,6 +9,7 @@ use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use App\Http\Controllers\Tenant\TenantNavigationController;
 use App\Enums\Permission;
 use App\Http\Controllers\TenantAdmin\RoleController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,14 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->group(function () {
+    // Guest routes (login, register, etc.)
+    Route::middleware('guest')->group(function () {
+        Route::get('login', [AuthenticatedSessionController::class, 'create'])
+            ->name('login');
+
+        Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    });
+
     Route::get('/', function () {
         return Inertia::render('Tenant/Welcome', [
             'tenant' => [
