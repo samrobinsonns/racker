@@ -27,11 +27,16 @@ class Contact extends Model
         'source',
         'owner_id',
         'notes',
+        'profile_picture',
     ];
 
     protected $casts = [
         'status' => 'string',
         'type' => 'string',
+    ];
+
+    protected $appends = [
+        'profile_picture_url'
     ];
 
     // Relationships
@@ -74,6 +79,27 @@ class Contact extends Model
     public function getFullNameAttribute()
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    public function getProfilePictureUrlAttribute()
+    {
+        if (!$this->profile_picture) {
+            return null;
+        }
+
+        // If it's already a full URL, return as is
+        if (str_starts_with($this->profile_picture, 'http')) {
+            return $this->profile_picture;
+        }
+
+        // If it looks like just a filename (no path separators), 
+        // it might be legacy data - construct the full path
+        if (!str_contains($this->profile_picture, '/')) {
+            return "/storage/contacts/profile-pictures/{$this->profile_picture}";
+        }
+
+        // Otherwise, assume it's a storage path and prepend /storage/
+        return "/storage/{$this->profile_picture}";
     }
 
     // Scopes

@@ -1,9 +1,8 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, UserCircleIcon, TicketIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import { Button } from '@/Components/ui/button';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 
 const FormField = ({ label, value, onChange, type = "text" }) => {
     return (
@@ -68,6 +67,11 @@ export default function ContactDrawer({ contact, isOpen, onClose, onSuccess }) {
         country: '',
         is_primary: false
     });
+    
+    // Profile picture states
+    const [profilePicture, setProfilePicture] = useState(null);
+    const [profilePicturePreview, setProfilePicturePreview] = useState(contact.profile_picture_url || null);
+    const [uploadingPicture, setUploadingPicture] = useState(false);
 
     useEffect(() => {
         console.log('Contact data in drawer:', contact);
@@ -88,6 +92,11 @@ export default function ContactDrawer({ contact, isOpen, onClose, onSuccess }) {
         // Initialize addresses
         setAddresses(contact.addresses || []);
         
+        // Initialize profile picture using the profile_picture_url accessor
+        setProfilePicturePreview(contact.profile_picture_url || null);
+        setProfilePicture(null);
+        setUploadingPicture(false);
+        
         if (contact.tickets) {
             console.log('Tickets found:', contact.tickets);
             setTickets(contact.tickets);
@@ -99,45 +108,154 @@ export default function ContactDrawer({ contact, isOpen, onClose, onSuccess }) {
 
 
 
-    const loadTicketsForContact = async () => {
+    const loadTicketsForContact = () => {
         if (!contact.id || loadingTickets) return;
         
         setLoadingTickets(true);
-        try {
-            const response = await axios.get(route('tenant.contacts.show', contact.id));
-            if (response.data && response.data.props && response.data.props.contact.tickets) {
-                setTickets(response.data.props.contact.tickets);
-                console.log('Loaded tickets separately:', response.data.props.contact.tickets);
+        
+        router.get(route('tenant.contacts.show', contact.id), {}, {
+            only: ['contact'],
+            onSuccess: (page) => {
+                if (page.props && page.props.contact && page.props.contact.tickets) {
+                    setTickets(page.props.contact.tickets);
+                    console.log('Loaded tickets separately:', page.props.contact.tickets);
+                }
+                setLoadingTickets(false);
+            },
+            onError: (error) => {
+                console.error('Error loading tickets for contact:', error);
+                setLoadingTickets(false);
             }
-        } catch (error) {
-            console.error('Error loading tickets for contact:', error);
-        } finally {
-            setLoadingTickets(false);
+        });
+    };
+
+    // Profile picture handling functions
+    const handleProfilePictureChange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+            
+            // Validate file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB.');
+                return;
+            }
+            
+            // Create preview URL immediately
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setProfilePicturePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+            
+            // Upload immediately
+            uploadProfilePicture(file);
         }
     };
 
-    const handleSubmit = async (e) => {
+    const uploadProfilePicture = (file) => {
+        setUploadingPicture(true);
+        
+        const formData = new FormData();
+        formData.append('profile_picture', file);
+        formData.append('_method', 'PUT');
+        
+        router.post(route('tenant.contacts.update', contact.id), formData, {
+            onSuccess: (page) => {
+                console.log('Profile picture uploaded successfully');
+                
+                // Trigger success callback to refresh parent component
+                onSuccess?.();
+                setUploadingPicture(false);
+                
+                // Clear the file input
+                if (document.getElementById('profile-picture-input')) {
+                    document.getElementById('profile-picture-input').value = '';
+                }
+            },
+            onError: (errors) => {
+                console.error('Error uploading profile picture:', errors);
+                
+                let errorMessage = 'Failed to upload profile picture. Please try again.';
+                
+                if (errors.profile_picture) {
+                    errorMessage = Array.isArray(errors.profile_picture) 
+                        ? errors.profile_picture[0] 
+                        : errors.profile_picture;
+                }
+                
+                alert(errorMessage);
+                // Reset preview on error
+                setProfilePicturePreview(contact.profile_picture_url || null);
+                setUploadingPicture(false);
+                
+                // Clear the file input
+                if (document.getElementById('profile-picture-input')) {
+                    document.getElementById('profile-picture-input').value = '';
+                }
+            }
+        });
+    };
+
+    const triggerProfilePictureUpload = () => {
+        document.getElementById('profile-picture-input').click();
+    };
+
+    const removeProfilePicture = () => {
+        setUploadingPicture(true);
+        
+        const formData = new FormData();
+        formData.append('remove_profile_picture', '1');
+        formData.append('_method', 'PUT');
+        
+        router.post(route('tenant.contacts.update', contact.id), formData, {
+            onSuccess: () => {
+                setProfilePicturePreview(null);
+                setProfilePicture(null);
+                if (document.getElementById('profile-picture-input')) {
+                    document.getElementById('profile-picture-input').value = '';
+                }
+                
+                // Trigger success callback to refresh parent component
+                onSuccess?.();
+                setUploadingPicture(false);
+            },
+            onError: (errors) => {
+                console.error('Error removing profile picture:', errors);
+                alert('Failed to remove profile picture. Please try again.');
+                setUploadingPicture(false);
+            }
+        });
+    };
+
+    const handleSubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         
-        try {
-            // Prepare data with addresses
-            const dataToSubmit = {
-                ...formData,
-                addresses: addresses
-            };
-            
-            const response = await axios.put(route('tenant.contacts.update', contact.id), dataToSubmit);
-            console.log('Contact update response:', response.data);
-            
-            // Close the drawer and refresh parent component
-            onSuccess?.();
-        } catch (error) {
-            console.error('Error updating contact:', error);
-            alert('Failed to update contact. Please try again.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        // Prepare data with addresses (no profile picture since it's handled separately)
+        const dataToSubmit = {
+            ...formData,
+            addresses: addresses
+        };
+        
+        router.put(route('tenant.contacts.update', contact.id), dataToSubmit, {
+            onSuccess: () => {
+                console.log('Contact updated successfully');
+                
+                // Close the drawer and refresh parent component
+                onSuccess?.();
+                setIsSubmitting(false);
+            },
+            onError: (errors) => {
+                console.error('Error updating contact:', errors);
+                alert('Failed to update contact. Please try again.');
+                setIsSubmitting(false);
+            }
+        });
     };
 
     const handleChange = (field, value) => {
@@ -173,17 +291,54 @@ export default function ContactDrawer({ contact, isOpen, onClose, onSuccess }) {
                 <div className="flex-shrink-0 border-b border-gray-200 px-4 py-5 sm:px-6">
                     <div className="flex items-center justify-center">
                         <div className="relative">
-                            <UserCircleIcon className="h-24 w-24 text-gray-300" />
-                            <button
-                                type="button"
-                                className="absolute bottom-0 right-0 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                <span className="sr-only">Change avatar</span>
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </button>
+                            {uploadingPicture ? (
+                                <div className="h-24 w-24 rounded-full border-2 border-gray-200 flex items-center justify-center bg-gray-50">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                </div>
+                            ) : profilePicturePreview ? (
+                                <img
+                                    src={profilePicturePreview}
+                                    alt="Profile"
+                                    className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
+                                />
+                            ) : (
+                                <UserCircleIcon className="h-24 w-24 text-gray-300" />
+                            )}
+                            <div className="absolute bottom-0 right-0 flex space-x-1">
+                                <button
+                                    type="button"
+                                    onClick={triggerProfilePictureUpload}
+                                    disabled={uploadingPicture}
+                                    className="rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Upload profile picture"
+                                >
+                                    <span className="sr-only">Change avatar</span>
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+                                {profilePicturePreview && !uploadingPicture && (
+                                    <button
+                                        type="button"
+                                        onClick={removeProfilePicture}
+                                        className="rounded-full bg-red-100 p-1 text-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-sm border border-red-200"
+                                        title="Remove profile picture"
+                                    >
+                                        <span className="sr-only">Remove avatar</span>
+                                        <XMarkIcon className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                            {/* Hidden file input */}
+                            <input
+                                id="profile-picture-input"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleProfilePictureChange}
+                                className="hidden"
+                                disabled={uploadingPicture}
+                            />
                         </div>
                     </div>
                     <div className="mt-4 text-center">
@@ -193,6 +348,11 @@ export default function ContactDrawer({ contact, isOpen, onClose, onSuccess }) {
                         {contact.job_title && contact.company && (
                             <div className="text-sm text-gray-500">
                                 {contact.job_title} at {contact.company}
+                            </div>
+                        )}
+                        {uploadingPicture && (
+                            <div className="mt-2 text-xs text-indigo-600">
+                                Uploading profile picture...
                             </div>
                         )}
                     </div>

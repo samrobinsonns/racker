@@ -7,6 +7,7 @@ use App\Models\Contact;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ContactController extends Controller
 {
@@ -91,16 +92,13 @@ class ContactController extends Controller
 
     public function update(Request $request, Contact $contact)
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:50',
-            'mobile' => 'nullable|string|max:50',
-            'job_title' => 'nullable|string|max:255',
-            'company' => 'nullable|string|max:255',
-            'department' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
+        // Check if this is a profile picture only request
+        $isProfilePictureRequest = $request->hasFile('profile_picture') || $request->has('remove_profile_picture');
+        $isProfilePictureOnly = $isProfilePictureRequest && !$request->has('first_name') && !$request->has('last_name');
+
+        $validationRules = [
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB
+            'remove_profile_picture' => 'nullable|string',
             'addresses' => 'nullable|array',
             'addresses.*.type' => 'required_with:addresses|in:billing,shipping,other',
             'addresses.*.street_1' => 'required_with:addresses|string|max:255',
@@ -110,26 +108,83 @@ class ContactController extends Controller
             'addresses.*.postal_code' => 'nullable|string|max:20',
             'addresses.*.country' => 'nullable|string|max:255',
             'addresses.*.is_primary' => 'nullable|boolean',
-        ]);
+        ];
 
-        // Update basic contact info
-        $contact->update(collect($validated)->except(['addresses'])->toArray());
+        // Only require contact fields if this is not a profile picture only request
+        if (!$isProfilePictureOnly) {
+            $validationRules = array_merge($validationRules, [
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'nullable|email|max:255',
+                'phone' => 'nullable|string|max:50',
+                'mobile' => 'nullable|string|max:50',
+                'job_title' => 'nullable|string|max:255',
+                'company' => 'nullable|string|max:255',
+                'department' => 'nullable|string|max:255',
+                'notes' => 'nullable|string',
+            ]);
+        }
 
-        // Handle addresses if provided
-        if (isset($validated['addresses'])) {
-            // Delete existing addresses
-            $contact->addresses()->delete();
+        $validated = $request->validate($validationRules);
+
+        // Handle profile picture removal
+        if ($request->has('remove_profile_picture') && $request->remove_profile_picture === '1') {
+            if ($contact->profile_picture) {
+                Storage::disk('public')->delete($contact->profile_picture);
+                $contact->update(['profile_picture' => null]);
+            }
             
-            // Create new addresses
-            foreach ($validated['addresses'] as $addressData) {
-                $contact->addresses()->create($addressData);
+            return redirect()->back()->with('success', 'Profile picture removed successfully');
+        }
+
+        // Handle profile picture upload
+        if ($request->hasFile('profile_picture')) {
+            // Delete old profile picture if exists
+            if ($contact->profile_picture) {
+                Storage::disk('public')->delete($contact->profile_picture);
+            }
+
+            // Store new profile picture
+            $path = $request->file('profile_picture')->store('contacts/profile-pictures', 'public');
+            $contact->update(['profile_picture' => $path]);
+
+            // If this is a profile picture only request, return immediately
+            if ($isProfilePictureOnly) {
+                return redirect()->back()->with([
+                    'success' => 'Profile picture uploaded successfully',
+                    'profile_picture_url' => Storage::url($path)
+                ]);
+            }
+
+            $validated['profile_picture'] = $path;
+        }
+
+        // Update basic contact info (only if this is not a profile picture only request)
+        if (!$isProfilePictureOnly) {
+            $contact->update(collect($validated)->except(['addresses', 'remove_profile_picture'])->toArray());
+
+            // Handle addresses if provided
+            if (isset($validated['addresses'])) {
+                // Delete existing addresses
+                $contact->addresses()->delete();
+                
+                // Create new addresses
+                foreach ($validated['addresses'] as $addressData) {
+                    $contact->addresses()->create($addressData);
+                }
             }
         }
 
-        return response()->json([
-            'contact' => $contact->fresh(['tags', 'customFields', 'addresses', 'tickets.status', 'tickets.priority']),
-            'message' => 'Contact updated successfully'
-        ]);
+        $responseData = [
+            'success' => 'Contact updated successfully'
+        ];
+
+        // Add profile picture URL if uploaded
+        if ($request->hasFile('profile_picture')) {
+            $responseData['profile_picture_url'] = Storage::url($contact->profile_picture);
+        }
+
+        return redirect()->back()->with($responseData);
     }
 
     public function destroy(Contact $contact)
