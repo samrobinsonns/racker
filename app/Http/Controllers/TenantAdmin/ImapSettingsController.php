@@ -93,11 +93,14 @@ class ImapSettingsController extends Controller
             );
 
             // Update the last check status in the database
-            $this->updateImapCheckStatus($settingsId, $result['success'], $result['message']);
+            $emailSettings = $this->updateImapCheckStatus($settingsId, $result['success'], $result['message']);
 
-            return response()->json([
-                'success' => $result['success'],
-                'message' => $result['message'],
+            return back()->with([
+                'imap_test_result' => [
+                    'success' => $result['success'],
+                    'message' => $result['message']
+                ],
+                'email_settings' => $emailSettings
             ]);
 
         } catch (\Exception $e) {
@@ -107,11 +110,14 @@ class ImapSettingsController extends Controller
             ]);
 
             // Update the last check status with error
-            $this->updateImapCheckStatus($settingsId, false, $e->getMessage());
+            $emailSettings = $this->updateImapCheckStatus($settingsId, false, $e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Connection test failed: ' . $e->getMessage(),
+            return back()->with([
+                'imap_test_result' => [
+                    'success' => false,
+                    'message' => 'Connection test failed: ' . $e->getMessage()
+                ],
+                'email_settings' => $emailSettings
             ]);
         }
     }
@@ -121,32 +127,45 @@ class ImapSettingsController extends Controller
      */
     private function testImapConnection($host, $port, $username, $password, $encryption, $folder)
     {
+        // Set timeout options
+        $timeout = 10; // 10 seconds timeout
+        imap_timeout(IMAP_OPENTIMEOUT, $timeout);
+        imap_timeout(IMAP_READTIMEOUT, $timeout);
+        imap_timeout(IMAP_WRITETIMEOUT, $timeout);
+        imap_timeout(IMAP_CLOSETIMEOUT, $timeout);
+
         // Build the connection string
         $connectionString = $this->buildImapConnectionString($host, $port, $encryption, $folder);
 
-        // Test the connection
-        $connection = @imap_open($connectionString, $username, $password, 0, 1);
+        // Test the connection with retries
+        $maxRetries = 2;
+        $retryDelay = 1; // seconds
+        $attempt = 0;
 
-        if ($connection) {
-            // Get mailbox info
-            $mailboxInfo = imap_mailboxmsginfo($connection);
-            $messageCount = $mailboxInfo->Nmsgs ?? 0;
+        while ($attempt < $maxRetries) {
+            $connection = @imap_open($connectionString, $username, $password, OP_HALFOPEN | CL_EXPUNGE, 1);
+            
+            if ($connection) {
+                imap_close($connection);
+                return [
+                    'success' => true,
+                    'message' => "Connection successful. IMAP server is accessible.",
+                ];
+            }
 
-            imap_close($connection);
-
-            return [
-                'success' => true,
-                'message' => "Connection successful. Found {$messageCount} messages in {$folder}.",
-            ];
-        } else {
-            $errors = imap_errors();
-            $errorMessage = $errors ? implode(', ', $errors) : 'Unknown connection error';
-
-            return [
-                'success' => false,
-                'message' => "Connection failed: {$errorMessage}",
-            ];
+            $attempt++;
+            if ($attempt < $maxRetries) {
+                sleep($retryDelay);
+            }
         }
+
+        $errors = imap_errors();
+        $errorMessage = $errors ? implode(', ', $errors) : 'Unknown connection error';
+
+        return [
+            'success' => false,
+            'message' => "Connection failed: {$errorMessage}",
+        ];
     }
 
     /**
@@ -177,7 +196,7 @@ class ImapSettingsController extends Controller
     private function updateImapCheckStatus($settingsId, $success, $message)
     {
         if (!$settingsId) {
-            return;
+            return null;
         }
 
         try {
@@ -189,9 +208,13 @@ class ImapSettingsController extends Controller
                     'imap_last_check_successful' => $success,
                     'imap_last_check_error' => $success ? null : $message,
                 ]);
+
+                return $emailSettings->fresh();
             }
         } catch (\Exception $e) {
             Log::error('Failed to update IMAP check status: ' . $e->getMessage());
         }
+
+        return null;
     }
 } 

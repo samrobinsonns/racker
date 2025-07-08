@@ -39,16 +39,18 @@ export default function Index({ settings, emailSettings, categories, permissions
 
     const navigation = [
         { name: 'General Settings', icon: Cog6ToothIcon, current: selectedTab === 0 },
-        { name: 'Email Configuration', icon: EnvelopeIcon, current: selectedTab === 1 },
+        { name: 'SMTP Settings', icon: EnvelopeIcon, current: selectedTab === 1 },
         { name: 'IMAP Settings', icon: InboxIcon, current: selectedTab === 2 },
         { name: 'Categories', icon: TagIcon, current: selectedTab === 3 },
     ];
 
     // Show test result modal if we have a flash message
     useEffect(() => {
-        if (flash.test_result) {
-            setTestResult(flash.test_result);
-            setShowTestResultModal(true);
+        if (flash.imap_test_result) {
+            setImapTestResult(flash.imap_test_result);
+        }
+        if (flash.email_settings) {
+            setImapSettings(flash.email_settings);
         }
     }, [flash]);
 
@@ -133,14 +135,38 @@ export default function Index({ settings, emailSettings, categories, permissions
     const testImapConnection = () => {
         setTestingImapConnection(true);
         setImapTestResult(null);
+
         imapSettingsForm.post(route('tenant-admin.imap-settings.test', { settings_id: imapSettings?.id }), {
-            preserveScroll: true,
+            preserveScroll: false,
             preserveState: true,
-            onSuccess: (response) => {
-                setImapTestResult(response?.props?.test_result || null);
+            onSuccess: () => {
+                window.location.href = `${window.location.pathname}?tab=2`;
             },
-            onFinish: () => setTestingImapConnection(false)
+            onError: (errors) => {
+                setImapTestResult({
+                    success: false,
+                    message: 'Connection test failed: Request timed out or network error occurred.'
+                });
+            },
+            onFinish: () => {
+                setTestingImapConnection(false);
+            }
         });
+    };
+
+    // Initialize selected tab from URL or default to 0
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const tabIndex = parseInt(params.get('tab')) || 0;
+        setSelectedTab(tabIndex);
+    }, []);
+
+    // Update URL when tab changes
+    const handleTabChange = (index) => {
+        setSelectedTab(index);
+        const url = new URL(window.location);
+        url.searchParams.set('tab', index);
+        window.history.pushState({}, '', url);
     };
 
     const handleCategorySubmit = (e) => {
@@ -199,7 +225,7 @@ export default function Index({ settings, emailSettings, categories, permissions
                                     {navigation.map((item, index) => (
                                         <button
                                             key={item.name}
-                                            onClick={() => setSelectedTab(index)}
+                                            onClick={() => handleTabChange(index)}
                                             className={classNames(
                                                 item.current
                                                     ? 'bg-emerald-50 text-emerald-600'
