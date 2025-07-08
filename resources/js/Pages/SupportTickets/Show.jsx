@@ -12,9 +12,20 @@ const emailStyles = `
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         line-height: 1.6;
         color: inherit;
+        max-width: 100%;
+        margin: 0 auto;
+        /* Preserve original email text alignment */
+        text-align: left;
     }
     
-    .email-content * { color: inherit !important; }
+    .email-content * { 
+        max-width: 100% !important;
+    }
+    
+    /* Let most elements inherit color, but preserve button/link colors */
+    .email-content *:not(a):not(button):not([role="button"]) { 
+        color: inherit !important; 
+    }
     
     .email-content p {
         margin-bottom: 1rem;
@@ -43,17 +54,90 @@ const emailStyles = `
         color: #1d4ed8;
     }
     
+    /* Remove borders and clean up email tables */
     .email-content table {
         border-collapse: collapse;
-        margin: 1rem 0;
+        margin: 0.5rem 0;
+        border: none !important;
+        width: auto !important;
+        max-width: 100% !important;
     }
     
     .email-content td, .email-content th {
-        padding: 0.5rem;
-        border: 1px solid #d1d5db;
+        padding: 0.25rem 0.5rem;
+        border: none !important;
+        vertical-align: top;
     }
     
-    .email-content img {
+    /* Hide common email client artifacts */
+    .email-content table[style*="border"] {
+        border: none !important;
+    }
+    
+    .email-content td[style*="border"], 
+    .email-content th[style*="border"] {
+        border: none !important;
+    }
+    
+    /* Remove excessive spacing from email layouts */
+    .email-content table table {
+        margin: 0 !important;
+    }
+    
+    .email-content td table,
+    .email-content th table {
+        margin: 0 !important;
+    }
+    
+    /* Clean up email wrapper elements */
+    .email-content > table:first-child {
+        margin-top: 0;
+    }
+    
+    .email-content > table:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Preserve original email layout and alignment attributes */
+    .email-content table[align="center"],
+    .email-content div[align="center"],
+    .email-content td[align="center"],
+    .email-content th[align="center"] {
+        text-align: center !important;
+    }
+    
+    .email-content table[align="left"],
+    .email-content div[align="left"],
+    .email-content td[align="left"],
+    .email-content th[align="left"] {
+        text-align: left !important;
+    }
+    
+    .email-content table[align="right"],
+    .email-content div[align="right"],
+    .email-content td[align="right"],
+    .email-content th[align="right"] {
+        text-align: right !important;
+    }
+    
+    .email-content table[width="100%"],
+    .email-content table[style*="width: 100%"] {
+        width: 100% !important;
+    }
+    
+    /* Hide email client spacer elements */
+    .email-content img[width="1"],
+    .email-content img[height="1"],
+    .email-content img[src*="spacer"],
+    .email-content img[src*="pixel"],
+    .email-content img[alt=""],
+    .email-content img:not([alt]):not([title]) {
+        display: none !important;
+    }
+    
+    /* Style actual content images properly */
+    .email-content img[alt]:not([alt=""]),
+    .email-content img[title] {
         max-width: 100%;
         height: auto;
         border-radius: 0.375rem;
@@ -63,27 +147,37 @@ const emailStyles = `
     }
     
     .email-content img[src^="data:"] {
-        /* Base64 encoded images */
         max-width: 100%;
         height: auto;
     }
     
     .email-content img[src^="cid:"] {
-        /* CID images (should be replaced with data URLs) */
         display: none;
     }
     
     .email-content img[src^="http"] {
-        /* External images */
         max-width: 100%;
         height: auto;
     }
     
+    /* Remove email signature styles */
+    .email-content div[style*="font-size: 8pt"],
+    .email-content div[style*="font-size: 9pt"],
+    .email-content div[style*="font-size: 10pt"],
+    .email-content span[style*="font-size: 8pt"],
+    .email-content span[style*="font-size: 9pt"],
+    .email-content span[style*="font-size: 10pt"] {
+        font-size: 0.875rem !important;
+        color: #6b7280 !important;
+    }
+    
+    /* Clean up blockquotes */
     .email-content blockquote {
         border-left: 4px solid #d1d5db;
         padding-left: 1rem;
         margin: 1rem 0;
         color: #6b7280;
+        background: transparent !important;
     }
     
     .email-content ul, .email-content ol {
@@ -95,12 +189,114 @@ const emailStyles = `
         margin-bottom: 0.25rem;
     }
     
+    /* Preserve important styling for buttons and key elements */
+    .email-content a[style*="background-color"],
+    .email-content button,
+    .email-content input[type="button"],
+    .email-content input[type="submit"],
+    .email-content *[role="button"] {
+        background-color: revert !important;
+        color: revert !important;
+        padding: revert !important;
+        border-radius: revert !important;
+        text-decoration: none !important;
+        display: inline-block !important;
+        font-weight: revert !important;
+        text-align: center !important;
+        border: revert !important;
+    }
+    
+    /* Remove unwanted background colors and patterns for non-interactive elements */
+    .email-content div:not([style*="background-color"]),
+    .email-content span:not([style*="background-color"]),
+    .email-content p:not([style*="background-color"]) {
+        background-image: none !important;
+        background-color: transparent !important;
+    }
+    
+    /* Override email client font styling */
+    .email-content font {
+        font-family: inherit !important;
+    }
+    
+    /* Preserve text alignment from original email styling */
+    .email-content *[style*="text-align: center"] {
+        text-align: center !important;
+    }
+    
+    .email-content *[style*="text-align: left"] {
+        text-align: left !important;
+    }
+    
+    .email-content *[style*="text-align: right"] {
+        text-align: right !important;
+    }
+    
+    .email-content *[style*="text-align: justify"] {
+        text-align: justify !important;
+    }
+    
+    /* Default to left alignment for most content unless explicitly styled */
+    .email-content p:not([style*="text-align"]),
+    .email-content div:not([style*="text-align"]):not([align]) {
+        text-align: left;
+    }
+    
+    /* Style email links that look like buttons */
+    .email-content a[style*="background"] {
+        padding: 0.75rem 1.5rem !important;
+        border-radius: 0.375rem !important;
+        text-decoration: none !important;
+        display: inline-block !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+        min-width: 120px !important;
+    }
+    
+    /* Preserve font sizes and weights */
+    .email-content *[style*="font-weight: bold"],
+    .email-content *[style*="font-weight: 700"],
+    .email-content *[style*="font-weight: 600"] {
+        font-weight: 600 !important;
+    }
+    
+    .email-content *[style*="font-size"] {
+        font-size: revert !important;
+    }
+    
+    /* Clean up divs used for layout */
+    .email-content div {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .email-content div:not(:empty) {
+        margin-bottom: 0.5rem;
+    }
+    
+    .email-content div:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Hide email tracking pixels and spacers */
+    .email-content img[width="0"],
+    .email-content img[height="0"],
+    .email-content img[style*="width: 0"],
+    .email-content img[style*="height: 0"],
+    .email-content img[style*="display: none"] {
+        display: none !important;
+    }
+    
     /* Responsive images for mobile */
     @media (max-width: 640px) {
         .email-content img {
             max-width: 100%;
             height: auto;
             margin: 0.5rem 0;
+        }
+        
+        .email-content table {
+            width: 100% !important;
         }
     }
 
@@ -1204,26 +1400,26 @@ export default function Show({
                                                             {ticket.contact.first_name} {ticket.contact.last_name}
                                                         </div>
                                                         <div className="text-sm text-gray-500 mt-1">
-                                                            <div className="flex items-center space-x-2">
-                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <div className="flex items-center space-x-2 min-w-0">
+                                                                <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                                 </svg>
-                                                                <span>{ticket.contact.email}</span>
+                                                                <span className="truncate" title={ticket.contact.email}>{ticket.contact.email}</span>
                                                             </div>
                                                             {ticket.contact.phone && (
-                                                                <div className="flex items-center space-x-2 mt-1">
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <div className="flex items-center space-x-2 mt-1 min-w-0">
+                                                                    <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                                                     </svg>
-                                                                    <span>{ticket.contact.phone}</span>
+                                                                    <span className="truncate" title={ticket.contact.phone}>{ticket.contact.phone}</span>
                                                                 </div>
                                                             )}
                                                             {ticket.contact.company && (
-                                                                <div className="flex items-center space-x-2 mt-1">
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <div className="flex items-center space-x-2 mt-1 min-w-0">
+                                                                    <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                                                     </svg>
-                                                                    <span>{ticket.contact.company}</span>
+                                                                    <span className="truncate" title={ticket.contact.company}>{ticket.contact.company}</span>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1334,7 +1530,7 @@ export default function Show({
                                                     ))}
                                                 </select>
                                             ) : (
-                                                <div className="flex items-center space-x-2">
+                                                <div className="flex items-center space-x-2 min-w-0">
                                                     {ticket.assignee ? (
                                                         <>
                                                             <div className="flex-shrink-0">
@@ -1344,11 +1540,11 @@ export default function Show({
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            <div>
+                                                            <div className="min-w-0 flex-1">
                                                                 <div className="text-sm font-medium text-gray-900">
                                                                     {ticket.assignee.name}
                                                                 </div>
-                                                                <div className="text-sm text-gray-500">
+                                                                <div className="text-sm text-gray-500 truncate" title={ticket.assignee.email}>
                                                                     {ticket.assignee.email}
                                                                 </div>
                                                             </div>
