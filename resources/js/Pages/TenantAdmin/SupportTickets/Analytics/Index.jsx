@@ -1,8 +1,6 @@
 import { Head } from '@inertiajs/react';
-import { useForm } from '@inertiajs/react';
 import { useState, useEffect, Fragment } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Menu, Transition } from '@headlessui/react';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -29,11 +27,7 @@ ChartJS.register(
     PointElement
 );
 
-export default function Index({ analytics, period }) {
-    const { data, setData, get, processing } = useForm({
-        period: period,
-    });
-
+export default function Index({ analytics }) {
     const [cannedResponseStats, setCannedResponseStats] = useState(null);
     const [mentionStats, setMentionStats] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -43,10 +37,8 @@ export default function Index({ analytics, period }) {
         loading: true
     });
 
-
-
     // Fetch ticket statistics from the actual support ticket system
-    const fetchTicketStats = async (period = 'month') => {
+    const fetchTicketStats = async () => {
         try {
             setTicketStats(prev => ({ ...prev, loading: true }));
             
@@ -56,8 +48,7 @@ export default function Index({ analytics, period }) {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                },
-                body: JSON.stringify({ period })
+                }
             });
             
             if (response.ok) {
@@ -108,8 +99,8 @@ export default function Index({ analytics, period }) {
         };
 
         fetchStats();
-        fetchTicketStats(data.period);
-    }, [data.period]);
+        fetchTicketStats();
+    }, []);
 
     // Prepare dynamic data for category chart
     const categoryTickets = ticketStats.categories || {};
@@ -280,96 +271,8 @@ export default function Index({ analytics, period }) {
         );
     };
 
-    const periodOptions = [
-        { value: 'day', label: 'Today', icon: '📅' },
-        { value: 'week', label: 'This Week', icon: '📊' },
-        { value: 'month', label: 'This Month', icon: '📈' },
-        { value: 'year', label: 'This Year', icon: '📆' },
-    ];
-
-    const getCurrentPeriodLabel = () => {
-        const current = periodOptions.find(option => option.value === data.period);
-        return current ? current.label : 'Select Period';
-    };
-
     // Generate header for the page
-    const getHeader = () => (
-        <div className="px-6 w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
-                <h2 className=" text-2xl font-bold leading-tight text-gray-900">Analytics Dashboard</h2>
-                <p className="text-gray-600 mt-1">Support ticket insights and performance metrics</p>
-            </div>
-            <div className="flex items-center space-x-3">
-                    {processing && (
-                        <div className="flex items-center text-sm text-gray-500">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Updating...
-                        </div>
-                    )}
-                    <Menu as="div" className="relative inline-block text-left">
-                        <div>
-                            <Menu.Button className="inline-flex items-center justify-center w-full rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                                <svg className="w-4 h-4 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                                </svg>
-                                {getCurrentPeriodLabel()}
-                                <svg className="w-4 h-4 ml-2 -mr-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                </svg>
-                            </Menu.Button>
-                        </div>
-
-                        <Transition
-                            as={Fragment}
-                            enter="transition ease-out duration-100"
-                            enterFrom="transform opacity-0 scale-95"
-                            enterTo="transform opacity-100 scale-100"
-                            leave="transition ease-in duration-75"
-                            leaveFrom="transform opacity-100 scale-100"
-                            leaveTo="transform opacity-0 scale-95"
-                        >
-                            <Menu.Items className="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                                <div className="py-1">
-                                    {periodOptions.map((option) => (
-                                        <Menu.Item key={option.value}>
-                                            {({ active }) => (
-                                                                                            <button
-                                                onClick={() => {
-                                                    const newPeriod = option.value;
-                                                    setData('period', newPeriod);
-                                                    get(route('tenant-admin.support-tickets.analytics'), {
-                                                        data: { period: newPeriod },
-                                                        preserveState: true,
-                                                    });
-                                                    fetchTicketStats(newPeriod);
-                                                }}
-                                                    className={`${
-                                                        active ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                                                    } ${
-                                                        data.period === option.value ? 'bg-blue-100 text-blue-800 font-medium' : ''
-                                                    } group flex items-center w-full px-4 py-3 text-sm transition-colors duration-150`}
-                                                >
-                                                    <span className="mr-3 text-lg">{option.icon}</span>
-                                                    {option.label}
-                                                    {data.period === option.value && (
-                                                        <svg className="ml-auto w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                        </svg>
-                                                    )}
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
-                                </div>
-                            </Menu.Items>
-                        </Transition>
-                    </Menu>
-            </div>
-        </div>
-    );
+    const getHeader = () => null;
 
     return (
         <AuthenticatedLayout header={getHeader()}>
