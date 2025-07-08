@@ -191,6 +191,18 @@ export default function AuthenticatedLayout({ header, children }) {
         deleteNotification,
         loadNotifications: loadNotificationsFromProvider 
     } = useNotifications();
+    
+    // Update favicon when branding changes
+    useEffect(() => {
+        const customBranding = user.navigation_branding || {};
+        if (customBranding.logoType === 'image' && customBranding.logoUrl) {
+            let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+            link.type = 'image/x-icon';
+            link.rel = 'shortcut icon';
+            link.href = customBranding.logoUrl;
+            document.getElementsByTagName('head')[0].appendChild(link);
+        }
+    }, [user.navigation_branding]);
 
     // Determine user type and context
     const isCentralAdmin = user.is_central_admin;
