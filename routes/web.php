@@ -49,6 +49,9 @@ Route::get('/dashboard', function () {
     $tenantId = null;
     $layoutType = 'authenticated'; // Default layout
     
+    // Get the dashboard stats service
+    $dashboardStatsService = app(\App\Services\SupportTickets\DashboardStatsService::class);
+    
     // Determine layout and stats based on user type
     if ($user->is_central_admin) {
         // Central Admin stats and layout
@@ -61,21 +64,13 @@ Route::get('/dashboard', function () {
         $tenant = $user->tenant;
         $layoutType = 'tenant_user';
         
-        // Get user's ticket count
-        $userTicketsCount = 0;
-        if (class_exists('App\Models\SupportTicket')) {
-            $userTicketsCount = \App\Models\SupportTicket::forTenant($tenantId)
-                ->where('assigned_to', $user->id)
-                ->count();
-        }
-        
-        $stats = [
-            'tenant_id' => $tenantId,
-            'tenant_name' => $tenant?->name ?? 'Your Organization',
-            'user_tickets' => $userTicketsCount,
-            'user_messages' => rand(0, 8),   // Placeholder for future implementation
-            'user_reports' => rand(2, 12),    // Placeholder for future implementation
-        ];
+        $stats = array_merge(
+            $dashboardStatsService->getDashboardStats($tenantId),
+            [
+                'tenant_id' => $tenantId,
+                'tenant_name' => $tenant?->name ?? 'Your Organization',
+            ]
+        );
     }
     
     return Inertia::render('Dashboard', compact('stats', 'tenantId', 'layoutType'));

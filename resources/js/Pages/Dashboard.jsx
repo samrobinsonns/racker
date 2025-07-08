@@ -426,9 +426,9 @@ export default function Dashboard() {
                 color: 'emerald',
             },
             {
-                name: 'Messages',
-                stat: stats?.user_messages || 0,
-                icon: EnvelopeIcon,
+                name: 'Resolved Tickets',
+                stat: stats?.resolved_tickets || 0,
+                icon: CheckIcon,
                 color: 'blue',
             },
             {
@@ -442,19 +442,7 @@ export default function Dashboard() {
         return (
             <>
                 {/* Welcome Section */}
-                <div className="mb-8 bg-gradient-to-r from-emerald-500 to-emerald-700 rounded-lg overflow-hidden">
-                    <div className="px-6 py-8 text-white">
-                        <h2 className="text-2xl font-bold">Welcome back, {user.name}!</h2>
-                        <p className="mt-2 text-emerald-100">
-                            You're part of {stats?.tenant_name || 'your organization'}
-                        </p>
-                        {isTenantAdmin && (
-                            <p className="mt-1 text-emerald-200 text-sm">
-                                You have administrative access to manage users and settings
-                            </p>
-                        )}
-                    </div>
-                </div>
+
 
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">

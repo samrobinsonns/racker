@@ -12,9 +12,17 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Validation\Rule;
 use App\Models\User;
+use App\Services\SupportTickets\DashboardStatsService;
 
 class ProfileController extends Controller
 {
+    protected DashboardStatsService $dashboardStatsService;
+
+    public function __construct(DashboardStatsService $dashboardStatsService)
+    {
+        $this->dashboardStatsService = $dashboardStatsService;
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -38,10 +46,13 @@ class ProfileController extends Controller
             // Tenant User
             $tenantId = $user->tenant_id;
             $tenant = $user->tenant;
-            $stats = [
-                'tenant_id' => $tenantId,
-                'tenant_name' => $tenant?->name ?? 'Your Organization',
-            ];
+            $stats = array_merge(
+                $this->dashboardStatsService->getDashboardStats($tenantId),
+                [
+                    'tenant_id' => $tenantId,
+                    'tenant_name' => $tenant?->name ?? 'Your Organization',
+                ]
+            );
         }
         
         return Inertia::render('Profile/Edit', [
