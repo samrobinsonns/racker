@@ -12,7 +12,10 @@ class SupportTicketSeeder extends Seeder
      */
     public function run(): void
     {
-        // Default Priorities
+        // Get all tenants first
+        $tenants = DB::table('tenants')->get();
+
+        // Default Priorities (to be created per tenant)
         $priorities = [
             [
                 'name' => 'Critical',
@@ -23,7 +26,7 @@ class SupportTicketSeeder extends Seeder
                 'response_time_hours' => 1,
                 'resolution_time_hours' => 4,
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'sort_order' => 1,
             ],
             [
@@ -35,7 +38,7 @@ class SupportTicketSeeder extends Seeder
                 'response_time_hours' => 2,
                 'resolution_time_hours' => 8,
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'sort_order' => 2,
             ],
             [
@@ -47,7 +50,7 @@ class SupportTicketSeeder extends Seeder
                 'response_time_hours' => 4,
                 'resolution_time_hours' => 24,
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'sort_order' => 3,
             ],
             [
@@ -59,16 +62,20 @@ class SupportTicketSeeder extends Seeder
                 'response_time_hours' => 8,
                 'resolution_time_hours' => 48,
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'sort_order' => 4,
             ],
         ];
 
-        foreach ($priorities as $priority) {
-            DB::table('support_ticket_priorities')->insertOrIgnore($priority);
+        // Create priorities for each tenant
+        foreach ($tenants as $tenant) {
+            foreach ($priorities as $priority) {
+                $priority['tenant_id'] = $tenant->id;
+                DB::table('support_ticket_priorities')->insertOrIgnore($priority);
+            }
         }
 
-        // Default Statuses
+        // Default Statuses (to be created per tenant)
         $statuses = [
             [
                 'name' => 'New',
@@ -77,7 +84,7 @@ class SupportTicketSeeder extends Seeder
                 'color' => '#3b82f6', // Blue
                 'type' => 'initial',
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'is_closed' => false,
                 'is_resolved' => false,
                 'sort_order' => 1,
@@ -90,7 +97,7 @@ class SupportTicketSeeder extends Seeder
                 'color' => '#6366f1', // Indigo
                 'type' => 'active',
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'is_closed' => false,
                 'is_resolved' => false,
                 'sort_order' => 2,
@@ -99,11 +106,11 @@ class SupportTicketSeeder extends Seeder
             [
                 'name' => 'In Progress',
                 'slug' => 'in-progress',
-                'description' => 'Work is being done on the ticket',
-                'color' => '#8b5cf6', // Purple
+                'description' => 'Ticket is being actively worked on',
+                'color' => '#f59e0b', // Amber
                 'type' => 'active',
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'is_closed' => false,
                 'is_resolved' => false,
                 'sort_order' => 3,
@@ -113,23 +120,23 @@ class SupportTicketSeeder extends Seeder
                 'name' => 'Waiting',
                 'slug' => 'waiting',
                 'description' => 'Waiting for customer response',
-                'color' => '#ec4899', // Pink
-                'type' => 'pending',
+                'color' => '#8b5cf6', // Purple
+                'type' => 'waiting',
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'is_closed' => false,
                 'is_resolved' => false,
                 'sort_order' => 4,
-                'next_statuses' => json_encode(['in-progress', 'resolved', 'closed']),
+                'next_statuses' => json_encode(['open', 'in-progress', 'resolved', 'closed']),
             ],
             [
                 'name' => 'Resolved',
                 'slug' => 'resolved',
-                'description' => 'Issue has been resolved',
-                'color' => '#22c55e', // Green
-                'type' => 'completed',
+                'description' => 'Ticket has been resolved',
+                'color' => '#10b981', // Emerald
+                'type' => 'resolved',
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'is_closed' => false,
                 'is_resolved' => true,
                 'sort_order' => 5,
@@ -142,7 +149,7 @@ class SupportTicketSeeder extends Seeder
                 'color' => '#64748b', // Slate
                 'type' => 'completed',
                 'is_active' => true,
-                'is_system' => true,
+                'is_system' => false, // Changed from true to false for tenant-specific
                 'is_closed' => true,
                 'is_resolved' => true,
                 'sort_order' => 6,
@@ -150,13 +157,15 @@ class SupportTicketSeeder extends Seeder
             ],
         ];
 
-        foreach ($statuses as $status) {
-            DB::table('support_ticket_statuses')->insertOrIgnore($status);
+        // Create statuses for each tenant
+        foreach ($tenants as $tenant) {
+            foreach ($statuses as $status) {
+                $status['tenant_id'] = $tenant->id;
+                DB::table('support_ticket_statuses')->insertOrIgnore($status);
+            }
         }
 
-        // Default Categories for each tenant
-        $tenants = DB::table('tenants')->get();
-        
+        // Default Categories for each tenant (existing code)
         $defaultCategories = [
             [
                 'name' => 'Technical Support',

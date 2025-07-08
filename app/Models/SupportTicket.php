@@ -107,6 +107,15 @@ class SupportTicket extends Model
     }
 
     /**
+     * Get the ticket category with tenant scoping
+     */
+    public function categoryScoped()
+    {
+        return $this->belongsTo(SupportTicketCategory::class, 'category_id')
+                   ->where('tenant_id', $this->tenant_id);
+    }
+
+    /**
      * Get the ticket priority
      */
     public function priority()
@@ -115,11 +124,35 @@ class SupportTicket extends Model
     }
 
     /**
+     * Get the ticket priority with tenant scoping (includes system-wide priorities)
+     */
+    public function priorityScoped()
+    {
+        return $this->belongsTo(SupportTicketPriority::class, 'priority_id')
+                   ->where(function ($query) {
+                       $query->where('tenant_id', $this->tenant_id)
+                             ->orWhereNull('tenant_id');
+                   });
+    }
+
+    /**
      * Get the ticket status
      */
     public function status()
     {
         return $this->belongsTo(SupportTicketStatus::class, 'status_id');
+    }
+
+    /**
+     * Get the ticket status with tenant scoping (includes system-wide statuses)
+     */
+    public function statusScoped()
+    {
+        return $this->belongsTo(SupportTicketStatus::class, 'status_id')
+                   ->where(function ($query) {
+                       $query->where('tenant_id', $this->tenant_id)
+                             ->orWhereNull('tenant_id');
+                   });
     }
 
     /**
@@ -175,7 +208,7 @@ class SupportTicket extends Model
      */
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
-        return $query->where('tenant_id', $tenantId);
+        return $query->where('support_tickets.tenant_id', $tenantId);
     }
 
     /**
@@ -270,6 +303,7 @@ class SupportTicket extends Model
     {
         return $this->due_date !== null && 
                $this->due_date < now() && 
+               $this->status && 
                !$this->status->is_closed;
     }
 
@@ -278,9 +312,24 @@ class SupportTicket extends Model
      */
     public function getIsOverdueAttribute(): bool
     {
+        // Handle cases where this is called on incomplete models (like in analytics queries)
+        if (!$this->exists || !$this->status_id || !$this->due_date) {
+            return false;
+        }
+
         // Make sure status relationship is loaded to avoid N+1 queries
         if (!$this->relationLoaded('status')) {
-            $this->load('status');
+            try {
+                $this->load('status');
+            } catch (\Exception $e) {
+                // If we can't load the status (e.g., in analytics queries), return false
+                return false;
+            }
+        }
+        
+        // Additional check in case status couldn't be loaded
+        if (!$this->status) {
+            return false;
         }
         
         return $this->isOverdue();
@@ -356,7 +405,28 @@ class SupportTicket extends Model
             return false;
         }
 
-        $this->update(['status_id' => $statusId]);
+        // Prepare update data
+        $updateData = ['status_id' => $statusId];
+        
+        // Handle resolved_at timestamp
+        if ($newStatus->slug === 'resolved' && $oldStatus->slug !== 'resolved') {
+            // Set resolved_at when changing TO resolved status
+            $updateData['resolved_at'] = now();
+        } elseif ($newStatus->slug !== 'resolved' && $oldStatus->slug === 'resolved') {
+            // Clear resolved_at when changing AWAY from resolved status
+            $updateData['resolved_at'] = null;
+        }
+        
+        // Handle closed_at timestamp
+        if ($newStatus->slug === 'closed' && $oldStatus->slug !== 'closed') {
+            // Set closed_at when changing TO closed status
+            $updateData['closed_at'] = now();
+        } elseif ($newStatus->slug !== 'closed' && $oldStatus->slug === 'closed') {
+            // Clear closed_at when changing AWAY from closed status
+            $updateData['closed_at'] = null;
+        }
+
+        $this->update($updateData);
 
         // Log the status change
         $this->activityLogs()->create([

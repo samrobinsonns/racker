@@ -70,7 +70,7 @@ class CannedResponseUsage extends Model
      */
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
-        return $query->where('tenant_id', $tenantId);
+        return $query->where('canned_response_usage.tenant_id', $tenantId);
     }
 
     /**

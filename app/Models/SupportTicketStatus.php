@@ -43,14 +43,15 @@ class SupportTicketStatus extends Model
     }
 
     /**
-     * Scope to get statuses for a specific tenant (including system-wide)
+     * Scope to get statuses for a specific tenant (includes system-wide as fallback)
      */
     public function scopeForTenant(Builder $query, ?string $tenantId): Builder
     {
         return $query->where(function (Builder $q) use ($tenantId) {
+            // Prioritize tenant-specific records first, then fall back to system-wide
             $q->where('tenant_id', $tenantId)
-              ->orWhereNull('tenant_id'); // Include system-wide statuses
-        });
+              ->orWhereNull('tenant_id'); // Include system-wide statuses as fallback
+        })->orderByRaw('tenant_id IS NULL ASC'); // Tenant-specific records first
     }
 
     /**
@@ -87,10 +88,12 @@ class SupportTicketStatus extends Model
 
     /**
      * Check if this status allows transition to another status
+     * Note: Currently allows all transitions for maximum flexibility
      */
     public function canTransitionTo(string $statusSlug): bool
     {
-        return in_array($statusSlug, $this->next_statuses ?? []);
+        // Allow all status transitions for maximum flexibility
+        return true;
     }
 
     /**

@@ -250,6 +250,9 @@ Route::middleware(['auth', 'verified', 'tenant.admin'])->prefix('tenant-admin')-
         Route::get('/analytics', [SupportTicketAnalyticsController::class, 'index'])
             ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
             ->name('analytics');
+        Route::post('/analytics/data', [SupportTicketAnalyticsController::class, 'data'])
+            ->middleware('permission:' . Permission::CONFIGURE_SUPPORT_TICKETS)
+            ->name('analytics.data');
     });
 });
 

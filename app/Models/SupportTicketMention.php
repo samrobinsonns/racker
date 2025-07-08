@@ -62,7 +62,7 @@ class SupportTicketMention extends Model
      */
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
-        return $query->where('tenant_id', $tenantId);
+        return $query->where('support_ticket_mentions.tenant_id', $tenantId);
     }
 
     /**

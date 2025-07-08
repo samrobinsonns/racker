@@ -42,14 +42,15 @@ class SupportTicketPriority extends Model
     }
 
     /**
-     * Scope to get priorities for a specific tenant (including system-wide)
+     * Scope to get priorities for a specific tenant (includes system-wide as fallback)
      */
     public function scopeForTenant(Builder $query, ?string $tenantId): Builder
     {
         return $query->where(function (Builder $q) use ($tenantId) {
+            // Prioritize tenant-specific records first, then fall back to system-wide
             $q->where('tenant_id', $tenantId)
-              ->orWhereNull('tenant_id'); // Include system-wide priorities
-        });
+              ->orWhereNull('tenant_id'); // Include system-wide priorities as fallback
+        })->orderByRaw('tenant_id IS NULL ASC'); // Tenant-specific records first
     }
 
     /**
