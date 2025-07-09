@@ -40,62 +40,42 @@ class DashboardStatsService
             ->whereNotNull('resolved_at')
             ->count();
 
+        // Get resolution time statistics for all resolved tickets
+        $resolvedTicketsQuery = (clone $baseQuery)
+            ->where('assigned_to', $user->id)
+            ->whereNotNull('resolved_at');
+
+        // Calculate average resolution time
+        $stats = $resolvedTicketsQuery
+            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, created_at, resolved_at)) as avg_minutes')
+            ->first();
+
+        // Format resolution time
+        $avgMinutes = $stats && $stats->avg_minutes ? round($stats->avg_minutes) : null;
+        $resolutionTimes = [
+            'average' => $avgMinutes ? [
+                'minutes' => $avgMinutes,
+                'hours' => round($avgMinutes / 60, 1)
+            ] : null
+        ];
+
         // Get recent activities
         $activities = collect();
 
         // Get ticket updates activity
         $ticketUpdates = SupportTicketActivityLog::where('user_id', $user->id)
             ->whereIn('action_type', ['status_changed', 'priority_changed', 'category_changed'])
-            ->with(['ticket', 'ticket.status', 'ticket.priority'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($log) {
-                return [
-                    'id' => 'log_' . $log->id,
-                    'type' => 'ticket_updated',
-                    'description' => $log->description,
-                    'created_at' => $log->created_at,
-                    'ticket' => $log->ticket ? [
-                        'id' => $log->ticket->id,
-                        'ticket_number' => $log->ticket->ticket_number,
-                        'status' => $log->ticket->status->name,
-                        'priority' => $log->ticket->priority->name,
-                    ] : null,
-                ];
-            });
-        $activities = $activities->concat($ticketUpdates);
-
-        // Get ticket comments activity
-        $ticketComments = SupportTicketReply::where('created_by', $user->id)
-            ->with(['ticket', 'ticket.status', 'ticket.priority'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($reply) {
-                return [
-                    'id' => 'reply_' . $reply->id,
-                    'type' => 'ticket_comment',
-                    'description' => "Commented on ticket #{$reply->ticket->ticket_number}",
-                    'created_at' => $reply->created_at,
-                    'ticket' => [
-                        'id' => $reply->ticket->id,
-                        'ticket_number' => $reply->ticket->ticket_number,
-                        'status' => $reply->ticket->status->name,
-                        'priority' => $reply->ticket->priority->name,
-                    ],
-                ];
-            });
-        $activities = $activities->concat($ticketComments);
-
-        // Sort activities by date and take the most recent 15
-        $activities = $activities->sortByDesc('created_at')->take(15)->values();
+            ->with(['ticket'])
+            ->latest()
+            ->take(5)
+            ->get();
 
         return [
             'user_tickets' => $userTickets,
             'resolved_tickets' => $resolvedTickets,
-            'user_reports' => 0, // This can be extended later for actual reports
+            'user_reports' => 0,
             'recent_activities' => $activities,
+            'resolution_times' => $resolutionTimes
         ];
     }
 } 

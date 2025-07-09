@@ -29,7 +29,8 @@ import {
     PencilIcon,
     ChatBubbleLeftIcon,
     ArchiveBoxIcon,
-    UserCircleIcon
+    UserCircleIcon,
+    BoltIcon
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
@@ -717,23 +718,27 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Stats Section */}
+                    {/* Resolution Time Stats */}
                     <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                            <div className="border-t border-gray-200 pt-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="text-center">
-                                        <p className="text-2xl font-semibold text-emerald-600">
-                                            {stats?.total_tickets || 0}
-                                        </p>
-                                        <p className="text-sm text-gray-500">Total Tickets</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-2xl font-semibold text-emerald-600">
-                                            {stats?.open_tickets || 0}
-                                        </p>
-                                        <p className="text-sm text-gray-500">Open Tickets</p>
-                                    </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-6">Resolution Time</h3>
+                            <div className="text-center">
+                                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
+                                    <ClockIcon className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div className="text-sm font-medium text-gray-600">Average Resolution Time</div>
+                                <div className="mt-2 text-xl font-semibold text-gray-900">
+                                    {stats.resolution_times?.average ? (
+                                        <>
+                                            {stats.resolution_times.average.minutes < 60 ? (
+                                                `${stats.resolution_times.average.minutes}m`
+                                            ) : (
+                                                `${Math.floor(stats.resolution_times.average.hours)}h ${stats.resolution_times.average.minutes % 60}m`
+                                            )}
+                                        </>
+                                    ) : (
+                                        'N/A'
+                                    )}
                                 </div>
                             </div>
                         </div>
