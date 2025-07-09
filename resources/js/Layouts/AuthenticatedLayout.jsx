@@ -15,8 +15,10 @@ import {
     ChevronDownIcon,
     Bars3Icon,
     XMarkIcon,
+    BellIcon,
 } from '@heroicons/react/24/outline';
 import * as HeroIcons from '@heroicons/react/24/outline';
+import { Transition } from '@headlessui/react';
 
 // Navigation Item Component that handles both links and dropdowns
 function NavigationItem({ item, isCurrentRoute, themeConfig, isDesktop = false }) {
@@ -497,6 +499,9 @@ export default function AuthenticatedLayout({ header, children }) {
         loadNotifications();
     }, []);
 
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [open, setOpen] = useState(false);
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Custom Navigation Sidebar - Show for users with custom navigation or admins */}
@@ -557,7 +562,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
 
                     {/* Desktop sidebar */}
-                    <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+                    <div className="hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:w-64 lg:flex-col">
                         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
                             <div className="flex h-16 flex-shrink-0 items-center px-4 border-b">
                                 {themeConfig.logoUrl ? (
@@ -624,6 +629,142 @@ export default function AuthenticatedLayout({ header, children }) {
                                         />
                                     ))}
                                 </nav>
+
+                                {/* User Profile and Notifications Section */}
+                                <div className="border-t border-gray-200 p-4">
+                                    <div className="flex items-center justify-between">
+                                        {/* User Profile Dropdown */}
+                                        <div className="relative">
+                                            <button 
+                                                onClick={() => setOpen(!open)} 
+                                                className="flex items-center group w-full"
+                                            >
+                                                <Avatar user={user} size="sm" />
+                                                <div className="ml-3 flex-1 text-left">
+                                                    <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                                        {user.name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {getUserTypeLabel()}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {/* Notification Bell */}
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowNotifications(!showNotifications);
+                                                            }}
+                                                            className="p-1 rounded-full text-gray-400 hover:text-gray-600 focus:outline-none"
+                                                        >
+                                                            <span className="sr-only">View notifications</span>
+                                                            <BellIcon className="h-6 w-6" aria-hidden="true" />
+                                                        </button>
+                                                        {unreadCount > 0 && (
+                                                            <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white" />
+                                                        )}
+                                                    </div>
+                                                    <ChevronDownIcon className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                                                </div>
+                                            </button>
+
+                                            <Transition
+                                                show={open}
+                                                enter="transition ease-out duration-200"
+                                                enterFrom="transform -translate-y-1 opacity-0"
+                                                enterTo="transform translate-y-0 opacity-100"
+                                                leave="transition ease-in duration-150"
+                                                leaveFrom="transform translate-y-0 opacity-100"
+                                                leaveTo="transform -translate-y-1 opacity-0"
+                                            >
+                                                <div className="mt-2 border-t border-gray-200">
+                                                    <Link
+                                                        href={route('profile.edit')}
+                                                        className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                                    >
+                                                        Profile
+                                                    </Link>
+                                                    {(isCentralAdmin || isTenantAdmin || hasCustomNavigation) && (
+                                                        <Link
+                                                            href={route('dashboard')}
+                                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                                        >
+                                                            Regular Dashboard
+                                                        </Link>
+                                                    )}
+                                                    <Link
+                                                        href={route('logout')}
+                                                        method="post"
+                                                        as="button"
+                                                        className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                                    >
+                                                        Log Out
+                                                    </Link>
+                                                </div>
+                                            </Transition>
+                                        </div>
+                                    </div>
+
+                                    {/* Notification Panel */}
+                                    <Transition
+                                        show={showNotifications}
+                                        enter="transform transition ease-out duration-300"
+                                        enterFrom="translate-x-full"
+                                        enterTo="translate-x-0"
+                                        leave="transform transition ease-in duration-200"
+                                        leaveFrom="translate-x-0"
+                                        leaveTo="translate-x-full"
+                                        className="fixed inset-y-0 right-0 w-96 bg-white shadow-lg z-[100]"
+                                    >
+                                        <div className="h-full flex flex-col">
+                                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                                                <h3 className="text-lg font-semibold text-gray-900">
+                                                    Notifications
+                                                </h3>
+                                                <button
+                                                    onClick={() => setShowNotifications(false)}
+                                                    className="text-gray-400 hover:text-gray-500"
+                                                >
+                                                    <span className="sr-only">Close panel</span>
+                                                    <XMarkIcon className="h-6 w-6" />
+                                                </button>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto">
+                                                <div className="divide-y divide-gray-200">
+                                                    {notifications.map((notification) => (
+                                                        <div
+                                                            key={notification.id}
+                                                            className={`p-4 ${notification.read ? 'bg-white' : 'bg-blue-50'}`}
+                                                        >
+                                                            <div className="flex items-start">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-medium text-gray-900">
+                                                                        {notification.title}
+                                                                    </p>
+                                                                    <p className="mt-1 text-sm text-gray-500">
+                                                                        {notification.message}
+                                                                    </p>
+                                                                    <p className="mt-1 text-xs text-gray-400">
+                                                                        {notification.time}
+                                                                    </p>
+                                                                </div>
+                                                                {!notification.read && (
+                                                                    <button
+                                                                        onClick={() => markAsRead(notification.id)}
+                                                                        className="ml-4 text-xs text-blue-600 hover:text-blue-800"
+                                                                    >
+                                                                        Mark as read
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Transition>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -631,243 +772,7 @@ export default function AuthenticatedLayout({ header, children }) {
             )}
 
             {/* Main content */}
-            <div className={shouldShowSidebar ? "lg:pl-[260px]" : ""}>
-                {/* Top navigation */}
-                <nav className={`bg-gray-50 ${shouldShowSidebar ? 'sticky top-0 z-40' : ''}`}>
-                    <div className="px-4">
-                        <div className="flex h-12 justify-end">
-                            <div className="flex">
-                                {/* Mobile menu button for sidebar users */}
-                                {shouldShowSidebar && (
-                                    <button
-                                        type="button"
-                                        className="text-gray-500 lg:hidden mr-4 flex items-center"
-                                        onClick={() => setSidebarOpen(true)}
-                                    >
-                                        <Bars3Icon className="h-6 w-6" />
-                                    </button>
-                                )}
-
-
-
-                                {/* Navigation for users without custom sidebar */}
-                                {!shouldShowSidebar && (
-                                    <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                        <NavLink
-                                            href={route('dashboard')}
-                                            active={route().current('dashboard')}
-                                        >
-                                            Dashboard
-                                        </NavLink>
-                                        <NavLink
-                                            href={route('messages')}
-                                            active={route().current('messages')}
-                                        >
-                                            Messages
-                                        </NavLink>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="hidden sm:ms-6 sm:flex sm:items-center pt-4">
-                                {/* User type indicator for sidebar users */}
-                                {shouldShowSidebar && (
-                                    <div className="text-sm leading-none text-gray-500 mr-4">
-                                        {getUserTypeLabel()}
-                                    </div>
-                                )}
-
-                                {/* Notification Center */}
-                                <div className="mr-4">
-                                    <NotificationCenter
-                                        notifications={notifications}
-                                        unreadCount={unreadCount}
-                                        onMarkAsRead={handleMarkAsRead}
-                                        onMarkAllAsRead={handleMarkAllAsRead}
-                                        onDelete={handleDeleteNotification}
-                                        onRefresh={loadNotifications}
-                                        maxNotifications={10}
-                                        showBadge={true}
-                                        position="top-right"
-                                        theme={themeConfig?.primary === 'indigo' ? 'primary' : 'default'}
-                                    />
-                                </div>
-
-                                <div className="relative ms-3">
-                                    <Dropdown>
-                                        <Dropdown.Trigger>
-                                            <span className="inline-flex items-center gap-2">
-                                                <Avatar user={user} size="sm" />
-                                                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                                            </span>
-                                        </Dropdown.Trigger>
-
-                                        <Dropdown.Content>
-                                            <div className="px-4 py-2 border-b border-gray-100">
-                                                <Avatar 
-                                                    user={user} 
-                                                    className="mb-2"
-                                                />
-                                                <p className="text-xs text-gray-500">
-                                                    {user.email}
-                                                </p>
-                                            </div>
-                                            <Dropdown.Link href={route('profile.edit')}>
-                                                Profile
-                                            </Dropdown.Link>
-                                            {/* Dashboard switching for users with custom navigation */}
-                                            {(isCentralAdmin || isTenantAdmin || hasCustomNavigation) && (
-                                                <Dropdown.Link href={route('dashboard')}>
-                                                    Regular Dashboard
-                                                </Dropdown.Link>
-                                            )}
-                                            <Dropdown.Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
-                                            >
-                                                Log Out
-                                            </Dropdown.Link>
-                                        </Dropdown.Content>
-                                    </Dropdown>
-                                </div>
-                            </div>
-
-                            {/* Mobile menu button for users without sidebar */}
-                            {!shouldShowSidebar && (
-                                <div className="-me-2 flex items-center sm:hidden">
-                                    <button
-                                        onClick={() =>
-                                            setShowingNavigationDropdown(
-                                                (previousState) => !previousState,
-                                            )
-                                        }
-                                        className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                                    >
-                                        <svg
-                                            className="h-6 w-6"
-                                            stroke="currentColor"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                className={
-                                                    !showingNavigationDropdown
-                                                        ? 'inline-flex'
-                                                        : 'hidden'
-                                                }
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M4 6h16M4 12h16M4 18h16"
-                                            />
-                                            <path
-                                                className={
-                                                    showingNavigationDropdown
-                                                        ? 'inline-flex'
-                                                        : 'hidden'
-                                                }
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M6 18L18 6M6 6l12 12"
-                                            />
-                                        </svg>
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Mobile navigation for sidebar users */}
-                    {shouldShowSidebar && (
-                        <div className="sm:hidden">
-                            <div className="border-t border-gray-200 pb-1 pt-4">
-                                <div className="px-4">
-                                    <Avatar 
-                                        user={user} 
-                                        className="mb-2"
-                                    />
-                                    <div className="text-sm font-medium text-gray-500">
-                                        {getUserTypeLabel()}
-                                    </div>
-                                </div>
-
-                                <div className="mt-3 space-y-1">
-                                    <ResponsiveNavLink href={route('profile.edit')}>
-                                        Profile
-                                    </ResponsiveNavLink>
-                                    <ResponsiveNavLink
-                                        method="post"
-                                        href={route('logout')}
-                                        as="button"
-                                    >
-                                        Log Out
-                                    </ResponsiveNavLink>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Mobile navigation menu for users without sidebar */}
-                    {!shouldShowSidebar && (
-                        <div
-                            className={
-                                (showingNavigationDropdown ? 'block' : 'hidden') +
-                                ' sm:hidden'
-                            }
-                        >
-                            <div className="space-y-1 pb-3 pt-2">
-                                <ResponsiveNavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route('messages')}
-                                    active={route().current('messages')}
-                                >
-                                    Messages
-                                </ResponsiveNavLink>
-                            </div>
-
-                            <div className="border-t border-gray-200 pb-1 pt-4">
-                                <div className="px-4">
-                                    <Avatar 
-                                        user={user} 
-                                        className="mb-2"
-                                    />
-                                    <div className="text-sm font-medium text-gray-500">
-                                        {user.email}
-                                    </div>
-                                </div>
-
-                                <div className="mt-3 space-y-1">
-                                    <ResponsiveNavLink href={route('profile.edit')}>
-                                        Profile
-                                    </ResponsiveNavLink>
-                                    <ResponsiveNavLink
-                                        method="post"
-                                        href={route('logout')}
-                                        as="button"
-                                    >
-                                        Log Out
-                                    </ResponsiveNavLink>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </nav>
-
-                {/* Page Header */}
-                {header && (
-                    <header className="pt-6">
-                        {header}
-                    </header>
-                )}
-
-                {/* Main content area - Clean for page content */}
+            <div className="lg:pl-64">
                 <main>
                     <div className="p-4">
                         {children}

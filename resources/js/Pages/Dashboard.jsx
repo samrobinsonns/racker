@@ -25,7 +25,11 @@ import {
     ExclamationTriangleIcon,
     InformationCircleIcon,
     TrashIcon,
-    BellIcon
+    BellIcon,
+    PencilIcon,
+    ChatBubbleLeftIcon,
+    ArchiveBoxIcon,
+    UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
@@ -38,6 +42,7 @@ export default function Dashboard() {
     // Notification state
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [combinedFeed, setCombinedFeed] = useState([]);
 
     // Format date helper
     const formatDate = (date) => {
@@ -49,16 +54,29 @@ export default function Dashboard() {
         });
     };
 
+    // Combine and sort notifications and activities
+    useEffect(() => {
+        const combined = [
+            ...(notifications || []).map(item => ({
+                ...item,
+                itemType: 'notification',
+                sortDate: new Date(item.created_at)
+            })),
+            ...(stats?.recent_activities || []).map(item => ({
+                ...item,
+                itemType: 'activity',
+                sortDate: new Date(item.created_at)
+            }))
+        ].sort((a, b) => b.sortDate - a.sortDate);
+
+        setCombinedFeed(combined);
+    }, [notifications, stats?.recent_activities]);
+
     // Load notifications
     const loadNotifications = async (resetPage = true) => {
         try {
             setLoading(true);
-            const response = await axios.get(`/api/notifications`, {
-                params: {
-                    limit: 4
-                }
-            });
-
+            const response = await axios.get(`/api/notifications`);
             const newNotifications = response.data.notifications;
             setNotifications(newNotifications);
             setHasMore(false); // No pagination needed
@@ -207,7 +225,7 @@ export default function Dashboard() {
                         >
                             <dt>
                                 <div className={`absolute rounded-md p-3 ${getStatColor(card.color)}`}>
-                                    <card.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                                    <card.icon className="h-5 w-5 text-white" aria-hidden="true" />
                                 </div>
                                 <p className="ml-16 truncate text-sm font-medium text-gray-500">{card.name}</p>
                             </dt>
@@ -424,207 +442,298 @@ export default function Dashboard() {
                 stat: stats?.user_tickets || 0,
                 icon: CheckCircleIcon,
                 color: 'emerald',
+                gradient: 'from-emerald-400 to-emerald-600',
+                textColor: 'text-emerald-50'
             },
             {
                 name: 'Resolved Tickets',
                 stat: stats?.resolved_tickets || 0,
                 icon: CheckIcon,
                 color: 'blue',
-            },
-            {
-                name: 'Reports',
-                stat: stats?.user_reports || 3,
-                icon: ChartBarIcon,
-                color: 'purple',
+                gradient: 'from-blue-400 to-blue-600',
+                textColor: 'text-blue-50'
             },
         ];
 
         return (
             <>
-                {/* Welcome Section */}
-
-
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
                     {statCards.map((card) => (
                         <div
                             key={card.name}
-                            className="relative overflow-hidden rounded-lg bg-white px-4 py-5 shadow hover:shadow-lg transition-shadow duration-200"
+                            className="relative overflow-hidden rounded-xl bg-gradient-to-br shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-1"
                         >
-                            <dt>
-                                <div className={`absolute rounded-md p-3 ${getStatColor(card.color)}`}>
-                                    <card.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                            {/* Background gradient */}
+                            <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-90`}></div>
+                            
+                            {/* Content */}
+                            <div className="relative px-6 py-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className={`text-lg font-semibold ${card.textColor}`}>{card.name}</p>
+                                    <div className={`rounded-full p-2 bg-white/10 backdrop-blur-sm`}>
+                                        <card.icon className={`h-6 w-6 ${card.textColor}`} aria-hidden="true" />
+                                    </div>
                                 </div>
-                                <p className="ml-16 truncate text-sm font-medium text-gray-500">{card.name}</p>
-                            </dt>
-                            <dd className="ml-16 flex items-baseline pb-6 sm:pb-7">
-                                <p className="text-2xl font-semibold text-gray-900">{card.stat}</p>
-                            </dd>
+                                <p className={`text-3xl font-bold tracking-tight ${card.textColor}`}>
+                                    {card.stat}
+                                </p>
+                            </div>
+
+                            {/* Decorative elements */}
+                            <div className="absolute bottom-0 right-0 transform translate-x-1/4 translate-y-1/4">
+                                <card.icon className={`h-24 w-24 ${card.textColor} opacity-10`} aria-hidden="true" />
+                            </div>
                         </div>
                     ))}
+                    
+                    {/* Profile Card */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-1 h-full">
+                        {/* Settings Icon */}
+                        <Link
+                            href="/profile"
+                            className="absolute top-4 right-4 text-gray-400 hover:text-emerald-600 transition-colors z-10"
+                        >
+                            <Cog6ToothIcon className="h-5 w-5" />
+                        </Link>
+
+                        {/* Content */}
+                        <div className="relative flex items-center h-full px-6">
+                            <div className="flex items-center space-x-5">
+                                {/* Avatar */}
+                                <div className="relative flex-shrink-0">
+                                    {user.avatar_url ? (
+                                        <img
+                                            src={user.avatar_url}
+                                            alt={user.name}
+                                            className="h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-md"
+                                        />
+                                    ) : (
+                                        <div className="h-20 w-20 rounded-full bg-emerald-100 flex items-center justify-center ring-4 ring-white shadow-md">
+                                            <UserCircleIcon className="h-16 w-16 text-emerald-600" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* User Info */}
+                                <div className="flex flex-col min-w-0">
+                                    <h2 className="text-xl font-bold text-gray-900 truncate">
+                                        {user.name}
+                                    </h2>
+                                    <p className="text-sm text-gray-500 truncate mt-0.5">{user.email}</p>
+                                    {user.title && (
+                                        <p className="text-sm text-emerald-600 mt-1.5 font-medium truncate">
+                                            {user.title}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Decorative element */}
+                        <div className="absolute bottom-0 right-0 transform translate-x-1/4 translate-y-1/4">
+                            <UserIcon className="h-24 w-24 text-gray-200" aria-hidden="true" />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Main Content */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* Recent Activity */}
+                    {/* Activity & Notifications Feed */}
                     <div className="lg:col-span-2">
-                        <div className="bg-white overflow-hidden shadow rounded-lg">
-                            <div className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
-                                        <ClockIcon className="h-5 w-5 mr-2 text-emerald-600" />
-                                        Recent Activity & Notifications
-                                    </h3>
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            onClick={() => handleMarkAllAsRead()}
-                                            className="text-sm text-gray-600 hover:text-emerald-600"
-                                        >
-                                            Mark all as read
-                                        </button>
-                                        <button
-                                            onClick={() => handleRefreshNotifications()}
-                                            className="text-gray-600 hover:text-emerald-600"
-                                        >
-                                            <ArrowPathIcon className="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Notifications List */}
-                                <div className="space-y-4 max-h-96 overflow-y-auto">
-                                    {loading ? (
-                                        <div className="flex justify-center items-center py-8">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                                        </div>
-                                    ) : notifications.length > 0 ? (
-                                        notifications.map((notification) => (
-                                            <div
-                                                key={notification.id}
-                                                className={`relative p-4 rounded-lg border ${
-                                                    notification.read_at ? 'bg-white' : 'bg-emerald-50'
-                                                } ${
-                                                    notification.type === 'success'
-                                                        ? 'border-green-200'
-                                                        : notification.type === 'error'
-                                                        ? 'border-red-200'
-                                                        : notification.type === 'warning'
-                                                        ? 'border-yellow-200'
-                                                        : 'border-blue-200'
-                                                }`}
+                        <div className="h-full bg-white overflow-hidden shadow rounded-lg">
+                            <div className="p-6 h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                                            <BellIcon className="h-5 w-5 mr-2 text-emerald-600" />
+                                        Activity & Notifications
+                                        </h3>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => handleMarkAllAsRead()}
+                                                className="text-sm text-gray-600 hover:text-emerald-600"
                                             >
-                                                <div className="flex items-start">
-                                                    <div className="flex-shrink-0">
-                                                        {notification.type === 'success' && (
-                                                            <CheckCircleIcon className="h-6 w-6 text-green-500" />
-                                                        )}
-                                                        {notification.type === 'error' && (
-                                                            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
-                                                        )}
-                                                        {notification.type === 'warning' && (
-                                                            <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
-                                                        )}
-                                                        {notification.type === 'info' && (
-                                                            <InformationCircleIcon className="h-6 w-6 text-blue-500" />
-                                                        )}
-                                                    </div>
-                                                    <div className="ml-3 flex-1">
-                                                        {notification.title && (
-                                                            <h4 className="text-sm font-medium text-gray-900">
-                                                                {notification.title}
-                                                            </h4>
-                                                        )}
-                                                        <p className="text-sm text-gray-600">{notification.message}</p>
-                                                        <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
-                                                            <span>{formatDate(notification.created_at)}</span>
-                                                            {notification.action_url && (
-                                                                <Link
-                                                                    href={notification.action_url}
-                                                                    className="text-emerald-600 hover:text-emerald-800"
-                                                                >
-                                                                    {notification.action_text || 'View Details'}
-                                                                </Link>
+                                                Mark all as read
+                                            </button>
+                                            <button
+                                                onClick={() => handleRefreshNotifications()}
+                                                className="text-gray-600 hover:text-emerald-600"
+                                            >
+                                                <ArrowPathIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                {/* Combined Feed */}
+                                <div className="space-y-4 overflow-y-auto pr-2" style={{ height: '32rem' }}>
+                                        {loading ? (
+                                            <div className="flex justify-center items-center py-8">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                            </div>
+                                    ) : (
+                                        <>
+                                            {combinedFeed.map((item) => (
+                                                <div
+                                                    key={`${item.itemType}-${item.id}`}
+                                                    className={`relative p-4 rounded-lg border ${
+                                                        item.itemType === 'notification'
+                                                            ? item.read_at
+                                                                ? 'bg-white'
+                                                                : 'bg-emerald-50'
+                                                            : 'bg-white'
+                                                    } ${
+                                                        item.itemType === 'notification'
+                                                            ? item.type === 'success'
+                                                            ? 'border-green-200'
+                                                                : item.type === 'error'
+                                                            ? 'border-red-200'
+                                                                : item.type === 'warning'
+                                                            ? 'border-yellow-200'
+                                                            : 'border-blue-200'
+                                                            : 'border-gray-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start">
+                                                        <div className="flex-shrink-0">
+                                                            {item.itemType === 'notification' ? (
+                                                                <>
+                                                                    {item.type === 'success' && (
+                                                                <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                                                            )}
+                                                                    {item.type === 'error' && (
+                                                                <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+                                                            )}
+                                                                    {item.type === 'warning' && (
+                                                                <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
+                                                            )}
+                                                                    {item.type === 'info' && (
+                                                                <InformationCircleIcon className="h-6 w-6 text-blue-500" />
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    {item.type === 'ticket_updated' && (
+                                                                        <span className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                                                                            <PencilIcon className="h-5 w-5 text-green-600" />
+                                                                        </span>
+                                                                    )}
+                                                                    {item.type === 'ticket_comment' && (
+                                                                        <span className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                                                            <ChatBubbleLeftIcon className="h-5 w-5 text-purple-600" />
+                                                                        </span>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
-                                                    </div>
-                                                    <div className="ml-4 flex-shrink-0 flex items-start space-x-2">
-                                                        {!notification.read_at && (
+                                                        <div className="ml-3 flex-1">
+                                                            {item.itemType === 'notification' ? (
+                                                                <>
+                                                                    {item.title && (
+                                                                <h4 className="text-sm font-medium text-gray-900">
+                                                                            {item.title}
+                                                                </h4>
+                                                            )}
+                                                                    <p className="text-sm text-gray-600">{item.message}</p>
+                                                            <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+                                                                        <span>{formatDate(item.created_at)}</span>
+                                                                        {item.action_url && (
+                                                                    <Link
+                                                                                href={item.action_url}
+                                                                        className="text-emerald-600 hover:text-emerald-800"
+                                                                    >
+                                                                                {item.action_text || 'View Details'}
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <p className="text-sm text-gray-800">
+                                                                        {item.type === 'ticket_comment' ? (
+                                                                            <>
+                                                                                Commented on{' '}
+                                                                                <Link
+                                                                                    href={route('support-tickets.show', item.ticket.id)}
+                                                                                    className="font-medium text-gray-900"
+                                                                                >
+                                                                                    #{item.ticket.ticket_number}
+                                                                                </Link>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                {item.description}
+                                                                                {item.ticket && item.type !== 'ticket_comment' && (
+                                                                                    <Link
+                                                                                        href={route('support-tickets.show', item.ticket.id)}
+                                                                                        className="font-medium text-gray-900 ml-1"
+                                                                                    >
+                                                                                        #{item.ticket.ticket_number}
+                                                                                    </Link>
+                                                                                )}
+                                                                            </>
+                                                                        )}
+                                                                    </p>
+                                                                    <div className="mt-1 text-xs text-gray-500">
+                                                                        {formatDate(item.created_at)}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        {item.itemType === 'notification' && (
+                                                        <div className="ml-4 flex-shrink-0 flex items-start space-x-2">
+                                                                {!item.read_at && (
+                                                                <button
+                                                                        onClick={() => handleMarkAsRead(item.id)}
+                                                                    className="text-gray-400 hover:text-emerald-600"
+                                                                >
+                                                                    <CheckIcon className="h-5 w-5" />
+                                                                </button>
+                                                            )}
                                                             <button
-                                                                onClick={() => handleMarkAsRead(notification.id)}
-                                                                className="text-gray-400 hover:text-emerald-600"
+                                                                    onClick={() => handleDelete(item.id)}
+                                                                className="text-gray-400 hover:text-red-600"
                                                             >
-                                                                <CheckIcon className="h-5 w-5" />
+                                                                <TrashIcon className="h-5 w-5" />
                                                             </button>
+                                                        </div>
                                                         )}
-                                                        <button
-                                                            onClick={() => handleDelete(notification.id)}
-                                                            className="text-gray-400 hover:text-red-600"
-                                                        >
-                                                            <TrashIcon className="h-5 w-5" />
-                                                        </button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <BellIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                            <p className="text-gray-500">No notifications to display</p>
-                                            <p className="text-sm text-gray-400 mt-1">
-                                                You have no notifications yet
-                                            </p>
-                                        </div>
+                                            ))}
+
+                                            {combinedFeed.length === 0 && (
+                                                <div className="text-center py-8">
+                                                    <BellIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                                    <p className="text-gray-500">No recent activity</p>
+                                                    <p className="text-sm text-gray-400 mt-1">
+                                                        Your notifications and activities will appear here
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Quick Access */}
-                    <div>
-                        <div className="bg-white overflow-hidden shadow rounded-lg">
-                            <div className="p-6">
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Access</h3>
-                                <div className="space-y-3">
-                                    <PermissionGate permission="manage_own_profile">
-                                        <Link
-                                            href={route('profile.edit')}
-                                            className="w-full inline-flex items-center justify-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 transition ease-in-out duration-150"
-                                        >
-                                            <UserIcon className="h-4 w-4 mr-2" />
-                                            My Profile
-                                        </Link>
-                                    </PermissionGate>
-                                    
-                                    <PermissionGate permission="view_reports">
-                                        <Link
-                                            href={route('tenant.reports')}
-                                            className="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition ease-in-out duration-150"
-                                        >
-                                            <ChartBarIcon className="h-4 w-4 mr-2" />
-                                            View Reports
-                                        </Link>
-                                    </PermissionGate>
-
-                                    <PermissionGate permission="view_tenant_data">
-                                        <Link
-                                            href={route('tenant.content')}
-                                            className="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition ease-in-out duration-150"
-                                        >
-                                            <BuildingOffice2Icon className="h-4 w-4 mr-2" />
-                                            Content
-                                        </Link>
-                                    </PermissionGate>
-
-                                    <PermissionGate permission="view_tenant_analytics">
-                                        <Link
-                                            href={route('tenant.analytics')}
-                                            className="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition ease-in-out duration-150"
-                                        >
-                                            <ChartBarIcon className="h-4 w-4 mr-2" />
-                                            Analytics
-                                        </Link>
-                                    </PermissionGate>
+                    {/* Stats Section */}
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <div className="border-t border-gray-200 pt-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="text-center">
+                                        <p className="text-2xl font-semibold text-emerald-600">
+                                            {stats?.total_tickets || 0}
+                                        </p>
+                                        <p className="text-sm text-gray-500">Total Tickets</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-2xl font-semibold text-emerald-600">
+                                            {stats?.open_tickets || 0}
+                                        </p>
+                                        <p className="text-sm text-gray-500">Open Tickets</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

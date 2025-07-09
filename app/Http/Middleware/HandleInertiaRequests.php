@@ -66,6 +66,15 @@ class HandleInertiaRequests extends Middleware
                     'bio' => $user->bio,
                     'website' => $user->website,
                     'background_image_url' => $user->background_image_url,
+                    'roles' => $user->roles->map(function($role) {
+                        return [
+                            'id' => $role->id,
+                            'name' => $role->name,
+                            'display_name' => $role->display_name,
+                            'tenant_id' => $role->tenant_id,
+                            'type' => $role->type,
+                        ];
+                    }),
                 ] : null,
             ],
             'flash' => [

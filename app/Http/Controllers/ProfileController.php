@@ -130,20 +130,18 @@ class ProfileController extends Controller
     public function activities(Request $request)
     {
         $user = $request->user();
+        $activities = collect();
         
-        // Get currently assigned tickets that are not closed/resolved
-        $activities = $user->assignedTickets()
+        // Get assigned tickets
+        $assignedTickets = $user->assignedTickets()
             ->with(['status', 'priority'])
-            ->whereHas('status', function($query) {
-                $query->where('is_closed', false);
-            })
-            ->whereNull('resolved_at')
             ->orderBy('created_at', 'desc')
+            ->limit(10)
             ->get()
             ->map(function ($ticket) {
                 return [
                     'id' => 'ticket_' . $ticket->id,
-                    'type' => 'assigned_ticket',
+                    'type' => 'ticket_assigned',
                     'description' => "Ticket #{$ticket->ticket_number}: {$ticket->subject}",
                     'created_at' => $ticket->created_at,
                     'metadata' => [
@@ -154,6 +152,56 @@ class ProfileController extends Controller
                     ]
                 ];
             });
+        $activities = $activities->concat($assignedTickets);
+
+        // Get ticket replies
+        $ticketReplies = $user->ticketReplies()
+            ->with(['ticket'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($reply) {
+                return [
+                    'id' => 'reply_' . $reply->id,
+                    'type' => 'ticket_reply',
+                    'description' => "Replied to ticket #{$reply->ticket->ticket_number}",
+                    'created_at' => $reply->created_at,
+                    'metadata' => [
+                        'ticket_id' => $reply->ticket->id,
+                        'ticket_number' => $reply->ticket->ticket_number,
+                        'is_internal' => $reply->is_internal,
+                    ]
+                ];
+            });
+        $activities = $activities->concat($ticketReplies);
+
+        // Get ticket status changes
+        $statusChanges = $user->ticketStatusChanges()
+            ->with(['ticket'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($change) {
+                return [
+                    'id' => 'status_' . $change->id,
+                    'type' => 'ticket_status_changed',
+                    'description' => "Changed status of ticket #{$change->ticket->ticket_number} to {$change->new_status}",
+                    'created_at' => $change->created_at,
+                    'metadata' => [
+                        'ticket_id' => $change->ticket->id,
+                        'ticket_number' => $change->ticket->ticket_number,
+                        'old_status' => $change->old_status,
+                        'new_status' => $change->new_status,
+                    ]
+                ];
+            });
+        $activities = $activities->concat($statusChanges);
+
+        // Sort all activities by created_at and take the most recent 15
+        $activities = $activities
+            ->sortByDesc('created_at')
+            ->take(15)
+            ->values();
 
         return response()->json([
             'activities' => $activities
@@ -168,6 +216,80 @@ class ProfileController extends Controller
         // Load necessary relationships and additional data
         $user->load(['tenant', 'roles']);
 
+        // Get user's activities
+        $activities = collect();
+        
+        // Get assigned tickets
+        $assignedTickets = $user->assignedTickets()
+            ->with(['status', 'priority'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => 'ticket_' . $ticket->id,
+                    'type' => 'ticket_assigned',
+                    'description' => "Ticket #{$ticket->ticket_number}: {$ticket->subject}",
+                    'created_at' => $ticket->created_at,
+                    'metadata' => [
+                        'ticket_id' => $ticket->id,
+                        'ticket_number' => $ticket->ticket_number,
+                        'status' => $ticket->status->name,
+                        'priority' => $ticket->priority->name,
+                    ]
+                ];
+            });
+        $activities = $activities->concat($assignedTickets);
+
+        // Get ticket replies
+        $ticketReplies = $user->ticketReplies()
+            ->with(['ticket'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($reply) {
+                return [
+                    'id' => 'reply_' . $reply->id,
+                    'type' => 'ticket_reply',
+                    'description' => "Replied to ticket #{$reply->ticket->ticket_number}",
+                    'created_at' => $reply->created_at,
+                    'metadata' => [
+                        'ticket_id' => $reply->ticket->id,
+                        'ticket_number' => $reply->ticket->ticket_number,
+                        'is_internal' => $reply->is_internal,
+                    ]
+                ];
+            });
+        $activities = $activities->concat($ticketReplies);
+
+        // Get ticket status changes
+        $statusChanges = $user->ticketStatusChanges()
+            ->with(['ticket'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($change) {
+                return [
+                    'id' => 'status_' . $change->id,
+                    'type' => 'ticket_status_changed',
+                    'description' => "Changed status of ticket #{$change->ticket->ticket_number} to {$change->new_values['status']}",
+                    'created_at' => $change->created_at,
+                    'metadata' => [
+                        'ticket_id' => $change->ticket->id,
+                        'ticket_number' => $change->ticket->ticket_number,
+                        'old_status' => $change->old_values['status'],
+                        'new_status' => $change->new_values['status'],
+                    ]
+                ];
+            });
+        $activities = $activities->concat($statusChanges);
+
+        // Sort all activities by created_at and take the most recent 15
+        $activities = $activities
+            ->sortByDesc('created_at')
+            ->take(15)
+            ->values();
+
         return Inertia::render('Profile/Show', [
             'profileUser' => array_merge($user->toArray(), [
                 'title' => $user->title,
@@ -176,6 +298,7 @@ class ProfileController extends Controller
                 'bio' => $user->bio,
                 'website' => $user->website,
                 'created_at_formatted' => $user->created_at->format('F j, Y'),
+                'activities' => $activities,
             ]),
         ]);
     }

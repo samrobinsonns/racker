@@ -40,15 +40,16 @@ const Content = ({
     width = '48',
     contentClasses = 'py-1 bg-white',
     children,
+    className = '',
 }) => {
     const { open, setOpen } = useContext(DropDownContext);
 
-    let alignmentClasses = 'origin-top';
+    let alignmentClasses = 'origin-bottom';
 
     if (align === 'left') {
-        alignmentClasses = 'ltr:origin-top-left rtl:origin-top-right start-0';
+        alignmentClasses = 'ltr:origin-bottom-left rtl:origin-bottom-right start-0';
     } else if (align === 'right') {
-        alignmentClasses = 'ltr:origin-top-right rtl:origin-top-left end-0';
+        alignmentClasses = 'ltr:origin-bottom-right rtl:origin-bottom-left end-0';
     }
 
     let widthClasses = '';
@@ -62,14 +63,14 @@ const Content = ({
             <Transition
                 show={open}
                 enter="transition ease-out duration-200"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
+                enterFrom="transform opacity-0 translate-y-2"
+                enterTo="transform opacity-100 translate-y-0"
                 leave="transition ease-in duration-75"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+                leaveFrom="transform opacity-100 translate-y-0"
+                leaveTo="transform opacity-0 translate-y-2"
             >
                 <div
-                    className={`absolute z-50 mt-2 rounded-md shadow-lg ${alignmentClasses} ${widthClasses}`}
+                    className={`absolute bottom-full mb-1 z-50 rounded-md shadow-lg ${alignmentClasses} ${widthClasses} ${className}`}
                     onClick={() => setOpen(false)}
                 >
                     <div

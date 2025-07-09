@@ -275,38 +275,31 @@ export default function TenantAdminLayout({ children }) {
                                 <NavigationItem key={item.name} item={item} isCurrentRoute={isCurrentRoute} isDesktop={true} />
                             ))}
                         </nav>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main content */}
-            <div className="lg:pl-64">
-                {/* Top navigation */}
-                <div className="sticky top-0 z-40 bg-gray-50">
-                    <div className="flex h-12 justify-end items-center px-5">
-                        <button
-                            type="button"
-                            className="text-gray-500 lg:hidden"
-                            onClick={() => setSidebarOpen(true)}
-                        >
-                            <Bars3Icon className="h-6 w-6" />
-                        </button>
-
-                        <div className="flex items-center space-x-4 pt-5">
-                            <div className="text-sm leading-none text-gray-500">
-                                Tenant Administrator
-                            </div>
+                        
+                        {/* User Profile Section */}
+                        <div className="border-t border-gray-200 p-4">
                             <Dropdown>
                                 <Dropdown.Trigger>
-                                    <span className="inline-flex">
-                                        <button
-                                            type="button"
-                                            className="inline-flex items-center text-sm leading-none font-medium text-gray-500 hover:text-gray-700 transition ease-in-out duration-150"
-                                        >
-                                            {user.name}
-                                            <ChevronDownIcon className="ml-2 -mr-0.5 h-4 w-4" />
-                                        </button>
-                                    </span>
+                                    <button className="flex items-center w-full group">
+                                        <div className="flex items-center flex-1">
+                                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                {user.avatar_url ? (
+                                                    <img
+                                                        src={user.avatar_url}
+                                                        alt={user.name}
+                                                        className="h-8 w-8 rounded-full"
+                                                    />
+                                                ) : (
+                                                    <UserIcon className="h-5 w-5 text-gray-500" />
+                                                )}
+                                            </div>
+                                            <div className="ml-3 text-left">
+                                                <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{user.name}</p>
+                                                <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">Tenant Administrator</p>
+                                            </div>
+                                        </div>
+                                        <ChevronDownIcon className="ml-2 h-4 w-4 text-gray-500" />
+                                    </button>
                                 </Dropdown.Trigger>
 
                                 <Dropdown.Content>
@@ -324,7 +317,10 @@ export default function TenantAdminLayout({ children }) {
                         </div>
                     </div>
                 </div>
+            </div>
 
+            {/* Main content */}
+            <div className="lg:pl-64">
                 {/* Main content */}
                 <main className="py-6">
                     <div className="mx-auto max-w-7xl px-2 sm:px-3 lg:px-4">

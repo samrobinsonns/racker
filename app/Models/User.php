@@ -211,6 +211,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Get ticket replies by this user
+     */
+    public function ticketReplies()
+    {
+        return $this->hasMany(SupportTicketReply::class, 'created_by');
+    }
+
+    /**
+     * Get ticket status changes by this user
+     */
+    public function ticketStatusChanges()
+    {
+        return $this->hasMany(SupportTicketActivityLog::class, 'user_id')
+            ->where('action_type', 'status_changed');
+    }
+
+    /**
      * Get the user's data for frontend serialization
      * Includes navigation items and branding
      */

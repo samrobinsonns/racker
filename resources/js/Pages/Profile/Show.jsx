@@ -47,13 +47,8 @@ export default function Show({ auth, profileUser }) {
 
                                 {/* User Info */}
                                 <div className="h-full flex flex-col justify-center ml-40">
-                                    <div className="flex items-center space-x-3">
+                                    <div className="flex items-center">
                                         <h2 className="text-2xl font-semibold text-white">{profileUser.name}</h2>
-                                        {profileUser.roles?.length > 0 && (
-                                            <span className="px-2.5 py-0.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                                                {profileUser.roles[0].name}
-                                            </span>
-                                        )}
                                     </div>
                                     <div>
                                         <p className="text-base text-purple-100 mt-1">{profileUser.email}</p>
@@ -61,6 +56,13 @@ export default function Show({ auth, profileUser }) {
                                             {profileUser.title && profileUser.location ? `${profileUser.title} • ${profileUser.location}` : 
                                              profileUser.title || profileUser.location || 'No title or location set'}
                                         </p>
+                                        {profileUser.roles?.length > 0 && (
+                                            <p className="mt-1">
+                                                <span className="px-2.5 py-0.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                                    {profileUser.roles[0].display_name}
+                                                </span>
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -9,14 +9,20 @@ export default function ProfileOverview({ user, readOnly = false }) {
         if (!readOnly) {
             fetchActivities();
         } else {
+            // For other profiles, we'll show their activities directly from the user prop
+            setActivities(user.activities || []);
             setLoading(false);
         }
-    }, [readOnly]);
+    }, [readOnly, user]);
 
     const fetchActivities = async () => {
         try {
             const response = await axios.get(route('profile.activities'));
-            setActivities(response.data.activities);
+            // Only keep ticket assignments
+            const ticketActivities = response.data.activities.filter(activity => 
+                activity.type === 'ticket_assigned'
+            );
+            setActivities(ticketActivities);
         } catch (error) {
             console.error('Error fetching activities:', error);
         } finally {
@@ -24,33 +30,12 @@ export default function ProfileOverview({ user, readOnly = false }) {
         }
     };
 
-    const getActivityIcon = (type) => {
-        switch (type) {
-            case 'ticket_assigned':
-                return (
-                    <svg className="h-5 w-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                    </svg>
-                );
-            case 'ticket_updated':
-                return (
-                    <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                );
-            case 'ticket_resolved':
-                return (
-                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                );
-            default:
-                return (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                );
-        }
+    const getActivityIcon = () => {
+        return (
+            <svg className="h-5 w-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+        );
     };
 
     const formatTimeAgo = (date) => {
@@ -65,12 +50,6 @@ export default function ProfileOverview({ user, readOnly = false }) {
         return past.toLocaleDateString();
     };
 
-    const projects = [
-        { id: 1, name: 'Project Alpha', status: 'In Progress', progress: 75 },
-        { id: 2, name: 'Project Beta', status: 'Planning', progress: 25 },
-        { id: 3, name: 'Project Gamma', status: 'Completed', progress: 100 },
-    ];
-
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
@@ -83,41 +62,49 @@ export default function ProfileOverview({ user, readOnly = false }) {
                     </p>
                 </div>
 
-                {/* Recent Activity - Only show for own profile */}
-                {!readOnly && (
-                    <div className="bg-white rounded-2xl p-6 mt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
-                        {loading ? (
-                            <div className="space-y-4">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="animate-pulse flex items-start space-x-3">
-                                        <div className="rounded-full bg-gray-200 h-5 w-5" />
-                                        <div className="flex-1">
-                                            <div className="h-4 bg-gray-200 rounded w-3/4" />
-                                            <div className="mt-2 h-3 bg-gray-200 rounded w-1/4" />
-                                        </div>
+                {/* Assigned Tickets */}
+                <div className="bg-white rounded-2xl p-6 mt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assigned Tickets</h3>
+                    {loading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="animate-pulse flex items-start space-x-3">
+                                    <div className="rounded-full bg-gray-200 h-5 w-5" />
+                                    <div className="flex-1">
+                                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                                        <div className="mt-2 h-3 bg-gray-200 rounded w-1/4" />
                                     </div>
-                                ))}
-                            </div>
-                        ) : activities.length > 0 ? (
-                            <div className="space-y-4">
-                                {activities.map((activity) => (
-                                    <div key={activity.id} className="flex items-start space-x-3">
-                                        <div className="flex-shrink-0">
-                                            {getActivityIcon(activity.type)}
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-600">{activity.description}</p>
-                                            <p className="text-sm text-gray-500">{formatTimeAgo(activity.created_at)}</p>
-                                        </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : activities.length > 0 ? (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }} className="space-y-4 pr-2">
+                            {activities.map((activity) => (
+                                <div key={activity.id} className="flex items-start space-x-3">
+                                    <div className="flex-shrink-0">
+                                        {getActivityIcon()}
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 text-center py-4">No recent activity</p>
-                        )}
-                    </div>
-                )}
+                                    <div>
+                                        <p className="text-gray-600">
+                                            {activity.ticket?.id ? (
+                                                <>
+                                                    <a href={route('support-tickets.show', { support_ticket: activity.ticket.id })} className="text-violet-600 hover:text-violet-700">
+                                                        #{activity.ticket.ticket_number}
+                                                    </a>
+                                                    {' - '}
+                                                </>
+                                            ) : null}
+                                            {activity.description}
+                                        </p>
+                                        <p className="text-sm text-gray-500">{formatTimeAgo(activity.created_at)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500 text-center py-4">No tickets currently assigned</p>
+                    )}
+                </div>
             </div>
 
             {/* Side Content */}
@@ -166,29 +153,6 @@ export default function ProfileOverview({ user, readOnly = false }) {
                         )}
                     </div>
                 </div>
-
-                {/* Projects Section - Only show for own profile */}
-                {!readOnly && (
-                    <div className="bg-white rounded-2xl p-6 mt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Projects</h3>
-                        <div className="space-y-4">
-                            {projects.map((project) => (
-                                <div key={project.id} className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-900 font-medium">{project.name}</span>
-                                        <span className="text-sm text-gray-500">{project.status}</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-violet-600 h-2 rounded-full"
-                                            style={{ width: `${project.progress}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

@@ -40,9 +40,9 @@ export default function Avatar({ user, className = '', size = 'md' }) {
                     <span className="font-medium text-gray-900">
                         {user.name}
                     </span>
-                    {user.role && (
+                    {user.roles?.length > 0 && (
                         <span className="text-sm text-gray-500">
-                            {user.role}
+                            {user.roles[0].display_name}
                         </span>
                     )}
                 </div>
