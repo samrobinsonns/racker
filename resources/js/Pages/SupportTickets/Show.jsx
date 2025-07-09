@@ -415,7 +415,8 @@ import {
     ChatBubbleBottomCenterTextIcon,
     CalendarIcon,
     ChevronLeftIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -432,17 +433,28 @@ export default function Show({
     auth 
 }) {
     const [showReplyForm, setShowReplyForm] = useState(false);
-    const [replyType, setReplyType] = useState('public'); // 'public' or 'internal'
+    const [replyType, setReplyType] = useState('public');
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [showCannedResponseModal, setShowCannedResponseModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [messagesReversed, setMessagesReversed] = useState(true);
+    const [activitiesReversed, setActivitiesReversed] = useState(true);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState(ticket.due_date || null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [activityKey, setActivityKey] = useState(0);
+    const [isActivityCollapsed, setIsActivityCollapsed] = useState(false);
     const datePickerRef = useRef(null);
     
+    // Add state for number of activities to show
+    const [visibleActivities, setVisibleActivities] = useState(5);
+
+    // Function to show more activities
+    const showMoreActivities = () => {
+        setVisibleActivities(prev => prev + 5);
+    };
+
     // Mention functionality state
     const [mentionSuggestions, setMentionSuggestions] = useState([]);
     const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
@@ -675,6 +687,7 @@ export default function Show({
                 setMentionSuggestions([]);
                 setShowCannedResponseAutocomplete(false);
                 setCannedResponseSuggestions([]);
+                reloadActivity(); // Add activity reload after reply
             }
         });
     };
@@ -682,21 +695,31 @@ export default function Show({
     const handleStatusChange = (e) => {
         e.preventDefault();
         postStatus(route('support-tickets.status', ticket.id), {
-            onSuccess: () => setShowStatusModal(false)
+            onSuccess: () => {
+                setShowStatusModal(false);
+                reloadActivity();
+            }
         });
     };
 
     const handleAssignChange = (e) => {
         e.preventDefault();
         postAssign(route('support-tickets.update', ticket.id), {
-            onSuccess: () => setShowAssignModal(false)
+            onSuccess: () => {
+                setShowAssignModal(false);
+                reloadActivity();
+            }
         });
     };
 
     const escalateTicket = () => {
         const reason = prompt('Please provide a reason for escalation:');
         if (reason) {
-            router.post(route('support-tickets.escalate', ticket.id), { reason });
+            router.post(route('support-tickets.escalate', ticket.id), { reason }, {
+                onSuccess: () => {
+                    reloadActivity();
+                }
+            });
         }
     };
 
@@ -839,41 +862,12 @@ export default function Show({
                 preserveScroll: true,
                 preserveState: true,
                 onSuccess: () => {
-                    // Refresh the page to get updated data
+                    // Refresh the page to get updated data and reload activity
                     router.reload();
+                    reloadActivity();
                 },
                 onError: (errors) => {
                     console.error('Error updating ticket status:', errors);
-                }
-            });
-            return;
-        }
-
-        // Special handling for assignee updates
-        if (field === 'assignee_id') {
-            // Use the regular update endpoint which allows null for assigned_to
-            const data = {
-                subject: ticket.subject,
-                description: ticket.description,
-                priority_id: ticket.priority_id,
-                status_id: ticket.status_id,
-                category_id: ticket.category_id,
-                due_date: ticket.due_date,
-                assigned_to: value === 'unassigned' ? null : value
-            };
-            
-            // Log the data being sent for debugging
-            console.log('Sending update data:', data);
-            
-            router.put(route('support-tickets.update', ticket.id), data, {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    // Refresh the page to get updated data
-                    router.reload();
-                },
-                onError: (errors) => {
-                    console.error('Error updating ticket:', errors);
                 }
             });
             return;
@@ -894,8 +888,9 @@ export default function Show({
             preserveScroll: true,
             preserveState: true,
             onSuccess: () => {
-                // Force reload to get fresh data
+                // Force reload to get fresh data and reload activity
                 router.reload();
+                reloadActivity();
             },
             onError: (errors) => {
                 console.error('Error updating ticket:', errors);
@@ -1100,6 +1095,7 @@ export default function Show({
                                                     setReplyData('is_internal', false);
                                                     setShowReplyForm(true);
                                                 }}
+                                                className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"
                                             >
                                                 <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
                                                 Reply to Customer
@@ -1205,7 +1201,11 @@ export default function Show({
                                                     <InputError message={replyErrors.content} />
 
                                                     <div className="flex items-center space-x-3">
-                                                        <PrimaryButton type="submit" disabled={replyProcessing}>
+                                                        <PrimaryButton 
+                                                            type="submit" 
+                                                            disabled={replyProcessing}
+                                                            className={replyType === 'internal' ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500' : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'}
+                                                        >
                                                             {replyProcessing ? 'Sending...' : (replyType === 'internal' ? 'Add Note' : 'Send Reply')}
                                                         </PrimaryButton>
                                                         <SecondaryButton
@@ -1568,7 +1568,6 @@ export default function Show({
                                                                         {/* Due Date */}
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500 flex items-center space-x-2">
-                                            <ClockIcon className="h-4 w-4" />
                                             <span>Due Date</span>
                                         </dt>
                                         <dd className="mt-1">
@@ -1838,14 +1837,43 @@ export default function Show({
 
                             {/* Activity Log */}
                             {ticket.activity_logs && ticket.activity_logs.length > 0 && (
-                                <div className="bg-white shadow rounded-lg p-6">
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Activity</h3>
-                                    <div className="flow-root">
+                                <div key={activityKey} className="bg-white shadow rounded-lg p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-medium text-gray-900">
+                                            Activity ({ticket.activity_logs.length})
+                                        </h3>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => setActivitiesReversed(!activitiesReversed)}
+                                                className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                                title={activitiesReversed ? "Newest First" : "Oldest First"}
+                                            >
+                                                <ArrowTrendingUpIcon className={`h-4 w-4 ${!activitiesReversed ? 'transform rotate-180' : ''}`} />
+                                            </button>
+                                            <button
+                                                onClick={() => setIsActivityCollapsed(!isActivityCollapsed)}
+                                                className="inline-flex items-center px-2 py-1 text-sm text-gray-600 hover:text-gray-900"
+                                            >
+                                                {isActivityCollapsed ? (
+                                                    <>
+                                                        <ChevronRightIcon className="h-5 w-5" />
+                                                        <span className="ml-1">Show All</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ChevronDownIcon className="h-5 w-5" />
+                                                        <span className="ml-1">Collapse</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className={`flow-root transition-all duration-200 ease-in-out ${isActivityCollapsed ? 'h-0 overflow-hidden' : ''}`}>
                                         <ul className="-mb-8">
-                                            {ticket.activity_logs.slice(0, 5).map((log, index) => (
+                                            {(activitiesReversed ? [...ticket.activity_logs].reverse() : ticket.activity_logs).map((log, index, array) => (
                                                 <li key={log.id}>
                                                     <div className="relative pb-8">
-                                                        {index !== ticket.activity_logs.slice(0, 5).length - 1 && (
+                                                        {index !== array.length - 1 && (
                                                             <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
                                                         )}
                                                         <div className="relative flex items-start space-x-3">
