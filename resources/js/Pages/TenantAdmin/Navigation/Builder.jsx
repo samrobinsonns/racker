@@ -517,29 +517,6 @@ export default function Builder({
                         </div>
                     
                         <div className="flex items-center space-x-3 shrink-0">
-                            <SecondaryButton
-                                onClick={() => setShowConfigurationsModal(true)}
-                            >
-                                <FolderOpenIcon className="h-4 w-4 mr-2" />
-                                Configurations
-                            </SecondaryButton>
-                            
-                            <PrimaryButton
-                                onClick={() => saveConfiguration(false)}
-                                disabled={saving || !currentConfig.name.trim() || !selectedRoleId}
-                            >
-                                <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
-                                {saving ? 'Saving...' : 'Save Draft'}
-                            </PrimaryButton>
-                            
-                            <PrimaryButton
-                                onClick={() => saveConfiguration(true)}
-                                disabled={saving || !currentConfig.name.trim() || !selectedRoleId}
-                                className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
-                            >
-                                <CheckCircleIcon className="h-4 w-4 mr-2" />
-                                {saving ? 'Activating...' : 'Save & Activate'}
-                            </PrimaryButton>
                         </div>
                     </div>
                 </div>
@@ -565,6 +542,34 @@ export default function Builder({
 
             <div className="py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Save Actions */}
+                    <div className="mb-6 flex items-center justify-end space-x-3">
+                        <SecondaryButton
+                            onClick={() => setShowConfigurationsModal(true)}
+                        >
+                            <FolderOpenIcon className="h-4 w-4 mr-2" />
+                            Configurations
+                        </SecondaryButton>
+                        
+                        <PrimaryButton
+                            onClick={() => saveConfiguration(false)}
+                            disabled={saving || !currentConfig.name.trim() || !selectedRoleId}
+                            className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500"
+                        >
+                            <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
+                            {saving ? 'Saving...' : 'Save Draft'}
+                        </PrimaryButton>
+                        
+                        <PrimaryButton
+                            onClick={() => saveConfiguration(true)}
+                            disabled={saving || !currentConfig.name.trim() || !selectedRoleId}
+                            className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+                        >
+                            <CheckCircleIcon className="h-4 w-4 mr-2" />
+                            {saving ? 'Activating...' : 'Save & Activate'}
+                        </PrimaryButton>
+                    </div>
+                    
                     <div className="grid grid-cols-12 gap-6">
                         {/* Left Sidebar - Configuration Settings */}
                         <div className="col-span-3">

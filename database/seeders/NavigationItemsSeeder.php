@@ -40,16 +40,6 @@ class NavigationItemsSeeder extends Seeder
                 'description' => 'User profile management',
             ],
             [
-                'key' => 'messages',
-                'label' => 'Messages',
-                'icon' => 'ChatBubbleLeftRightIcon',
-                'route_name' => 'messages',
-                'permission_required' => Permission::VIEW_TENANT_DATA,
-                'category' => NavigationItem::CATEGORY_CORE,
-                'sort_order' => 3,
-                'description' => 'Real-time messaging and conversations',
-            ],
-            [
                 'key' => 'support_tickets',
                 'label' => 'Support Tickets',
                 'icon' => 'TicketIcon',
@@ -58,6 +48,16 @@ class NavigationItemsSeeder extends Seeder
                 'category' => NavigationItem::CATEGORY_CORE,
                 'sort_order' => 4,
                 'description' => 'View and manage support tickets',
+            ],
+            [
+                'key' => 'contacts',
+                'label' => 'Contacts',
+                'icon' => 'UserGroupIcon',
+                'route_name' => 'tenant.contacts.index',
+                'permission_required' => Permission::MANAGE_CONTACTS,
+                'category' => NavigationItem::CATEGORY_CORE,
+                'sort_order' => 5,
+                'description' => 'Manage contact information and relationships',
             ],
 
             // Administrative Items
@@ -122,38 +122,6 @@ class NavigationItemsSeeder extends Seeder
                 'category' => NavigationItem::CATEGORY_ADMIN,
                 'sort_order' => 17,
                 'description' => 'Customize tenant navigation layout',
-            ],
-
-            // Content Management Items
-            [
-                'key' => 'reports',
-                'label' => 'Reports',
-                'icon' => 'ChartBarIcon',
-                'route_name' => 'tenant.reports',
-                'permission_required' => Permission::VIEW_REPORTS,
-                'category' => NavigationItem::CATEGORY_CONTENT,
-                'sort_order' => 20,
-                'description' => 'View and generate reports',
-            ],
-            [
-                'key' => 'contacts',
-                'label' => 'Contacts',
-                'icon' => 'UserGroupIcon',
-                'route_name' => 'tenant.contacts.index',
-                'permission_required' => Permission::VIEW_TENANT_DATA,
-                'category' => NavigationItem::CATEGORY_CONTENT,
-                'sort_order' => 21,
-                'description' => 'Contact management system',
-            ],
-            [
-                'key' => 'analytics',
-                'label' => 'Analytics',
-                'icon' => 'ChartPieIcon',
-                'route_name' => 'tenant.analytics',
-                'permission_required' => Permission::VIEW_TENANT_ANALYTICS,
-                'category' => NavigationItem::CATEGORY_CONTENT,
-                'sort_order' => 22,
-                'description' => 'Analytics and insights',
             ],
 
             // Custom Items

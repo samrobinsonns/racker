@@ -67,6 +67,22 @@ class EnhancedRoleSeeder extends Seeder
                     Permission::MANAGE_TENANT_BILLING,
                     Permission::VIEW_DASHBOARD,
                     Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
+                    Permission::MANAGE_SUPPORT_TICKETS,
+                    Permission::VIEW_ALL_SUPPORT_TICKETS,
+                    Permission::ASSIGN_SUPPORT_TICKETS,
+                    Permission::ESCALATE_SUPPORT_TICKETS,
+                    Permission::RESOLVE_SUPPORT_TICKETS,
+                    Permission::DELETE_SUPPORT_TICKETS,
+                    Permission::MANAGE_TICKET_CATEGORIES,
+                    Permission::MANAGE_TICKET_WORKFLOWS,
+                    Permission::MANAGE_TICKET_SLA,
+                    Permission::VIEW_TICKET_REPORTS,
+                    Permission::CONFIGURE_SUPPORT_TICKETS,
+                    Permission::VIEW_SUPPORT_ANALYTICS,
+                    Permission::MANAGE_MICROSOFT365_INTEGRATION,
+                    Permission::MANAGE_CONTACTS,
                 ]
             ]);
             $this->command->info('Updated Central Admin role permissions');
@@ -90,6 +106,22 @@ class EnhancedRoleSeeder extends Seeder
                     Permission::EXPORT_TENANT_DATA,
                     Permission::VIEW_DASHBOARD,
                     Permission::MANAGE_OWN_PROFILE,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
+                    Permission::MANAGE_SUPPORT_TICKETS,
+                    Permission::VIEW_ALL_SUPPORT_TICKETS,
+                    Permission::ASSIGN_SUPPORT_TICKETS,
+                    Permission::ESCALATE_SUPPORT_TICKETS,
+                    Permission::RESOLVE_SUPPORT_TICKETS,
+                    Permission::DELETE_SUPPORT_TICKETS,
+                    Permission::MANAGE_TICKET_CATEGORIES,
+                    Permission::MANAGE_TICKET_WORKFLOWS,
+                    Permission::MANAGE_TICKET_SLA,
+                    Permission::VIEW_TICKET_REPORTS,
+                    Permission::CONFIGURE_SUPPORT_TICKETS,
+                    Permission::VIEW_SUPPORT_ANALYTICS,
+                    Permission::MANAGE_MICROSOFT365_INTEGRATION,
+                    Permission::MANAGE_CONTACTS,
                 ]
             ]);
             $this->command->info('Updated Tenant Admin role permissions');
@@ -106,6 +138,8 @@ class EnhancedRoleSeeder extends Seeder
                     Permission::CREATE_CONTENT,
                     Permission::EDIT_OWN_CONTENT,
                     Permission::VIEW_REPORTS,
+                    Permission::VIEW_SUPPORT_TICKETS,
+                    Permission::CREATE_SUPPORT_TICKETS,
                 ]
             ]);
             $this->command->info('Updated Tenant User role permissions');

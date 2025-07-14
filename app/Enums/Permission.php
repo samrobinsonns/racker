@@ -43,6 +43,7 @@ class Permission
     const MODERATE_CONTENT = 'moderate_content';
     const VIEW_REPORTS = 'view_reports';
     const MANAGE_CATEGORIES = 'manage_categories';
+    const MANAGE_CONTACTS = 'manage_contacts';
 
     // Support Ticket Management
     const VIEW_SUPPORT_TICKETS = 'view_support_tickets';
@@ -207,6 +208,10 @@ class Permission
                 self::MANAGE_CATEGORIES => [
                     'label' => 'Manage Categories',
                     'description' => 'Create and manage content categories'
+                ],
+                self::MANAGE_CONTACTS => [
+                    'label' => 'Manage Contacts',
+                    'description' => 'Create, edit, and manage contact information'
                 ],
             ],
             'Support Ticket Management' => [
