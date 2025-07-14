@@ -1,5 +1,5 @@
 1. Contacts Profile Pictures ✅
-2. Recent Activity on Profile View
+2. Recent Activity on Profile View ✅
 3. Div parsing on Emails ✅ (Kind of)
 4. Dashboard Intergration (Needs more features)
 5. Ticket Analytics ✅

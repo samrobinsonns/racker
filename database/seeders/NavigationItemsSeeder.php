@@ -124,6 +124,38 @@ class NavigationItemsSeeder extends Seeder
                 'description' => 'Customize tenant navigation layout',
             ],
 
+            // Calendar Items
+            [
+                'key' => 'calendar',
+                'label' => 'Calendar',
+                'icon' => 'CalendarIcon',
+                'route_name' => 'calendar.index',
+                'permission_required' => Permission::VIEW_DASHBOARD,
+                'category' => NavigationItem::CATEGORY_CORE,
+                'sort_order' => 5,
+                'description' => 'View and manage calendar events',
+            ],
+            [
+                'key' => 'calendar_create',
+                'label' => 'Create Event',
+                'icon' => 'PlusIcon',
+                'route_name' => 'calendar.create',
+                'permission_required' => Permission::VIEW_DASHBOARD,
+                'category' => NavigationItem::CATEGORY_CORE,
+                'sort_order' => 6,
+                'description' => 'Create a new calendar event',
+            ],
+            [
+                'key' => 'calendar_manage',
+                'label' => 'Manage Calendars',
+                'icon' => 'Cog6ToothIcon',
+                'route_name' => 'calendar.manage',
+                'permission_required' => Permission::MANAGE_TENANT_SETTINGS,
+                'category' => NavigationItem::CATEGORY_ADMIN,
+                'sort_order' => 18,
+                'description' => 'Manage calendar settings and sharing',
+            ],
+
             // Custom Items
             [
                 'key' => 'external_link',

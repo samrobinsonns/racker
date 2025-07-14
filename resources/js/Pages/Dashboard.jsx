@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PermissionGate from '@/Components/PermissionGate';
 import { usePermissions } from '@/Hooks/usePermissions';
 import { useNotifications } from '@/Components/Notifications/NotificationProvider';
+import CalendarWidget from '@/Components/Calendar/CalendarWidget';
 import { useState, useEffect } from 'react';
 import {
     BuildingOfficeIcon,
@@ -718,8 +719,14 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Resolution Time Stats */}
+                    {/* Calendar Widget */}
                     <div className="lg:col-span-1 space-y-6">
+                        <CalendarWidget 
+                            calendarStats={stats?.calendar_stats}
+                            upcomingEvents={stats?.upcoming_events || []}
+                        />
+                        
+                        {/* Resolution Time Stats */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-6">Resolution Time</h3>
                             <div className="text-center">

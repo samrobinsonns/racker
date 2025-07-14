@@ -119,6 +119,22 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 
+    // Calendar relationships
+    public function calendars()
+    {
+        return $this->hasMany(Calendar::class, 'created_by');
+    }
+
+    public function calendarEvents()
+    {
+        return $this->hasMany(CalendarEvent::class, 'created_by');
+    }
+
+    public function calendarShares()
+    {
+        return $this->hasMany(CalendarShare::class, 'shared_with_user_id');
+    }
+
     public function messages()
     {
         return $this->hasMany(Message::class);

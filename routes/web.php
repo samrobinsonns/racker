@@ -31,6 +31,7 @@ use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use App\Http\Controllers\TenantAdmin\TenantNavigationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\CalendarController;
 
 // Public routes for the central domain
 Route::middleware(['web'])->group(function () {
@@ -52,6 +53,9 @@ Route::get('/dashboard', function () {
     // Get the dashboard stats service
     $dashboardStatsService = app(\App\Services\SupportTickets\DashboardStatsService::class);
     
+    // Get calendar service for calendar data
+    $calendarService = app(\App\Services\CalendarService::class);
+    
     // Determine layout and stats based on user type
     if ($user->is_central_admin) {
         // Central Admin stats and layout
@@ -64,11 +68,17 @@ Route::get('/dashboard', function () {
         $tenant = $user->tenant;
         $layoutType = 'tenant_user';
         
+        // Get calendar stats and upcoming events
+        $calendarStats = $calendarService->getCalendarStats($user);
+        $upcomingEvents = $calendarService->getUpcomingEvents($user, 7);
+        
         $stats = array_merge(
             $dashboardStatsService->getDashboardStats($tenantId),
             [
                 'tenant_id' => $tenantId,
                 'tenant_name' => $tenant?->name ?? 'Your Organization',
+                'calendar_stats' => $calendarStats,
+                'upcoming_events' => $upcomingEvents,
             ]
         );
     }
@@ -437,9 +447,25 @@ Route::post('/test-status-change-notification', function () {
         newStatus: 'In Progress',
         changedBy: $user
     );
-    
-    return response()->json(['message' => 'Status change notification sent']);
+
+    return response()->json(['message' => 'Test status change notification sent']);
 })->middleware(['auth', 'verified'])->name('test-status-change-notification');
+
+// Calendar Routes
+Route::prefix('calendar')->name('calendar.')->middleware(['auth', 'verified'])->group(function () {
+    Route::get('/', [CalendarController::class, 'index'])->name('index');
+    Route::get('/create', [CalendarController::class, 'create'])->name('create');
+    Route::post('/', [CalendarController::class, 'store'])->name('store');
+    Route::get('/create-event', [CalendarController::class, 'createEvent'])->name('create-event');
+    Route::post('/events', [CalendarController::class, 'storeEvent'])->name('store-event');
+    Route::get('/events/{event}/edit', [CalendarController::class, 'editEvent'])->name('edit-event');
+    Route::put('/events/{event}', [CalendarController::class, 'updateEvent'])->name('update-event');
+    Route::delete('/events/{event}', [CalendarController::class, 'deleteEvent'])->name('delete-event');
+    Route::get('/manage', [CalendarController::class, 'manage'])->name('manage');
+    Route::post('/share', [CalendarController::class, 'share'])->name('share');
+    Route::delete('/share', [CalendarController::class, 'removeShare'])->name('remove-share');
+    Route::get('/events', [CalendarController::class, 'events'])->name('events');
+});
 
 // Regular authenticated user routes
 Route::middleware('auth')->group(function () {
