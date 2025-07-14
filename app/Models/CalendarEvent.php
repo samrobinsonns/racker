@@ -31,6 +31,26 @@ class CalendarEvent extends Model
         'all_day' => 'boolean',
     ];
 
+    protected $appends = [
+        'is_support_ticket'
+    ];
+
+    /**
+     * Get the is_support_ticket attribute.
+     */
+    public function getIsSupportTicketAttribute()
+    {
+        return $this->attributes['is_support_ticket'] ?? false;
+    }
+
+    /**
+     * Set the is_support_ticket attribute.
+     */
+    public function setIsSupportTicketAttribute($value)
+    {
+        $this->attributes['is_support_ticket'] = $value;
+    }
+
     /**
      * Set the start_date attribute as-is (no timezone conversion).
      */

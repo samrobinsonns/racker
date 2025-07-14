@@ -87,11 +87,82 @@ class CalendarService
     {
         $accessibleCalendars = Calendar::accessibleByUser($user)->pluck('id');
         
-        return CalendarEvent::whereIn('calendar_id', $accessibleCalendars)
+        $calendarEvents = CalendarEvent::whereIn('calendar_id', $accessibleCalendars)
             ->inDateRange($startDate, $endDate)
             ->with(['calendar', 'creator'])
             ->orderBy('start_date')
             ->get();
+
+        // Get support ticket due dates as events
+        $supportTicketEvents = $this->getSupportTicketEvents($user, $startDate, $endDate);
+
+        // Merge and sort all events
+        return $calendarEvents->merge($supportTicketEvents)->sortBy('start_date');
+    }
+
+    /**
+     * Get support ticket due dates as calendar events.
+     */
+    protected function getSupportTicketEvents(User $user, $startDate, $endDate): Collection
+    {
+        // Get support tickets with due dates in the range
+        $tickets = \App\Models\SupportTicket::where('tenant_id', $user->tenant_id)
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [$startDate, $endDate])
+            ->with(['assignee', 'priority', 'status', 'category'])
+            ->get();
+
+        // Convert tickets to calendar event format using Eloquent models
+        return $tickets->map(function ($ticket) {
+            // Create a new CalendarEvent instance with the ticket data
+            $event = new \App\Models\CalendarEvent();
+            $event->id = 'ticket_' . $ticket->id;
+            $event->calendar_id = null; // No specific calendar for tickets
+            $event->title = "Due: {$ticket->subject}";
+            $event->description = "Support Ticket #{$ticket->ticket_number}";
+            $event->start_date = $ticket->due_date;
+            $event->end_date = $ticket->due_date;
+            $event->all_day = false;
+            $event->location = null;
+            $event->url = route('support-tickets.show', $ticket->id);
+            $event->created_by = $ticket->created_by;
+            $event->tenant_id = $ticket->tenant_id;
+            
+            // Add custom properties for support tickets
+            $event->setAttribute('is_support_ticket', true);
+            $event->setAttribute('ticket', $ticket);
+            
+            // Set the calendar relationship as a simple object
+            $event->calendar = (object) [
+                'id' => null,
+                'name' => 'Support Tickets',
+                'color' => $this->getTicketPriorityColor($ticket->priority),
+            ];
+            
+            // Set the creator relationship
+            $event->creator = $ticket->assignee;
+            
+            return $event;
+        });
+    }
+
+    /**
+     * Get color based on ticket priority.
+     */
+    protected function getTicketPriorityColor($priority): string
+    {
+        if (!$priority) {
+            return '#6B7280'; // Gray for unknown priority
+        }
+
+        return match ($priority->level) {
+            1 => '#DC2626', // Red for Critical
+            2 => '#EA580C', // Orange for High
+            3 => '#D97706', // Yellow for Medium
+            4 => '#059669', // Green for Low
+            5 => '#6B7280', // Gray for Very Low
+            default => '#6B7280',
+        };
     }
 
     /**

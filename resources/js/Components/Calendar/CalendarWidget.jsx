@@ -10,6 +10,7 @@ import {
     ChevronRightIcon,
     ChevronLeftIcon,
     PencilIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function CalendarWidget({ calendarStats, upcomingEvents = [] }) {
@@ -41,7 +42,13 @@ export default function CalendarWidget({ calendarStats, upcomingEvents = [] }) {
 
     // Handle event click
     const handleEventClick = (event) => {
-        // Navigate to edit event page
+        // If it's a support ticket event, navigate to the ticket
+        if (event.is_support_ticket) {
+            window.open(event.url, '_blank');
+            return;
+        }
+        
+        // Otherwise, navigate to edit event page
         router.visit(`/calendar/events/${event.id}/edit`);
     };
 
@@ -269,8 +276,15 @@ export default function CalendarWidget({ calendarStats, upcomingEvents = [] }) {
                                                 }}
                                             >
                                                 <div className="font-medium text-gray-900 truncate text-xs flex items-center justify-between">
-                                                    <span>{event.title}</span>
-                                                    <PencilIcon className="h-2 w-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                                    <span className="flex items-center">
+                                                        {event.is_support_ticket && (
+                                                            <ExclamationTriangleIcon className="h-2 w-2 mr-0.5 text-red-500" />
+                                                        )}
+                                                        {event.title}
+                                                    </span>
+                                                    {!event.is_support_ticket && (
+                                                        <PencilIcon className="h-2 w-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -309,11 +323,16 @@ export default function CalendarWidget({ calendarStats, upcomingEvents = [] }) {
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                         <h6 className="text-sm font-medium text-gray-900 truncate flex items-center">
+                                            {event.is_support_ticket && (
+                                                <ExclamationTriangleIcon className="h-3 w-3 mr-1 text-red-500" />
+                                            )}
                                             {event.title}
-                                            <PencilIcon className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                            {!event.is_support_ticket && (
+                                                <PencilIcon className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                            )}
                                         </h6>
                                         <p className="text-xs text-gray-500 mt-0.5">
-                                            {event.calendar?.name}
+                                            {event.is_support_ticket ? 'Support Ticket' : event.calendar?.name}
                                         </p>
                                     </div>
                                     <div className="flex items-center space-x-1 text-xs text-gray-500">

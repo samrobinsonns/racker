@@ -14,6 +14,7 @@ import {
     PencilIcon,
     XMarkIcon,
     TrashIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function CalendarIndex({ calendars, events, view, date, stats }) {
@@ -85,8 +86,15 @@ export default function CalendarIndex({ calendars, events, view, date, stats }) 
         return color || '#3B82F6';
     };
 
-    // Handle event click (edit)
+    // Handle event click (edit or view)
     const handleEventClick = (event) => {
+        // If it's a support ticket event, navigate to the ticket
+        if (event.is_support_ticket) {
+            window.open(event.url, '_blank');
+            return;
+        }
+        
+        // Otherwise, open edit modal for regular calendar events
         openEditModal(event);
     };
 
@@ -311,14 +319,27 @@ export default function CalendarIndex({ calendars, events, view, date, stats }) 
         return events.filter(event => {
             const eventDate = parseLocalDate(event.start_date);
             const eventDateStr = toLocalInputValue(eventDate).slice(0, 10);
+            
+            // For support ticket events, always show them (no calendar filtering)
+            if (event.is_support_ticket) {
+                return eventDateStr === dateStr;
+            }
+            
+            // For regular calendar events, check if calendar is selected
             return eventDateStr === dateStr && selectedCalendars.includes(event.calendar_id);
         });
     };
 
-    // Filter events by selected calendars
-    const filteredEvents = events.filter(event => 
-        selectedCalendars.includes(event.calendar_id)
-    );
+    // Filter events by selected calendars (include support ticket events)
+    const filteredEvents = events.filter(event => {
+        // Always include support ticket events
+        if (event.is_support_ticket) {
+            return true;
+        }
+        
+        // For regular calendar events, check if calendar is selected
+        return selectedCalendars.includes(event.calendar_id);
+    });
 
     const calendarGrid = generateCalendarGrid();
 
@@ -469,8 +490,15 @@ export default function CalendarIndex({ calendars, events, view, date, stats }) 
                                                         }}
                                                     >
                                                         <div className="font-medium text-gray-900 truncate flex items-center justify-between">
-                                                            <span>{event.title}</span>
-                                                            <PencilIcon className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                                            <span className="flex items-center">
+                                                                {event.is_support_ticket && (
+                                                                    <ExclamationTriangleIcon className="h-3 w-3 mr-1 text-red-500" />
+                                                                )}
+                                                                {event.title}
+                                                            </span>
+                                                            {!event.is_support_ticket && (
+                                                                <PencilIcon className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                                            )}
                                                         </div>
                                                         {!event.all_day && (
                                                             <div className="text-gray-500">
@@ -500,6 +528,22 @@ export default function CalendarIndex({ calendars, events, view, date, stats }) 
                                 <h4 className="text-lg font-medium text-gray-900 mb-4">Calendars</h4>
                                 
                                 <div className="space-y-3">
+                                    {/* Support Tickets Calendar (always visible) */}
+                                    <div className="flex items-center space-x-3">
+                                        <div className="h-4 w-4 flex-shrink-0">
+                                            {/* Checkbox disabled for support tickets */}
+                                        </div>
+                                        <div
+                                            className="w-4 h-4 rounded-full flex-shrink-0"
+                                            style={{ backgroundColor: '#DC2626' }}
+                                        />
+                                        <label className="text-sm font-medium text-gray-900 flex-1">
+                                            Support Tickets
+                                        </label>
+                                        <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+                                    </div>
+                                    
+                                    {/* Regular Calendars */}
                                     {calendars.map((calendar) => (
                                         <div key={calendar.id} className="flex items-center space-x-3">
                                             <input
@@ -576,11 +620,16 @@ export default function CalendarIndex({ calendars, events, view, date, stats }) 
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
                                                             <h5 className="text-sm font-medium text-gray-900 flex items-center">
+                                                                {event.is_support_ticket && (
+                                                                    <ExclamationTriangleIcon className="h-3 w-3 mr-1 text-red-500" />
+                                                                )}
                                                                 {event.title}
-                                                                <PencilIcon className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                                                {!event.is_support_ticket && (
+                                                                    <PencilIcon className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                                                                )}
                                                             </h5>
                                                             <p className="text-xs text-gray-500 mt-0.5">
-                                                                {event.calendar?.name}
+                                                                {event.is_support_ticket ? 'Support Ticket' : event.calendar?.name}
                                                             </p>
                                                         </div>
                                                         <div className="text-xs text-gray-500">
