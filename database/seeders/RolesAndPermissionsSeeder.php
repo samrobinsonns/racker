@@ -123,6 +123,19 @@ class RolesAndPermissionsSeeder extends Seeder
                     Permission::VIEW_REPORTS,
                     Permission::VIEW_SUPPORT_TICKETS,
                     Permission::CREATE_SUPPORT_TICKETS,
+                    Permission::MANAGE_SUPPORT_TICKETS,
+                    Permission::VIEW_ALL_SUPPORT_TICKETS,
+                    Permission::ASSIGN_SUPPORT_TICKETS,
+                    Permission::ESCALATE_SUPPORT_TICKETS,
+                    Permission::RESOLVE_SUPPORT_TICKETS,
+                    Permission::DELETE_SUPPORT_TICKETS,
+                    Permission::MANAGE_TICKET_CATEGORIES,
+                    Permission::MANAGE_TICKET_WORKFLOWS,
+                    Permission::MANAGE_TICKET_SLA,
+                    Permission::VIEW_TICKET_REPORTS,
+                    Permission::CONFIGURE_SUPPORT_TICKETS,
+                    Permission::VIEW_SUPPORT_ANALYTICS,
+                    Permission::MANAGE_MICROSOFT365_INTEGRATION,
                 ]
             ]
         );

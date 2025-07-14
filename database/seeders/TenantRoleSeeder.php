@@ -79,6 +79,19 @@ class TenantRoleSeeder extends Seeder
             'view_reports',
             'view_support_tickets',
             'create_support_tickets',
+            'manage_support_tickets',
+            'view_all_support_tickets',
+            'assign_support_tickets',
+            'escalate_support_tickets',
+            'resolve_support_tickets',
+            'delete_support_tickets',
+            'manage_ticket_categories',
+            'manage_ticket_workflows',
+            'manage_ticket_sla',
+            'view_ticket_reports',
+            'configure_support_tickets',
+            'view_support_analytics',
+            'manage_microsoft365_integration',
         ];
 
         // Sync permissions for tenant admin role
