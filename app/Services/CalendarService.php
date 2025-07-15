@@ -74,10 +74,62 @@ class CalendarService
     {
         $accessibleCalendars = Calendar::accessibleByUser($user)->pluck('id');
         
-        return CalendarEvent::whereIn('calendar_id', $accessibleCalendars)
+        // Get calendar events for the future (upcoming scope)
+        $calendarEvents = CalendarEvent::whereIn('calendar_id', $accessibleCalendars)
             ->upcoming($days)
             ->with(['calendar', 'creator'])
             ->get();
+
+        // Get support ticket due dates as events - use same future range as calendar events
+        $startDate = now();
+        $endDate = now()->addDays($days);
+        $supportTicketEvents = $this->getSupportTicketEvents($user, $startDate, $endDate);
+
+        // Debug: Log the events being found
+        \Log::info('Calendar events found', [
+            'tenant_id' => $user->tenant_id,
+            'calendar_events_count' => $calendarEvents->count(),
+            'support_ticket_events_count' => $supportTicketEvents->count(),
+            'total_events' => $calendarEvents->count() + $supportTicketEvents->count(),
+            'date_range' => [
+                'start' => $startDate->toISOString(),
+                'end' => $endDate->toISOString(),
+                'days' => $days
+            ]
+        ]);
+
+        // Merge and sort all events - handle mixed object types properly
+        $allEvents = collect();
+        
+        // Add calendar events (Eloquent models)
+        foreach ($calendarEvents as $event) {
+            $allEvents->push($event);
+        }
+        
+        // Add support ticket events (simple objects)
+        foreach ($supportTicketEvents as $event) {
+            $allEvents->push($event);
+        }
+        
+        // Sort by start_date
+        $sortedEvents = $allEvents->sortBy('start_date');
+        
+        // Debug: Log the collection types
+        \Log::info('Calendar events collection debug', [
+            'total_events' => $sortedEvents->count(),
+            'calendar_events_count' => $calendarEvents->count(),
+            'support_ticket_events_count' => $supportTicketEvents->count(),
+            'event_types' => $sortedEvents->map(function($event) {
+                return [
+                    'id' => $event->id ?? 'no_id',
+                    'type' => get_class($event),
+                    'is_support_ticket' => $event->is_support_ticket ?? false,
+                    'title' => $event->title ?? 'no_title'
+                ];
+            })->toArray()
+        ]);
+        
+        return $sortedEvents;
     }
 
     /**
@@ -96,8 +148,38 @@ class CalendarService
         // Get support ticket due dates as events
         $supportTicketEvents = $this->getSupportTicketEvents($user, $startDate, $endDate);
 
-        // Merge and sort all events
-        return $calendarEvents->merge($supportTicketEvents)->sortBy('start_date');
+        // Merge and sort all events - handle mixed object types properly
+        $allEvents = collect();
+        
+        // Add calendar events (Eloquent models)
+        foreach ($calendarEvents as $event) {
+            $allEvents->push($event);
+        }
+        
+        // Add support ticket events (simple objects)
+        foreach ($supportTicketEvents as $event) {
+            $allEvents->push($event);
+        }
+        
+        // Sort by start_date
+        $sortedEvents = $allEvents->sortBy('start_date');
+        
+        // Debug: Log the collection types
+        \Log::info('Calendar events in range debug', [
+            'total_events' => $sortedEvents->count(),
+            'calendar_events_count' => $calendarEvents->count(),
+            'support_ticket_events_count' => $supportTicketEvents->count(),
+            'event_types' => $sortedEvents->map(function($event) {
+                return [
+                    'id' => $event->id ?? 'no_id',
+                    'type' => get_class($event),
+                    'is_support_ticket' => $event->is_support_ticket ?? false,
+                    'title' => $event->title ?? 'no_title'
+                ];
+            })->toArray()
+        ]);
+        
+        return $sortedEvents;
     }
 
     /**
@@ -105,45 +187,80 @@ class CalendarService
      */
     protected function getSupportTicketEvents(User $user, $startDate, $endDate): Collection
     {
-        // Get support tickets with due dates in the range
+        // Convert dates to Carbon instances if they're strings
+        $startDate = $startDate instanceof \Carbon\Carbon ? $startDate : \Carbon\Carbon::parse($startDate);
+        $endDate = $endDate instanceof \Carbon\Carbon ? $endDate : \Carbon\Carbon::parse($endDate);
+        
+        // Get support tickets with due dates in the specified range
         $tickets = \App\Models\SupportTicket::where('tenant_id', $user->tenant_id)
             ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$startDate, $endDate])
+            ->where('due_date', '>=', $startDate)
+            ->where('due_date', '<=', $endDate)
             ->with(['assignee', 'priority', 'status', 'category'])
             ->get();
 
-        // Convert tickets to calendar event format using Eloquent models
-        return $tickets->map(function ($ticket) {
-            // Create a new CalendarEvent instance with the ticket data
-            $event = new \App\Models\CalendarEvent();
-            $event->id = 'ticket_' . $ticket->id;
-            $event->calendar_id = null; // No specific calendar for tickets
-            $event->title = "Due: {$ticket->subject}";
-            $event->description = "Support Ticket #{$ticket->ticket_number}";
-            $event->start_date = $ticket->due_date;
-            $event->end_date = $ticket->due_date;
-            $event->all_day = false;
-            $event->location = null;
-            $event->url = route('support-tickets.show', $ticket->id);
-            $event->created_by = $ticket->created_by;
-            $event->tenant_id = $ticket->tenant_id;
-            
-            // Add custom properties for support tickets
-            $event->setAttribute('is_support_ticket', true);
-            $event->setAttribute('ticket', $ticket);
-            
-            // Set the calendar relationship as a simple object
-            $event->calendar = (object) [
-                'id' => null,
-                'name' => 'Support Tickets',
-                'color' => $this->getTicketPriorityColor($ticket->priority),
+        // Debug: Log the number of tickets found
+        \Log::info('Support ticket events found', [
+            'tenant_id' => $user->tenant_id,
+            'start_date' => $startDate->toISOString(),
+            'end_date' => $endDate->toISOString(),
+            'tickets_count' => $tickets->count(),
+            'tickets' => $tickets->pluck('ticket_number', 'due_date')->toArray(),
+            'all_tickets_with_due_dates' => \App\Models\SupportTicket::where('tenant_id', $user->tenant_id)
+                ->whereNotNull('due_date')
+                ->pluck('ticket_number', 'due_date')
+                ->toArray()
+        ]);
+
+        // Convert tickets to calendar event format using simple objects
+        $events = $tickets->map(function ($ticket) {
+            // Create a simple object with the ticket data (not an Eloquent model)
+            $event = (object) [
+                'id' => 'ticket_' . $ticket->id,
+                'calendar_id' => null, // No specific calendar for tickets
+                'title' => "Due: {$ticket->subject}",
+                'description' => "Support Ticket #{$ticket->ticket_number}",
+                'start_date' => $ticket->due_date,
+                'end_date' => $ticket->due_date,
+                'all_day' => false,
+                'location' => null,
+                'url' => route('support-tickets.show', $ticket->id),
+                'created_by' => $ticket->created_by,
+                'tenant_id' => $ticket->tenant_id,
+                'is_support_ticket' => true,
+                'ticket' => $ticket,
+                'calendar' => (object) [
+                    'id' => null,
+                    'name' => 'Support Tickets',
+                    'color' => $this->getTicketPriorityColor($ticket->priority),
+                ],
+                'creator' => $ticket->assignee,
             ];
             
-            // Set the creator relationship
-            $event->creator = $ticket->assignee;
+            // Debug: Log each event being created
+            \Log::info('Creating support ticket event', [
+                'ticket_id' => $ticket->id,
+                'event_id' => $event->id,
+                'ticket_number' => $ticket->ticket_number,
+                'title' => $event->title,
+                'start_date' => $event->start_date,
+                'due_date' => $ticket->due_date
+            ]);
             
             return $event;
         });
+
+        // Check for duplicate IDs
+        $eventIds = $events->pluck('id')->toArray();
+        $duplicateIds = array_diff_assoc($eventIds, array_unique($eventIds));
+        if (!empty($duplicateIds)) {
+            \Log::warning('Duplicate event IDs found', [
+                'duplicate_ids' => $duplicateIds,
+                'all_event_ids' => $eventIds
+            ]);
+        }
+
+        return $events;
     }
 
     /**

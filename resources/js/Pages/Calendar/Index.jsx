@@ -28,6 +28,27 @@ export default function CalendarIndex({ calendars, events, view, date, stats }) 
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
 
+    // Debug: Log the events being received
+    useEffect(() => {
+        console.log('Calendar Index received events:', events);
+        console.log('Events type:', typeof events);
+        console.log('Is array:', Array.isArray(events));
+        console.log('Events length:', events?.length);
+        console.log('Support ticket events:', events?.filter(e => e.is_support_ticket));
+        console.log('Regular calendar events:', events?.filter(e => !e.is_support_ticket));
+        
+        // Debug: Log each support ticket event individually
+        const supportTicketEvents = events?.filter(e => e.is_support_ticket) || [];
+        supportTicketEvents.forEach((event, index) => {
+            console.log(`Support ticket ${index + 1}:`, {
+                id: event.id,
+                title: event.title,
+                start_date: event.start_date,
+                ticket_number: event.ticket?.ticket_number
+            });
+        });
+    }, [events]);
+
     // Create event form
     const { data, setData, post, processing, errors, reset } = useForm({
         calendar_id: calendars.length > 0 ? calendars[0].id : '',

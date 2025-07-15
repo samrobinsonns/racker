@@ -70,7 +70,35 @@ Route::get('/dashboard', function () {
         
         // Get calendar stats and upcoming events
         $calendarStats = $calendarService->getCalendarStats($user);
-        $upcomingEvents = $calendarService->getUpcomingEvents($user, 7);
+        $upcomingEvents = $calendarService->getUpcomingEvents($user, 30); // Increased from 7 to 30 days
+        
+        // Convert collection to array to ensure proper JSON serialization
+        $upcomingEventsArray = $upcomingEvents->map(function($event) {
+            return [
+                'id' => $event->id,
+                'calendar_id' => $event->calendar_id,
+                'title' => $event->title,
+                'description' => $event->description,
+                'start_date' => $event->start_date,
+                'end_date' => $event->end_date,
+                'all_day' => $event->all_day,
+                'location' => $event->location,
+                'url' => $event->url,
+                'created_by' => $event->created_by,
+                'tenant_id' => $event->tenant_id,
+                'is_support_ticket' => $event->is_support_ticket ?? false,
+                'calendar' => $event->calendar,
+                'creator' => $event->creator,
+                'ticket' => $event->ticket ?? null,
+            ];
+        })->values()->toArray(); // Use values() to ensure we get a proper array
+        
+        // Debug: Log what's being sent to frontend
+        \Log::info('Dashboard stats for frontend', [
+            'upcoming_events_count' => count($upcomingEventsArray),
+            'upcoming_events_sample' => array_slice($upcomingEventsArray, 0, 3),
+            'calendar_stats' => $calendarStats
+        ]);
         
         $stats = array_merge(
             $dashboardStatsService->getDashboardStats($tenantId),
@@ -78,7 +106,7 @@ Route::get('/dashboard', function () {
                 'tenant_id' => $tenantId,
                 'tenant_name' => $tenant?->name ?? 'Your Organization',
                 'calendar_stats' => $calendarStats,
-                'upcoming_events' => $upcomingEvents,
+                'upcoming_events' => $upcomingEventsArray,
             ]
         );
     }
@@ -466,6 +494,29 @@ Route::prefix('calendar')->name('calendar.')->middleware(['auth', 'verified'])->
     Route::delete('/share', [CalendarController::class, 'removeShare'])->name('remove-share');
     Route::get('/events', [CalendarController::class, 'events'])->name('events');
 });
+
+// Debug route for calendar events
+Route::get('/debug/calendar-events', function () {
+    $user = auth()->user();
+    $calendarService = app(\App\Services\CalendarService::class);
+    
+    $upcomingEvents = $calendarService->getUpcomingEvents($user, 30);
+    
+    return response()->json([
+        'total_events' => $upcomingEvents->count(),
+        'calendar_events' => $upcomingEvents->where('is_support_ticket', false)->count(),
+        'support_ticket_events' => $upcomingEvents->where('is_support_ticket', true)->count(),
+        'events' => $upcomingEvents->map(function ($event) {
+            return [
+                'id' => $event->id,
+                'title' => $event->title,
+                'start_date' => $event->start_date,
+                'is_support_ticket' => $event->is_support_ticket,
+                'calendar_name' => $event->calendar->name ?? 'N/A',
+            ];
+        })
+    ]);
+})->middleware(['auth'])->name('debug.calendar-events');
 
 // Regular authenticated user routes
 Route::middleware('auth')->group(function () {

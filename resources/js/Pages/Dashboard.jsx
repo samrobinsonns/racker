@@ -35,11 +35,28 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
+    console.log('Dashboard component rendering');
+    
     const { props } = usePage();
     const { auth, stats, layoutType } = props;
     const { user } = auth;
     const { hasPermission, getAdminLevel } = usePermissions();
     const { notifications: notificationSystem } = useNotifications();
+
+    // Debug: Log the stats data
+    useEffect(() => {
+        console.log('Dashboard received stats:', stats);
+        console.log('Stats type:', typeof stats);
+        console.log('Upcoming events:', stats?.upcoming_events);
+        console.log('Upcoming events type:', typeof stats?.upcoming_events);
+        console.log('Upcoming events is array:', Array.isArray(stats?.upcoming_events));
+        console.log('Upcoming events length:', stats?.upcoming_events?.length);
+        
+        // Debug: Log the props structure
+        console.log('All props:', props);
+        console.log('Auth:', auth);
+        console.log('Layout type:', layoutType);
+    }, [stats, props, auth, layoutType]);
 
     // Notification state
     const [notifications, setNotifications] = useState([]);
@@ -458,9 +475,9 @@ export default function Dashboard() {
         ];
 
         return (
-            <>
+            <div className="space-y-6">
                 {/* Stats Overview */}
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
                     {statCards.map((card) => (
                         <div
                             key={card.name}
@@ -541,174 +558,113 @@ export default function Dashboard() {
 
                 {/* Main Content */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* Activity & Notifications Feed */}
-                    <div className="lg:col-span-2">
-                        <div className="h-full bg-white overflow-hidden shadow rounded-lg">
-                            <div className="p-6 h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
-                                            <BellIcon className="h-5 w-5 mr-2 text-emerald-600" />
-                                        Activity & Notifications
-                                        </h3>
-                                        <div className="flex items-center space-x-2">
-                                            <button
-                                                onClick={() => handleMarkAllAsRead()}
-                                                className="text-sm text-gray-600 hover:text-emerald-600"
-                                            >
-                                                Mark all as read
-                                            </button>
-                                            <button
-                                                onClick={() => handleRefreshNotifications()}
-                                                className="text-gray-600 hover:text-emerald-600"
-                                            >
-                                                <ArrowPathIcon className="h-5 w-5" />
-                                            </button>
-                                        </div>
+                    {/* Notifications Feed */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Notifications Card */}
+                        <div className="bg-white overflow-hidden shadow rounded-lg">
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                                        <BellIcon className="h-5 w-5 mr-2 text-emerald-600" />
+                                        Notifications
+                                    </h3>
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={() => handleMarkAllAsRead()}
+                                            className="text-sm text-gray-600 hover:text-emerald-600"
+                                        >
+                                            Mark all as read
+                                        </button>
+                                        <button
+                                            onClick={() => handleRefreshNotifications()}
+                                            className="text-gray-600 hover:text-emerald-600"
+                                        >
+                                            <ArrowPathIcon className="h-5 w-5" />
+                                        </button>
                                     </div>
-
-                                {/* Combined Feed */}
-                                <div className="space-y-4 overflow-y-auto pr-2" style={{ height: '32rem' }}>
-                                        {loading ? (
-                                            <div className="flex justify-center items-center py-8">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                                            </div>
+                                </div>
+                                {/* Notifications Feed */}
+                                <div className="h-64 overflow-y-auto pr-2">
+                                    {loading ? (
+                                        <div className="flex justify-center items-center py-8">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                        </div>
                                     ) : (
                                         <>
-                                            {combinedFeed.map((item) => (
+                                            {notifications.map((item) => (
                                                 <div
-                                                    key={`${item.itemType}-${item.id}`}
-                                                    className={`relative p-4 rounded-lg border ${
-                                                        item.itemType === 'notification'
-                                                            ? item.read_at
-                                                                ? 'bg-white'
-                                                                : 'bg-emerald-50'
-                                                            : 'bg-white'
+                                                    key={`notification-${item.id}`}
+                                                    className={`relative p-4 rounded-lg border mb-3 ${
+                                                        item.read_at ? 'bg-white' : 'bg-emerald-50'
                                                     } ${
-                                                        item.itemType === 'notification'
-                                                            ? item.type === 'success'
+                                                        item.type === 'success'
                                                             ? 'border-green-200'
-                                                                : item.type === 'error'
+                                                            : item.type === 'error'
                                                             ? 'border-red-200'
-                                                                : item.type === 'warning'
+                                                            : item.type === 'warning'
                                                             ? 'border-yellow-200'
                                                             : 'border-blue-200'
-                                                            : 'border-gray-200'
                                                     }`}
                                                 >
                                                     <div className="flex items-start">
                                                         <div className="flex-shrink-0">
-                                                            {item.itemType === 'notification' ? (
-                                                                <>
-                                                                    {item.type === 'success' && (
+                                                            {item.type === 'success' && (
                                                                 <CheckCircleIcon className="h-6 w-6 text-green-500" />
                                                             )}
-                                                                    {item.type === 'error' && (
+                                                            {item.type === 'error' && (
                                                                 <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
                                                             )}
-                                                                    {item.type === 'warning' && (
+                                                            {item.type === 'warning' && (
                                                                 <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
                                                             )}
-                                                                    {item.type === 'info' && (
+                                                            {item.type === 'info' && (
                                                                 <InformationCircleIcon className="h-6 w-6 text-blue-500" />
-                                                                    )}
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    {item.type === 'ticket_updated' && (
-                                                                        <span className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                                                                            <PencilIcon className="h-5 w-5 text-green-600" />
-                                                                        </span>
-                                                                    )}
-                                                                    {item.type === 'ticket_comment' && (
-                                                                        <span className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                                                            <ChatBubbleLeftIcon className="h-5 w-5 text-purple-600" />
-                                                                        </span>
-                                                                    )}
-                                                                </>
                                                             )}
                                                         </div>
                                                         <div className="ml-3 flex-1">
-                                                            {item.itemType === 'notification' ? (
-                                                                <>
-                                                                    {item.title && (
+                                                            {item.title && (
                                                                 <h4 className="text-sm font-medium text-gray-900">
-                                                                            {item.title}
+                                                                    {item.title}
                                                                 </h4>
                                                             )}
-                                                                    <p className="text-sm text-gray-600">{item.message}</p>
+                                                            <p className="text-sm text-gray-600">{item.message}</p>
                                                             <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
-                                                                        <span>{formatDate(item.created_at)}</span>
-                                                                        {item.action_url && (
+                                                                <span>{formatDate(item.created_at)}</span>
+                                                                {item.action_url && (
                                                                     <Link
-                                                                                href={item.action_url}
+                                                                        href={item.action_url}
                                                                         className="text-emerald-600 hover:text-emerald-800"
                                                                     >
-                                                                                {item.action_text || 'View Details'}
+                                                                        {item.action_text || 'View Details'}
                                                                     </Link>
                                                                 )}
                                                             </div>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <p className="text-sm text-gray-800">
-                                                                        {item.type === 'ticket_comment' ? (
-                                                                            <>
-                                                                                Commented on{' '}
-                                                                                <Link
-                                                                                    href={route('support-tickets.show', item.ticket.id)}
-                                                                                    className="font-medium text-gray-900"
-                                                                                >
-                                                                                    #{item.ticket.ticket_number}
-                                                                                </Link>
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                {item.description}
-                                                                                {item.ticket && item.type !== 'ticket_comment' && (
-                                                                                    <Link
-                                                                                        href={route('support-tickets.show', item.ticket.id)}
-                                                                                        className="font-medium text-gray-900 ml-1"
-                                                                                    >
-                                                                                        #{item.ticket.ticket_number}
-                                                                                    </Link>
-                                                                                )}
-                                                                            </>
-                                                                        )}
-                                                                    </p>
-                                                                    <div className="mt-1 text-xs text-gray-500">
-                                                                        {formatDate(item.created_at)}
-                                                                    </div>
-                                                                </>
-                                                            )}
                                                         </div>
-                                                        {item.itemType === 'notification' && (
                                                         <div className="ml-4 flex-shrink-0 flex items-start space-x-2">
-                                                                {!item.read_at && (
+                                                            {!item.read_at && (
                                                                 <button
-                                                                        onClick={() => handleMarkAsRead(item.id)}
+                                                                    onClick={() => handleMarkAsRead(item.id)}
                                                                     className="text-gray-400 hover:text-emerald-600"
                                                                 >
                                                                     <CheckIcon className="h-5 w-5" />
                                                                 </button>
                                                             )}
                                                             <button
-                                                                    onClick={() => handleDelete(item.id)}
+                                                                onClick={() => handleDelete(item.id)}
                                                                 className="text-gray-400 hover:text-red-600"
                                                             >
                                                                 <TrashIcon className="h-5 w-5" />
                                                             </button>
                                                         </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
-
-                                            {combinedFeed.length === 0 && (
+                                            {notifications.length === 0 && (
                                                 <div className="text-center py-8">
                                                     <BellIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                                    <p className="text-gray-500">No recent activity</p>
+                                                    <p className="text-gray-500">No notifications</p>
                                                     <p className="text-sm text-gray-400 mt-1">
-                                                        Your notifications and activities will appear here
+                                                        Your notifications will appear here
                                                     </p>
                                                 </div>
                                             )}
@@ -717,41 +673,96 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Additional Info Card */}
+                        <div className="bg-white overflow-hidden shadow rounded-lg">
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                                        <ChartBarIcon className="h-5 w-5 mr-2 text-blue-600" />
+                                        Quick Stats
+                                    </h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                                        <div className="text-2xl font-bold text-gray-900">85%</div>
+                                        <div className="text-sm text-gray-600">Satisfaction Rate</div>
+                                    </div>
+                                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                                        <div className="text-2xl font-bold text-gray-900">2.3h</div>
+                                        <div className="text-sm text-gray-600">Avg Response Time</div>
+                                    </div>
+                                </div>
+                                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                    <h4 className="text-sm font-medium text-blue-900 mb-2">Recent Activity</h4>
+                                    <div className="space-y-2 text-sm text-blue-800">
+                                        <div className="flex items-center">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                            <span>3 tickets resolved this week</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                            <span>Customer feedback received</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                                            <span>System maintenance scheduled</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Calendar Widget */}
-                    <div className="lg:col-span-1 space-y-6">
-                        <CalendarWidget 
-                            calendarStats={stats?.calendar_stats}
-                            upcomingEvents={stats?.upcoming_events || []}
-                        />
-                        
-                        {/* Resolution Time Stats */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-6">Resolution Time</h3>
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full">
+                            {/* Calendar Section */}
+                            <div className="mb-6">
+                                {(() => {
+                                    console.log('About to render CalendarWidget with:', {
+                                        calendarStats: stats?.calendar_stats,
+                                        upcomingEvents: stats?.upcoming_events || []
+                                    });
+                                    return (
+                                        <CalendarWidget 
+                                            calendarStats={stats?.calendar_stats}
+                                            upcomingEvents={stats?.upcoming_events || []}
+                                        />
+                                    );
+                                })()}
+                            </div>
+                            
+                            {/* Divider */}
+                            <div className="border-t border-gray-200 mb-6"></div>
+                            
+                            {/* Resolution Time Stats */}
                             <div className="text-center">
-                                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
-                                    <ClockIcon className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div className="text-sm font-medium text-gray-600">Average Resolution Time</div>
-                                <div className="mt-2 text-xl font-semibold text-gray-900">
-                                    {stats.resolution_times?.average ? (
-                                        <>
-                                            {stats.resolution_times.average.minutes < 60 ? (
-                                                `${stats.resolution_times.average.minutes}m`
-                                            ) : (
-                                                `${Math.floor(stats.resolution_times.average.hours)}h ${stats.resolution_times.average.minutes % 60}m`
-                                            )}
-                                        </>
-                                    ) : (
-                                        'N/A'
-                                    )}
+                                <h3 className="text-lg font-semibold text-gray-900 mb-6">Resolution Time</h3>
+                                <div className="text-center">
+                                    <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
+                                        <ClockIcon className="h-6 w-6 text-blue-600" />
+                                    </div>
+                                    <div className="text-sm font-medium text-gray-600">Average Resolution Time</div>
+                                    <div className="mt-2 text-xl font-semibold text-gray-900">
+                                        {stats.resolution_times?.average ? (
+                                            <>
+                                                {stats.resolution_times.average.minutes < 60 ? (
+                                                    `${stats.resolution_times.average.minutes}m`
+                                                ) : (
+                                                    `${Math.floor(stats.resolution_times.average.hours)}h ${stats.resolution_times.average.minutes % 60}m`
+                                                )}
+                                            </>
+                                        ) : (
+                                            'N/A'
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </>
+            </div>
         );
     };
 

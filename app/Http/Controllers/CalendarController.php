@@ -41,11 +41,44 @@ class CalendarController extends Controller
         $startDate = $this->getStartDateForView($view, $date);
         $endDate = $this->getEndDateForView($view, $date);
         
+        // Debug: Log the date range being used
+        \Log::info('Calendar date range debug', [
+            'view' => $view,
+            'date' => $date,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'start_date_parsed' => \Carbon\Carbon::parse($startDate)->toISOString(),
+            'end_date_parsed' => \Carbon\Carbon::parse($endDate)->toISOString(),
+        ]);
+        
         $events = $this->calendarService->getEventsInRange($user, $startDate, $endDate);
+        
+        // Debug: Log what's being sent to frontend
+        \Log::info('Calendar Index events debug', [
+            'view' => $view,
+            'date' => $date,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'total_events' => $events->count(),
+            'support_ticket_events' => $events->filter(function($event) {
+                return $event->is_support_ticket ?? false;
+            })->count(),
+            'regular_events' => $events->filter(function($event) {
+                return !($event->is_support_ticket ?? false);
+            })->count(),
+            'events_sample' => $events->take(3)->map(function($event) {
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'is_support_ticket' => $event->is_support_ticket ?? false,
+                    'start_date' => $event->start_date
+                ];
+            })->toArray()
+        ]);
 
         return Inertia::render('Calendar/Index', [
             'calendars' => $calendars,
-            'events' => $events,
+            'events' => $events->values()->toArray(),
             'view' => $view,
             'date' => $date,
             'stats' => $this->calendarService->getCalendarStats($user),
@@ -317,9 +350,22 @@ class CalendarController extends Controller
         ]);
 
         $user = auth()->user();
-        $events = $this->calendarService->getEventsInRange($user, $request->start, $request->end);
+        
+        // Apply the same date range logic as the index method
+        $startDate = \Carbon\Carbon::parse($request->start)->startOfDay();
+        $endDate = \Carbon\Carbon::parse($request->end)->endOfDay();
+        
+        // Debug: Log the date range being used
+        \Log::info('Calendar events API debug', [
+            'original_start' => $request->start,
+            'original_end' => $request->end,
+            'adjusted_start' => $startDate->toISOString(),
+            'adjusted_end' => $endDate->toISOString(),
+        ]);
+        
+        $events = $this->calendarService->getEventsInRange($user, $startDate, $endDate);
 
-        return response()->json($events);
+        return response()->json($events->values()->toArray());
     }
 
     /**
@@ -330,10 +376,10 @@ class CalendarController extends Controller
         $dateObj = \Carbon\Carbon::parse($date);
         
         return match ($view) {
-            'month' => $dateObj->startOfMonth()->format('Y-m-d'),
-            'week' => $dateObj->startOfWeek()->format('Y-m-d'),
-            'day' => $dateObj->format('Y-m-d'),
-            default => $dateObj->startOfMonth()->format('Y-m-d'),
+            'month' => $dateObj->startOfMonth()->startOfDay()->format('Y-m-d H:i:s'),
+            'week' => $dateObj->startOfWeek()->startOfDay()->format('Y-m-d H:i:s'),
+            'day' => $dateObj->startOfDay()->format('Y-m-d H:i:s'),
+            default => $dateObj->startOfMonth()->startOfDay()->format('Y-m-d H:i:s'),
         };
     }
 
@@ -345,10 +391,10 @@ class CalendarController extends Controller
         $dateObj = \Carbon\Carbon::parse($date);
         
         return match ($view) {
-            'month' => $dateObj->endOfMonth()->format('Y-m-d'),
-            'week' => $dateObj->endOfWeek()->format('Y-m-d'),
-            'day' => $dateObj->format('Y-m-d'),
-            default => $dateObj->endOfMonth()->format('Y-m-d'),
+            'month' => $dateObj->endOfMonth()->endOfDay()->format('Y-m-d H:i:s'),
+            'week' => $dateObj->endOfWeek()->endOfDay()->format('Y-m-d H:i:s'),
+            'day' => $dateObj->endOfDay()->format('Y-m-d H:i:s'),
+            default => $dateObj->endOfMonth()->endOfDay()->format('Y-m-d H:i:s'),
         };
     }
 } 
